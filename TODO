@@ -2,13 +2,22 @@
 
 		* alpha
 
-			* app icon (loaded in qt.py at window.tabs.addTab(tab, self._get_icon(), _('ChainTipper'))
+			* tooltips in table?
+
 			* readme.md for github
+			* rebase and push to github once code is de-cluttered
+
+			* handle wallet connecting (preferrably just 1 wallet)
 			* preferences
 				* reddit credentials
-			* tooltips in table
-			* rebase and push to github once code is de-cluttered
-			
+				* wallet connect
+			* app icon (loaded in qt.py at window.tabs.addTab(tab, self._get_icon(), _('ChainTipper'))
+
+			* pull tipping comment
+				* parse/interpret amount
+
+			* pull parent?
+
 		* beta
 
 			* avoid having to ask credentials by using "reddit app" (api-key)?
