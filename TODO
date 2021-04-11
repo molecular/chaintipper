@@ -1,0 +1,24 @@
+	* 1.0
+
+		* alpha
+
+			* app icon (loaded in qt.py at window.tabs.addTab(tab, self._get_icon(), _('ChainTipper'))
+			* readme.md for github
+			* preferences
+				* reddit credentials
+			* tooltips in table
+			* rebase and push to github once code is de-cluttered
+			
+		* beta
+
+			* avoid having to ask credentials by using "reddit app" (api-key)?
+				(see https://asyncpraw.readthedocs.io/en/latest/getting_started/quick_start.html under "Client ID & Client Secret" for pointers)
+			* bundling as .zip plugin archive
+			* release (trhough github files?), hashes?
+
+
+	* 2.0 / ideas
+
+		* twitter
+		* persist Tip List
+		* utxo selection
