@@ -23,7 +23,7 @@ from electroncash.transaction import Transaction
 from electroncash.util import PrintError, print_error, age, Weak, InvalidPassword, format_time
 from electroncash.wallet import Multisig_Wallet
 
-from .model import Tip
+from .model import Tip, TipListener
 from .reddit import Reddit
 
 
@@ -37,37 +37,98 @@ class TipListItem(QTreeWidgetItem):
 			self.__init__([
 				o.id,
 				format_time(o.chaintip_message.created_utc), 
-				#o.chaintip_message.author.name,
+				o.chaintip_message.author.name,
+				o.chaintip_message.subject,
 				o.tipping_comment_id,
-				o.recipient_username,
+				o.username,
+				o.direction,
+				str(o.amount_bch),
 				o.recipient_address
 			])
 		else:
 			QTreeWidgetItem.__init__(self)
 
-class TipListWidget(PrintError, MyTreeWidget):
+class TipListWidget(PrintError, MyTreeWidget, TipListener):
 
 	default_sort = MyTreeWidget.SortSpec(1, Qt.AscendingOrder)
 
 	def __init__(self, parent):
 		MyTreeWidget.__init__(self, parent, self.create_menu,
-							  [_('ID'), _('Date'), _('TippingComment'), _('RecipientUserName'), _('RecipientAddress') ], 2, [],  # headers, stretch_column, editable_columns
+							  [_('ID'), _('Date'), _('Author'), _('Subject'), _('TippingComment'), _('UserName'), _('Direction'), _('AmountBCH'), _('RecipientAddress') ], 3, [],  # headers, stretch_column, editable_columns
 							  deferred_updates=True, save_sort_settings=True)
-		self.print_error("tipList.__init__()")
+		self.print_error("TipListWidget.__init__()")
 		self.setSelectionMode(QAbstractItemView.ExtendedSelection)
 		self.setSortingEnabled(True)
 		self.wallet = parent.wallet
 		self.setIndentation(0)
 
 		self.reddit = Reddit()
-		tips = self.reddit.sync()
-		for tip in tips:
-			self.addTopLevelItem(TipListItem(tip))
+		self.reddit.registerTipListener(self)
+
+		# start reddit.sync() thread 
+		self.t = threading.Thread(target=self.reddit.sync, daemon=True)
+		self.t.start()		
+
+		# self.reddit.sync()
+
+		#loop = asyncio.get_event_loop()
+		# python 3.7+
+		#task = loop.create_task(self.reddit.sync(), name="reddit sync")
+		# all python versions
+		#task = asyncio.ensure_future(self.reddit.sync())
+		#loop.run_forever()
+		# asyncio.run(self.reddit.sync())
+
+		#self.reddit.sync()
+		#self.thread = threading.Thread(target=startsync, args=(self.reddit, ))
+		#self.thread.start()
+
+		# this gives RuntimeError: Timeout context manager should be used inside a task
+		#asyncio.run(self.reddit.sync())
+
+		# another try with trhead
+		# self.t = threading.Thread(target=self.startsync, daemon=True)
+		# self.t.start()		
+
+		#asyncio.run(self.reddit.sync())
+
+		# tips = await self.reddit.sync()
+		# for tip in tips:
+		# 	self.addTopLevelItem(TipListItem(tip))
+	async def task(self):
+		await self.reddit.sync()
+
+	def startsync(self):
+		loop = asyncio.new_event_loop()
+		asyncio.set_event_loop(loop)
+
+		self.reddit = Reddit()
+		self.reddit.registerTipListener(self)
+
+		task = loop.create_task(self.reddit.sync())
+		print("calling loop.run_forever()")
+		loop.run_forever()
+
+	def abort(self):
+		self.kill_join()
+		self.switch_signal.emit()
+
+	def kill_join(self):
+		if self.t and self.t.is_alive():
+			#self.sleeper.put(None)  # notify thread to wake up and exit
+			if threading.current_thread() is not self.t:
+				self.t.join(timeout=2.5)  # wait around a bit for it to die but give up if this takes too long
+
+	def asyncio_start(self):
+		loop = asyncio.get_event_loop()
+		task = loop.create_task(self.reddit.sync())
+
 
 	def create_menu(self, position):
 		menu = QMenu()
 
 	def addTip(self, tip):
+		self.print_error("got tip: ", tip)
 		self.addTopLevelItem(TipListItem(tip))
 
 def _get_name(utxo) -> str:

@@ -14,7 +14,7 @@ class Plugin(BasePlugin):
 	is_version_compatible = True
 
 	def __init__(self, parent, config, name):
-		
+
 		BasePlugin.__init__(self, parent, config, name)
 
 		self.wallet_windows = {}

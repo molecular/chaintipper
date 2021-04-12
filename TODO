@@ -18,6 +18,8 @@
 
 			* pull parent?
 
+			* parse receiving tip messages?
+
 		* beta
 
 			* avoid having to ask credentials by using "reddit app" (api-key)?
