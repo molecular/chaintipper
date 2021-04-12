@@ -39,17 +39,20 @@ class RedditTip(PrintError, Tip):
 		self.subject = message.subject
 		self.is_chaintip = False
 
+		# defaults
+		self.tipping_comment_id = None
+		self.username = None
+		self.recipient_address = None
+		self.tipping_comment_id = None
+		self.direction = None
+		self.amount_bch = ""
+		
 		# parse chaintip message
 		if self.chaintip_message.author.name == 'chaintip':
 			self.is_chaintip = True
 			self.print_error(f"parsing chaintip message {message.id}")
 			self.print_error(self.chaintip_message.body)
 
-			# defaults
-			self.tipping_comment_id = None
-			self.username = None
-			self.recipient_address = None
-			
 			# receive tip message
 			if self.chaintip_message.subject == "You've been tipped!":
 				m = RedditTip.p_sender.match(self.chaintip_message.body)
