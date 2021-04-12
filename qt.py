@@ -79,11 +79,11 @@ class Plugin(BasePlugin):
 
 	@staticmethod
 	def _get_icon() -> QtGui.QIcon:
-		if QtCore.QFile.exists(":icons/preferences.png"):
-			icon = QtGui.QIcon(":icons/preferences.png")
+		if QtCore.QFile.exists("icons/chaintip.png"):
+			icon = QtGui.QIcon("icons/chaintip.png")
 		else:
 			# png not found, must be new EC; try new EC icon -- svg
-			icon = QtGui.QIcon(":icons/preferences.svg")
+			icon = QtGui.QIcon("icons/chaintip.svg")
 		return icon
 
 	def add_ui_for_wallet(self, wallet_name, window):
