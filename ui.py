@@ -43,7 +43,10 @@ class TipListItem(QTreeWidgetItem):
 				o.username,
 				o.direction,
 				str(o.amount_bch),
-				o.recipient_address
+				o.recipient_address,
+				str(o.tip_quantity),
+				o.tip_unit,
+				o.tip_op_return
 			])
 		else:
 			QTreeWidgetItem.__init__(self)
@@ -53,9 +56,21 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 	default_sort = MyTreeWidget.SortSpec(1, Qt.AscendingOrder)
 
 	def __init__(self, parent):
-		MyTreeWidget.__init__(self, parent, self.create_menu,
-							  [_('ID'), _('Date'), _('Author'), _('Subject'), _('TippingComment'), _('UserName'), _('Direction'), _('AmountBCH'), _('RecipientAddress') ], 3, [],  # headers, stretch_column, editable_columns
-							  deferred_updates=True, save_sort_settings=True)
+		MyTreeWidget.__init__(self, parent, self.create_menu, [
+								_('ID'), 
+							  _('Date'), 
+							  _('Author'), 
+							  _('Subject'), 
+							  _('TippingComment'), 
+							  _('UserName'), 
+							  _('Direction'), 
+							  _('AmountBCH'), 
+							  _('RecipientAddress'),
+							  _('TipQuantity'),
+							  _('TipUnit'),
+							  _('TipOnchainMessage')
+							], 3, [],  # headers, stretch_column, editable_columns
+							deferred_updates=True, save_sort_settings=True)
 		self.print_error("TipListWidget.__init__()")
 		self.setSelectionMode(QAbstractItemView.ExtendedSelection)
 		self.setSortingEnabled(True)

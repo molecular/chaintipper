@@ -10,7 +10,7 @@ import re
 import asyncio
 
 from .model import Tip
-from .config import c
+from .config import c, amount_config
 
 print_error("c", c)
 # praw setup
@@ -38,6 +38,7 @@ class RedditTip(PrintError, Tip):
 		self.id = message.id
 		self.subject = message.subject
 		self.is_chaintip = False
+		self.status = "init"
 
 		# defaults
 		self.tipping_comment_id = None
@@ -46,12 +47,21 @@ class RedditTip(PrintError, Tip):
 		self.tipping_comment_id = None
 		self.direction = None
 		self.amount_bch = ""
-		
+		self.amount_bch = ""
+		self.tip_quantity = None
+		self.tip_unit = None
+		self.tip_op_return = None
+
+		self.parseChaintipMessage(message)
+
+	def parseChaintipMessage(self, message):
+		self.status = "parsing chaintip message"
+
 		# parse chaintip message
 		if self.chaintip_message.author.name == 'chaintip':
 			self.is_chaintip = True
 			self.print_error(f"parsing chaintip message {message.id}")
-			self.print_error(self.chaintip_message.body)
+			#self.print_error(self.chaintip_message.body)
 
 			# receive tip message
 			if self.chaintip_message.subject == "You've been tipped!":
@@ -68,7 +78,6 @@ class RedditTip(PrintError, Tip):
 			# match outgoing tip
 			m = RedditTip.p_subject.match(self.chaintip_message.subject)
 			if m:
-				self.amount_bch = Decimal("0.00001")
 				m = RedditTip.p_tip_comment.match(self.chaintip_message.body)
 				if m:
 					self.tipping_comment_id = m.group(1)
@@ -77,6 +86,46 @@ class RedditTip(PrintError, Tip):
 				if m:
 					self.username = m.group(1)
 					self.recipient_address = m.group(2)
+
+			# fetch tipping comment
+			if self.tipping_comment_id:
+				comment = reddit.comment(id = self.tipping_comment_id)
+				self.parseTippingComment(comment)
+
+	p_tip = re.compile('^/u/chaintip (\S*) *(\S*) *(.*)')
+	def parseTippingComment(self, comment):
+		self.status = "parsing tip comment"
+		self.print_error("got tipping comment:", comment.body)
+		self.tipping_comment = comment
+		m = RedditTip.p_tip.match(self.tipping_comment.body)
+		self.tip_unit = 'sat'
+		if m:
+			try:
+				self.print_error("match, lastindex: ", m.lastindex)
+				if not m.group(2): # <tip_unit>
+					self.tip_unit = m.group(1)
+					self.tip_quantity = Decimal("1")
+				elif m.lastindex >= 2: # <tip_quantity> <tip_unit>
+					self.print_error("tip_q:", m.group(1))
+					self.tip_quantity = Decimal(m.group(1))
+					self.tip_unit = m.group(2)
+					# <onchain_message>
+					if m.lastindex >= 3:
+						self.tip_op_return = m.group(3)
+				self.evaluateAmount()
+			except Exception as e:
+				self.print_error("Error parsing tip amount: ", repr(e))
+				traceback.print_exc()
+				self.amount_bch = amount_config["default_bch"]
+
+	def evaluateAmount(self):
+		matching_units = (unit for unit in amount_config["units"] if self.tip_unit in unit["names"])
+		unit = next(matching_units, amount_config["units"][0])
+		if unit:
+			self.print_error("found unit", unit)
+			if unit["value_currency"] == 'BCH':
+				self.print_error("tip_quantity:", type(self.tip_quantity))
+				self.amount_bch = self.tip_quantity * unit["value"]
 
 class Reddit(PrintError):
 
@@ -97,12 +146,6 @@ class Reddit(PrintError):
 		self.print_error("Reddit.sync() called")
 		tips = []
 		subreddit = reddit.subreddit("learnpython")
-		try:
-			for submission in subreddit.hot(limit=10):
-				print(submission.title)
-		except Exception as e:
-			print("error: ", repr(e))
-			traceback.print_exc()
 
 		for item in reddit.inbox.stream(pause_after=0):
 			if item is None:
