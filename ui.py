@@ -7,25 +7,26 @@ import tempfile
 import threading
 import time
 from enum import IntEnum
+from decimal import Decimal
 
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 
 from electroncash.i18n import _
-from electroncash import keystore
-from electroncash.wallet import Standard_Wallet
-from electroncash.storage import WalletStorage
-from electroncash.keystore import Hardware_KeyStore
 from electroncash_gui.qt import ElectrumWindow
 from electroncash_gui.qt.util import *
 from electroncash.transaction import Transaction
 from electroncash.util import PrintError, print_error, age, Weak, InvalidPassword, format_time
-from electroncash.wallet import Multisig_Wallet
+from electroncash import keystore
+from electroncash.storage import WalletStorage
+from electroncash.keystore import Hardware_KeyStore
+from electroncash.wallet import Standard_Wallet, Multisig_Wallet
+from electroncash.address import Address
+from electroncash import networks
 
-from .model import Tip, TipListener
+from .model import Tip, TipList, TipListener
 from .reddit import Reddit
-
 
 class TipListItem(QTreeWidgetItem):
 
@@ -34,6 +35,8 @@ class TipListItem(QTreeWidgetItem):
 			#print_error("o: ", o)
 			QTreeWidgetItem.__init__(self, o)
 		elif isinstance(o, Tip):
+			self.tip = o
+			self.tip.tip_list_item = self
 			self.__init__([
 				o.id,
 				format_time(o.chaintip_message.created_utc), 
@@ -43,7 +46,8 @@ class TipListItem(QTreeWidgetItem):
 				o.username,
 				o.direction,
 				str(o.amount_bch),
-				o.recipient_address,
+				o.recipient_address.to_ui_string() if o.recipient_address else None,
+				o.tip_amount_text,
 				str(o.tip_quantity),
 				o.tip_unit,
 				o.tip_op_return
@@ -58,17 +62,18 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 	def __init__(self, parent):
 		MyTreeWidget.__init__(self, parent, self.create_menu, [
 								_('ID'), 
-							  _('Date'), 
-							  _('Author'), 
-							  _('Subject'), 
-							  _('TippingComment'), 
-							  _('UserName'), 
-							  _('Direction'), 
-							  _('AmountBCH'), 
-							  _('RecipientAddress'),
-							  _('TipQuantity'),
-							  _('TipUnit'),
-							  _('TipOnchainMessage')
+								_('Date'), 
+								_('Author'), 
+								_('Subject'), 
+								_('TippingComment'), 
+								_('UserName'), 
+								_('Direction'), 
+								_('AmountBCH'), 
+								_('RecipientAddress'),
+								_('TipAmountText'),
+								_('TipQuantity'),
+								_('TipUnit'),
+								_('TipOnchainMessage')
 							], 3, [],  # headers, stretch_column, editable_columns
 							deferred_updates=True, save_sort_settings=True)
 		self.print_error("TipListWidget.__init__()")
@@ -77,74 +82,142 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 		self.wallet = parent.wallet
 		self.setIndentation(0)
 
-		self.reddit = Reddit()
-		self.reddit.registerTipListener(self)
+		self.tiplist = TipList()
+		self.tiplist.registerTipListener(self)
+		self.reddit = Reddit(self.tiplist)
 
 		# start reddit.sync() thread 
 		self.t = threading.Thread(target=self.reddit.sync, daemon=True)
 		self.t.start()		
-
-		# self.reddit.sync()
-
-		#loop = asyncio.get_event_loop()
-		# python 3.7+
-		#task = loop.create_task(self.reddit.sync(), name="reddit sync")
-		# all python versions
-		#task = asyncio.ensure_future(self.reddit.sync())
-		#loop.run_forever()
-		# asyncio.run(self.reddit.sync())
-
-		#self.reddit.sync()
-		#self.thread = threading.Thread(target=startsync, args=(self.reddit, ))
-		#self.thread.start()
-
-		# this gives RuntimeError: Timeout context manager should be used inside a task
-		#asyncio.run(self.reddit.sync())
-
-		# another try with trhead
-		# self.t = threading.Thread(target=self.startsync, daemon=True)
-		# self.t.start()		
-
-		#asyncio.run(self.reddit.sync())
-
-		# tips = await self.reddit.sync()
-		# for tip in tips:
-		# 	self.addTopLevelItem(TipListItem(tip))
-	async def task(self):
-		await self.reddit.sync()
-
-	def startsync(self):
-		loop = asyncio.new_event_loop()
-		asyncio.set_event_loop(loop)
-
-		self.reddit = Reddit()
-		self.reddit.registerTipListener(self)
-
-		task = loop.create_task(self.reddit.sync())
-		print("calling loop.run_forever()")
-		loop.run_forever()
 
 	def abort(self):
 		self.kill_join()
 		self.switch_signal.emit()
 
 	def kill_join(self):
+		"""join or (after timeout) even kill any spawned threads""" 
+
 		if self.t and self.t.is_alive():
 			#self.sleeper.put(None)  # notify thread to wake up and exit
 			if threading.current_thread() is not self.t:
 				self.t.join(timeout=2.5)  # wait around a bit for it to die but give up if this takes too long
 
-	def asyncio_start(self):
-		loop = asyncio.get_event_loop()
-		task = loop.create_task(self.reddit.sync())
-
-
 	def create_menu(self, position):
-		menu = QMenu()
+		"""creates context-menu for single or multiply selected items"""
 
-	def addTip(self, tip):
-		self.print_error("got tip: ", tip)
+		self.print_error("create_menu called")
+
+		def doPay(tips):
+			self.print_error("paying tips: ", [t.id for t in tips])
+			desc = "chaintip "
+			desc_separator = ""
+			payto = ""
+			payto_separator = ""
+			for tip in tips:
+				if tip.recipient_address and tip.amount_bch and isinstance(tip.recipient_address, Address) and isinstance(tip.amount_bch, Decimal):
+					payto += payto_separator + tip.recipient_address.to_string(Address.FMT_CASHADDR) + ', ' + str(tip.amount_bch)
+					payto_separator = "\n"
+					desc += f"{desc_separator}{tip.amount_bch} BCH to u/{tip.username}"
+					desc_separator = ", "
+				else:
+					self.print_error("recipient_address: ", type(tip.recipient_address))
+					self.print_error("amount_bch: ", type(tip.amount_bch))
+			self.print_error("  desc:", desc)
+			self.print_error("  payto:", payto)
+
+			w = self.parent # main_window
+			w.payto_e.setText(payto)
+			w.message_e.setText(desc)
+			w.show_send_tab()
+
+
+		def doMarkRead(tips):
+			"""call mark_read() on each of the 'tips' and remove them from tiplist"""
+
+			for tip in tips:
+				if tip.chaintip_message:
+					tip.chaintip_message.mark_read()
+					self.tiplist.dispatchRemoveTip(tip)
+
+		col = self.currentColumn()
+		column_title = self.headerItem().text(col)
+
+		# put tips into array (single or multiple if selection)
+		count_display_string = ""
+		item = self.itemAt(position)
+		if len(self.selectedItems()) <=1:
+			tips = [item.tip]
+		else:
+			tips = [s.tip for s in self.selectedItems()]
+			count_display_string = f" ({len(tips)})"
+
+		# debug
+		for tip in tips:
+			self.print_error("  ", tip.username)
+
+		# create the context menu
+		menu = QMenu()
+		menu.addAction(_(f"pay{count_display_string}"), lambda: doPay(tips))
+		menu.addAction(_(f"mark read{count_display_string}"), lambda: doMarkRead(tips))
+		
+		menu.exec_(self.viewport().mapToGlobal(position))
+
+	def newTip(self, tip):
 		self.addTopLevelItem(TipListItem(tip))
+		self.tipCheckPaymentStatus(tip)
+
+	def removeTip(self, tip):
+		self.takeTopLevelItem(self.indexOfTopLevelItem(tip.tip_list_item))
+
+	def tipCheckPaymentStatus(self, tip):
+		if tip.recipient_address:
+			self.print_error("got address: ", tip.recipient_address.to_string(Address.FMT_LEGACY)) 
+
+			txo = self.wallet.storage.get('txo', {})
+			self.txo = {tx_hash: self.wallet.to_Address_dict(value)
+				for tx_hash, value in txo.items()
+				# skip empty entries to save memory and disk space
+				if value}
+			for tx in txo:
+				self.print_error("txo", tx)
+
+	# 	"""Returns the failure reason as a string on failure, or 'None'
+	# 	on success."""
+	# 	self.wallet.add_input_info(coin)
+	# 	inputs = [coin]
+	# 	self.print_error("recipient_address: ", recipient_address)
+	# 	outputs = [(recipient_address.kind, recipient_address, coin['value'])]
+	# 	kwargs = {}
+	# 	if hasattr(self.wallet, 'is_schnorr_enabled'):
+	# 		# This EC version has Schnorr, query the flag
+	# 		kwargs['sign_schnorr'] = self.wallet.is_schnorr_enabled()
+	# 	# create the tx once to get a fee from the size
+	# 	tx = Transaction.from_io(inputs, outputs, locktime=self.wallet.get_local_height(), **kwargs)
+	# 	fee = tx.estimated_size()
+	# 	if coin['value'] - fee < self.wallet.dust_threshold():
+	# 		self.print_error("Resulting output value is below dust threshold, aborting send_tx")
+	# 		return _("Too small")
+	# 	# create the tx again, this time with the real fee
+	# 	outputs = [(recipient_address.kind, recipient_address, coin['value'] - fee)]
+	# 	tx = Transaction.from_io(inputs, outputs, locktime=self.wallet.get_local_height(), **kwargs)
+	# 	try:
+	# 		self.wallet.sign_transaction(tx, self.password)
+	# 	except InvalidPassword as e:
+	# 		return str(e)
+	# 	except Exception:
+	# 		return _("Unspecified failure")
+
+	def send_tx(self, recipient_address: Address, amount: Decimal, desc: str):
+		# The message is intentionally untranslated, leave it like that
+		self.parent.pay_to_URI('{pre}:{addr}?amount={amount}&message={desc}'
+			.format(
+				pre = networks.net.CASHADDR_PREFIX,
+				addr = recipient_address.to_ui_string(),
+				amount = str(amount),
+				desc = desc
+			)
+		)
+
 
 def _get_name(utxo) -> str:
 	return "{}:{}".format(utxo['prevout_hash'], utxo['prevout_n'])
@@ -233,7 +306,7 @@ class LoadRWallet(MessageBoxMixin, PrintError, QWidget):
 		# on the recepient_wallet object's destruction (when refct drops to 0)
 		Weak.finalize(self.recipient_wallet, self.delete_temp_wallet_file, self.file)
 		self.plugin.switch_to(Transfer, self.wallet_name, self.recipient_wallet, float(self.time_e.text()),
-							  self.password)
+								self.password)
 
 	def transfer_changed(self):
 		self.print_error("transfer_changed()")
@@ -472,7 +545,7 @@ class Transfer(MessageBoxMixin, PrintError, QWidget):
 		# See issue #10
 		if err_ct:
 			self.done_signal.emit(_("Transferred {num} coins successfully, {failures} coins failed")
-								  .format(num=ct, failures=err_ct))
+									.format(num=ct, failures=err_ct))
 		else:
 			self.done_signal.emit(_("Transferred {num} coins successfully").format(num=ct))
 

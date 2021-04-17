@@ -1,4 +1,5 @@
 from electroncash.util import PrintError, print_error, age, Weak, InvalidPassword
+from electroncash.address import Address
 
 from decimal import Decimal
 import datetime
@@ -9,7 +10,7 @@ import re
 
 import asyncio
 
-from .model import Tip
+from .model import Tip, TipList
 from .config import c, amount_config
 
 print_error("c", c)
@@ -38,19 +39,6 @@ class RedditTip(PrintError, Tip):
 		self.id = message.id
 		self.subject = message.subject
 		self.is_chaintip = False
-		self.status = "init"
-
-		# defaults
-		self.tipping_comment_id = None
-		self.username = None
-		self.recipient_address = None
-		self.tipping_comment_id = None
-		self.direction = None
-		self.amount_bch = ""
-		self.amount_bch = ""
-		self.tip_quantity = None
-		self.tip_unit = None
-		self.tip_op_return = None
 
 		self.parseChaintipMessage(message)
 
@@ -85,7 +73,7 @@ class RedditTip(PrintError, Tip):
 				m = RedditTip.p_recipient.match(self.chaintip_message.body)
 				if m:
 					self.username = m.group(1)
-					self.recipient_address = m.group(2)
+					self.recipient_address = Address.from_cashaddr_string(m.group(2))
 
 			# fetch tipping comment
 			if self.tipping_comment_id:
@@ -101,13 +89,17 @@ class RedditTip(PrintError, Tip):
 		self.tip_unit = 'sat'
 		if m:
 			try:
+				self.tip_amount_text = m.group(0)
 				self.print_error("match, lastindex: ", m.lastindex)
 				if not m.group(2): # <tip_unit>
 					self.tip_unit = m.group(1)
 					self.tip_quantity = Decimal("1")
 				elif m.lastindex >= 2: # <tip_quantity> <tip_unit>
 					self.print_error("tip_q:", m.group(1))
-					self.tip_quantity = Decimal(m.group(1))
+					try:
+						self.tip_quantity = amount_config["quantity_aliases"][m.group(1)]
+					except Exception as e:
+						self.tip_quantity = Decimal(m.group(1))
 					self.tip_unit = m.group(2)
 					# <onchain_message>
 					if m.lastindex >= 3:
@@ -128,19 +120,8 @@ class RedditTip(PrintError, Tip):
 				self.amount_bch = self.tip_quantity * unit["value"]
 
 class Reddit(PrintError):
-
-	def __init__(self):
-		self.tip_listeners = []
-
-	def registerTipListener(self, tip_listener):
-		self.tip_listeners.append(tip_listener)
-
-	def unregisterTipListnere(self, tip_listener):
-		self.tip_listeners.remove(tip_listener)
-
-	def dispatchTip(self, tip):
-		for tip_listener in self.tip_listeners:
-			tip_listener.addTip(tip)
+	def __init__(self, tiplist):
+		self.tiplist = tiplist
 
 	def sync(self):
 		self.print_error("Reddit.sync() called")
@@ -152,8 +133,7 @@ class Reddit(PrintError):
 				continue
 			if isinstance(item, Message):
 				tip = self.parseChaintipMessage(item)
-				self.dispatchTip(tip)
-				#item.mark_read()
+				self.tiplist.dispatchNewTip(tip)
 			else:
 				self.print_error(f"Unknown type {type(item)} in unread")
 		self.print_error("exited streaming")
@@ -161,4 +141,3 @@ class Reddit(PrintError):
 	def parseChaintipMessage(self, message):
 		tip = RedditTip(message)
 		return tip
-
