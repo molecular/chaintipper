@@ -117,7 +117,7 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 				if tip.recipient_address and tip.amount_bch and isinstance(tip.recipient_address, Address) and isinstance(tip.amount_bch, Decimal):
 					payto += payto_separator + tip.recipient_address.to_string(Address.FMT_CASHADDR) + ', ' + str(tip.amount_bch)
 					payto_separator = "\n"
-					desc += f"{desc_separator}{tip.amount_bch} BCH to u/{tip.username}"
+					desc += f"{desc_separator}{tip.amount_bch} BCH to u/{tip.username} ({tip.chaintip_message.id})"
 					desc_separator = ", "
 				else:
 					self.print_error("recipient_address: ", type(tip.recipient_address))

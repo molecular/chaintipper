@@ -132,12 +132,8 @@ class Reddit(PrintError):
 			if item is None:
 				continue
 			if isinstance(item, Message):
-				tip = self.parseChaintipMessage(item)
+				tip = RedditTip(item)
 				self.tiplist.dispatchNewTip(tip)
 			else:
 				self.print_error(f"Unknown type {type(item)} in unread")
 		self.print_error("exited streaming")
-
-	def parseChaintipMessage(self, message):
-		tip = RedditTip(message)
-		return tip
