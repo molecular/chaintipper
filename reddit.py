@@ -7,8 +7,7 @@ import traceback
 import praw
 from praw.models import Comment, Message
 import re
-
-import asyncio
+from PyQt5.QtCore import QObject
 
 from .model import Tip, TipList
 from .config import c, amount_config
@@ -119,11 +118,12 @@ class RedditTip(PrintError, Tip):
 				self.print_error("tip_quantity:", type(self.tip_quantity))
 				self.amount_bch = self.tip_quantity * unit["value"]
 
-class Reddit(PrintError):
+class Reddit(PrintError, QObject):
 	def __init__(self, tiplist):
+		QObject.__init__(self)
 		self.tiplist = tiplist
 
-	def sync(self):
+	def run(self):
 		self.print_error("Reddit.sync() called")
 		tips = []
 		subreddit = reddit.subreddit("learnpython")

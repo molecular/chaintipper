@@ -2,24 +2,39 @@
 
 		* alpha
 
-			* tooltips in table?
+			* tooltips in table? 
+			* html preview of tipping message? even parent?
 
 			* readme.md for github
 			* rebase and push to github once code is de-cluttered
 
 			* handle wallet connecting (preferrably just 1 wallet)
+
 			* preferences
 				* reddit credentials
 				* wallet connect
-			* app icon (loaded in qt.py at window.tabs.addTab(tab, self._get_icon(), _('ChainTipper'))
+				* tip amounts
+				* auto-pay
 
 			* pull tipping comment
 				* parse/interpret amount
-
-			* pull parent?
-
+					* fiat rates (use parent.fx?)
 			* parse receiving tip messages?
 
+			* edit tipping message ("EDIT: paid with chaintipper EC plugin")
+
+			* implement auto-pay
+
+			* SECURITY: author must be "chaintip"
+
+			* BUG: right-click on category -> exception
+
+			* category collapse icon, subitem indentation
+
+			* move thread creation to Reddit class?
+
+			* category "read" for read items?
+			
 		* beta
 
 			* avoid having to ask credentials by using "reddit app" (api-key)?
@@ -32,4 +47,4 @@
 
 		* twitter
 		* persist Tip List
-		* utxo selection
+		* utxo selection with fuzzy tip amounts (min_amount, max_amount)

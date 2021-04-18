@@ -84,23 +84,23 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 
 		self.tiplist = TipList()
 		self.tiplist.registerTipListener(self)
-		self.reddit = Reddit(self.tiplist)
 
-		# start reddit.sync() thread 
-		self.t = threading.Thread(target=self.reddit.sync, daemon=True)
-		self.t.start()		
+		self.outgoing_items = QTreeWidgetItem([_("outgoing")])
+		self.addTopLevelItem(self.outgoing_items)
+		self.incoming_items = QTreeWidgetItem([_("incoming")])
+		self.addTopLevelItem(self.incoming_items)
+		self.other_items = QTreeWidgetItem([_("other messages")])
+		#self.addTopLevelItem(self.other_items)
+
+		self.reddit = Reddit(self.tiplist)
+		self.reddit_thread = QThread()
+		self.reddit.moveToThread(self.reddit_thread)
+		self.reddit_thread.started.connect(self.reddit.run)
+		self.reddit_thread.start()
 
 	def abort(self):
-		self.kill_join()
+		self.reddit_thread.quit()
 		self.switch_signal.emit()
-
-	def kill_join(self):
-		"""join or (after timeout) even kill any spawned threads""" 
-
-		if self.t and self.t.is_alive():
-			#self.sleeper.put(None)  # notify thread to wake up and exit
-			if threading.current_thread() is not self.t:
-				self.t.join(timeout=2.5)  # wait around a bit for it to die but give up if this takes too long
 
 	def create_menu(self, position):
 		"""creates context-menu for single or multiply selected items"""
@@ -162,12 +162,25 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 		
 		menu.exec_(self.viewport().mapToGlobal(position))
 
+	def getCategoryItemForTip(self, tip: Tip):
+		i = self.other_items
+		if tip.direction == 'incoming':
+			i = self.incoming_items
+		elif tip.direction == 'outgoing':
+			i = self.outgoing_items
+		return i
+
 	def newTip(self, tip):
-		self.addTopLevelItem(TipListItem(tip))
+		TipListItem(tip)
+		category_item = self.getCategoryItemForTip(tip)
+		category_item.setExpanded(True)
+		category_item.addChild(tip.tip_list_item)
+
 		self.tipCheckPaymentStatus(tip)
 
 	def removeTip(self, tip):
-		self.takeTopLevelItem(self.indexOfTopLevelItem(tip.tip_list_item))
+		category_item = self.getCategoryItemForTip(tip)
+		category_item.removeChild(tip.tip_list_item)
 
 	def tipCheckPaymentStatus(self, tip):
 		if tip.recipient_address:
@@ -178,8 +191,18 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 				for tx_hash, value in txo.items()
 				# skip empty entries to save memory and disk space
 				if value}
-			for tx in txo:
-				self.print_error("txo", tx)
+			for txhash in txo:
+				self.print_error("  txhash", txhash)
+				##tx = Transaction.tx_cache_get(txhash)
+				#tx = self.wallet.transactions.get(txhash)
+				# self.print_error("  tx", tx)
+				# txinfo = self.wallet.get_tx_info(tx)
+				# self.print_error("  txinfo", txinfo)
+
+			# hist = self.wallet.get_history(self.get_domain(), reverse=True)
+			# for h in hist:
+			# 	self.print_error("  h: ", h)
+
 
 	# 	"""Returns the failure reason as a string on failure, or 'None'
 	# 	on success."""
