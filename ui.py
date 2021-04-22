@@ -27,6 +27,7 @@ from electroncash import networks
 
 from .model import Tip, TipList, TipListener
 from .reddit import Reddit
+from .config import c
 
 class TipListItem(QTreeWidgetItem):
 
@@ -36,21 +37,23 @@ class TipListItem(QTreeWidgetItem):
 			QTreeWidgetItem.__init__(self, o)
 		elif isinstance(o, Tip):
 			self.tip = o
-			self.tip.tip_list_item = self
+			self.tip.tiplist_item = self
 			self.__init__([
-				o.id,
+				#o.id,
 				format_time(o.chaintip_message.created_utc), 
-				o.chaintip_message.author.name,
+				o.type,
+				o.payment_status,
+				#o.chaintip_message.author.name,
 				o.chaintip_message.subject,
 				o.tipping_comment_id,
 				o.username,
-				o.direction,
+				#o.direction,
 				str(o.amount_bch),
-				o.recipient_address.to_ui_string() if o.recipient_address else None,
+				#o.recipient_address.to_ui_string() if o.recipient_address else None,
 				o.tip_amount_text,
 				str(o.tip_quantity),
 				o.tip_unit,
-				o.tip_op_return
+				o.status
 			])
 		else:
 			QTreeWidgetItem.__init__(self)
@@ -61,20 +64,22 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 
 	def __init__(self, parent):
 		MyTreeWidget.__init__(self, parent, self.create_menu, [
-								_('ID'), 
-								_('Date'), 
-								_('Author'), 
+								#_('ID'), 
+								_('Date'),
+								_('Type'),
+								_('Payment Status'), 
+								#_('Author'), 
 								_('Subject'), 
-								_('TippingComment'), 
-								_('UserName'), 
-								_('Direction'), 
-								_('AmountBCH'), 
-								_('RecipientAddress'),
-								_('TipAmountText'),
-								_('TipQuantity'),
-								_('TipUnit'),
-								_('TipOnchainMessage')
-							], 3, [],  # headers, stretch_column, editable_columns
+								_('Tip Comment'), 
+								_('Recipient'), 
+								#_('Direction'), 
+								_('Amount (BCH)'), 
+								#_('Recipient Address'),
+								_('Tip Amount Text'),
+								_('Tip Quantity'),
+								_('Tip Unit'),
+								_('Status'),
+							], 1, [6],  # headers, stretch_column, editable_columns
 							deferred_updates=True, save_sort_settings=True)
 		self.print_error("TipListWidget.__init__()")
 		self.setSelectionMode(QAbstractItemView.ExtendedSelection)
@@ -84,18 +89,21 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 
 		self.tiplist = TipList()
 		self.tiplist.registerTipListener(self)
+		self.tips_by_address = dict()
 
-		self.outgoing_items = QTreeWidgetItem([_("outgoing")])
-		self.addTopLevelItem(self.outgoing_items)
-		self.incoming_items = QTreeWidgetItem([_("incoming")])
-		self.addTopLevelItem(self.incoming_items)
-		self.other_items = QTreeWidgetItem([_("other messages")])
-		#self.addTopLevelItem(self.other_items)
+		if c["use_categories"]:
+			self.outgoing_items = QTreeWidgetItem([_("outgoing")])
+			self.addTopLevelItem(self.outgoing_items)
+			self.incoming_items = QTreeWidgetItem([_("incoming")])
+			self.addTopLevelItem(self.incoming_items)
+			self.other_items = QTreeWidgetItem([_("other messages")])
+			#self.addTopLevelItem(self.other_items)
 
 		self.reddit = Reddit(self.tiplist)
 		self.reddit_thread = QThread()
 		self.reddit.moveToThread(self.reddit_thread)
 		self.reddit_thread.started.connect(self.reddit.run)
+		self.reddit.new_tip.connect(self.tiplist.dispatchNewTip)
 		self.reddit_thread.start()
 
 	def abort(self):
@@ -145,11 +153,14 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 		# put tips into array (single or multiple if selection)
 		count_display_string = ""
 		item = self.itemAt(position)
-		if len(self.selectedItems()) <=1:
+		if len(self.selectedItems()) <= 1:
 			tips = [item.tip]
 		else:
 			tips = [s.tip for s in self.selectedItems()]
 			count_display_string = f" ({len(tips)})"
+
+		unpaid_tips = [t for t in tips if t.payment_status != 'paid' and t.amount_bch]
+		unpaid_count_display_string = f" ({len(unpaid_tips)})" if len(unpaid_tips)>1 else "" 
 
 		# debug
 		for tip in tips:
@@ -157,10 +168,13 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 
 		# create the context menu
 		menu = QMenu()
-		menu.addAction(_(f"pay{count_display_string}"), lambda: doPay(tips))
 		menu.addAction(_(f"mark read{count_display_string}"), lambda: doMarkRead(tips))
+		if len(unpaid_tips) > 0:
+			menu.addAction(_(f"pay{unpaid_count_display_string}..."), lambda: doPay(unpaid_tips))
 		
 		menu.exec_(self.viewport().mapToGlobal(position))
+
+	# category items
 
 	def getCategoryItemForTip(self, tip: Tip):
 		i = self.other_items
@@ -171,33 +185,64 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 		return i
 
 	def newTip(self, tip):
+		self.print_error("------- newTip", tip.chaintip_message.subject)
+		if tip.recipient_address:
+			self.tips_by_address[tip.recipient_address] = tip 
 		TipListItem(tip)
-		category_item = self.getCategoryItemForTip(tip)
-		category_item.setExpanded(True)
-		category_item.addChild(tip.tip_list_item)
+		if c["use_categories"]:
+			category_item = self.getCategoryItemForTip(tip)
+			category_item.setExpanded(True)
+			category_item.addChild(tip.tiplist_item)
+		else:
+			self.addTopLevelItem(tip.tiplist_item)
+		self.checkPaymentStatus()
 
-		self.tipCheckPaymentStatus(tip)
 
 	def removeTip(self, tip):
-		category_item = self.getCategoryItemForTip(tip)
-		category_item.removeChild(tip.tip_list_item)
-
-	def tipCheckPaymentStatus(self, tip):
+		self.print_error("------- removeTip", tip.chaintip_message.subject)
 		if tip.recipient_address:
-			self.print_error("got address: ", tip.recipient_address.to_string(Address.FMT_LEGACY)) 
+			del self.tips_by_address[tip.recipient_address]
+		if hasattr(tip, 'tiplist_item'):
+			if c["use_categories"]:
+				category_item = self.getCategoryItemForTip(tip)
+				category_item.removeChild(tip.tiplist_item)
+			else:
+				self.takeTopLevelItem(self.indexOfTopLevelItem(tip.tiplist_item))
+		else:
+			self.print_error("no tiplist_item")
 
-			txo = self.wallet.storage.get('txo', {})
-			self.txo = {tx_hash: self.wallet.to_Address_dict(value)
-				for tx_hash, value in txo.items()
-				# skip empty entries to save memory and disk space
-				if value}
-			for txhash in txo:
-				self.print_error("  txhash", txhash)
-				##tx = Transaction.tx_cache_get(txhash)
-				#tx = self.wallet.transactions.get(txhash)
-				# self.print_error("  tx", tx)
-				# txinfo = self.wallet.get_tx_info(tx)
-				# self.print_error("  txinfo", txinfo)
+	# 
+
+	def checkPaymentStatus(self):
+		txo = self.wallet.storage.get('txo', {})
+		self.txo = {tx_hash: self.wallet.to_Address_dict(value)
+			for tx_hash, value in txo.items()
+			# skip empty entries to save memory and disk space
+			if value}
+		for txhash in txo:
+			#self.print_error("  txhash", txhash)
+			##tx = Transaction.tx_cache_get(txhash)
+			tx = self.wallet.transactions.get(txhash)
+			#txinfo = self.wallet.get_tx_info(tx)
+			for txout in tx.outputs():
+				#self.print_error("     txout", txout)
+				#self.print_error("     address", txout[1])
+				address = txout[1]
+				try:
+					tip = self.tips_by_address[address]
+					#self.print_error("   ****** TIP", tip, "paid in txhash", txhash)
+					if tip.payment_status != "paid":
+						tip.payment_status = "paid"
+						self.tiplist.updateTip(tip)
+				except KeyError:
+					continue
+					#self.print_error("   cannot find tip for address", address)
+
+					# if address == tip.recipient_address:
+					# 	self.print_error("   ****** TIP PAID, txhash", txhash)
+					# 	tip.payment_status = "paid"
+
+
 
 			# hist = self.wallet.get_history(self.get_domain(), reverse=True)
 			# for h in hist:
@@ -230,22 +275,6 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 	# 	except Exception:
 	# 		return _("Unspecified failure")
 
-	def send_tx(self, recipient_address: Address, amount: Decimal, desc: str):
-		# The message is intentionally untranslated, leave it like that
-		self.parent.pay_to_URI('{pre}:{addr}?amount={amount}&message={desc}'
-			.format(
-				pre = networks.net.CASHADDR_PREFIX,
-				addr = recipient_address.to_ui_string(),
-				amount = str(amount),
-				desc = desc
-			)
-		)
-
-
-def _get_name(utxo) -> str:
-	return "{}:{}".format(utxo['prevout_hash'], utxo['prevout_n'])
-
-
 class LoadRWallet(MessageBoxMixin, PrintError, QWidget):
 
 	def __init__(self, parent: ElectrumWindow, plugin, wallet_name, recipient_wallet=None, time=None, password=None):
@@ -253,9 +282,7 @@ class LoadRWallet(MessageBoxMixin, PrintError, QWidget):
 		assert isinstance(parent, ElectrumWindow)
 		self.password = password
 		self.wallet = parent.wallet
-		self.utxos = []  # populated by self.refresh_utxos() below
 		self.weakWindow = Weak.ref(parent)  # grab a weak reference to the ElectrumWindow
-		self.refresh_utxos()  # sets self.utxos
 		for x in range(10):
 			name = 'tmp_wo_wallet' + ''.join(random.choices(string.ascii_letters + string.digits, k=10))
 			self.file = os.path.join(tempfile.gettempdir(), name)
@@ -282,18 +309,16 @@ class LoadRWallet(MessageBoxMixin, PrintError, QWidget):
 		l2.setTextInteractionFlags(Qt.TextSelectableByMouse)
 
 		self.tiplist = TipListWidget(parent)
+		self.tiplist.checkPaymentStatus()
 		vbox.addWidget(self.tiplist)
 
 		if hasattr(parent, 'history_updated_signal'):
 			# So that we get told about when new coins come in, and the UI updates itself
-			parent.history_updated_signal.connect(self.refresh_utxos)
-			parent.history_updated_signal.connect(self.transfer_changed)
+			parent.history_updated_signal.connect(self.update_payment_statuses)
 
-	def refresh_utxos(self):
-		parent = self.weakWindow()
-		if parent:
-			self.utxos = self.wallet.get_spendable_coins(None, parent.config)
-			random.shuffle(self.utxos)  # randomize the coins' order
+	def update_payment_statuses(self):
+		if hasattr(self, 'tiplist'):
+			self.tiplist.checkPaymentStatus()
 
 	def filter(self, *args):
 		"""This is here because searchable_list must define a filter method"""
@@ -330,9 +355,6 @@ class LoadRWallet(MessageBoxMixin, PrintError, QWidget):
 		Weak.finalize(self.recipient_wallet, self.delete_temp_wallet_file, self.file)
 		self.plugin.switch_to(Transfer, self.wallet_name, self.recipient_wallet, float(self.time_e.text()),
 								self.password)
-
-	def transfer_changed(self):
-		self.print_error("transfer_changed()")
 
 
 class TransferringUTXO(MessageBoxMixin, PrintError, MyTreeWidget):

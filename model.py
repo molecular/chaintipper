@@ -17,6 +17,7 @@ class Tip:
 		self.tip_quantity = None
 		self.tip_unit = None
 		self.tip_op_return = None
+		self.payment_status = None
 
 class TipList():
 	def __init__(self):
@@ -35,6 +36,10 @@ class TipList():
 	def dispatchRemoveTip(self, tip):
 		for tip_listener in self.tip_listeners:
 			tip_listener.removeTip(tip)
+
+	def updateTip(self, tip):
+		self.dispatchRemoveTip(tip)
+		self.dispatchNewTip(tip)
 
 class TipListener():
 	def newTip(self, tip):
