@@ -2,13 +2,8 @@
 
 		* alpha
 
-			* tooltips in table? 
-			* html preview of tipping message? even parent?
-
-			* readme.md for github
-			* rebase and push to github once code is de-cluttered
-
 			* handle wallet connecting (preferrably just 1 wallet)
+				* maybe have a config per wallet, so different accounts and settings can be linked to multiple wallets?
 
 			* preferences
 				* reddit credentials
@@ -16,32 +11,60 @@
 				* tip amounts
 				* auto-pay
 
-			* pull tipping comment
-				* parse/interpret amount
-					* fiat rates (use parent.fx?)
-			* parse receiving tip messages?
-
+			* implement auto-pay
+			* SECURITY: author must be "chaintip"
+			* category collapse icon, subitem indentation
+			* move thread to Reddit class?
+			* reddit.py receive loop: reparse amount on Comment change
+			* disable categories
 			* edit tipping message ("EDIT: paid with chaintipper EC plugin")
 
-			* implement auto-pay
+			* pay (1) <- bullshit
+			* make any ccy a valid unit
 
-			* SECURITY: author must be "chaintip"
+			* disallow amount_bch edit if payment_status=='paid'
 
-			* BUG: right-click on category -> exception
+			* context menu:
+			  * go to tipping comment (open browser)
 
-			* category collapse icon, subitem indentation
+			* amount_bch sometimes scientific notation "1.0E-7", format it
 
-			* move thread creation to Reddit class?
+			* editing tipping comment doesn't update amount
 
-			* category "read" for read items?
-			
+			* after coming back to machine after a while I get some exception (I think network related)
+
+			* precompile pyc files (as described in plugin dox)
+
+		* for any semi-public release
+
+			* get /u/chaintipper
+			* make tg group for beta testers (don't call it beta, just "chaintipper")
+
+			* clean up the code
+			* readme.md for github
+			* rebase and push to github once code is de-cluttered
+			* bundling as .zip plugin archive
+			* release (trhough github files?), hashes?
+			* new column: amount_fiat (using historical rate), but maybe only if "fiat" user prefs say so
+			* LICENSE
+			* DONT RELEASE PW IN config.py!!!
+
 		* beta
 
 			* avoid having to ask credentials by using "reddit app" (api-key)?
 				(see https://asyncpraw.readthedocs.io/en/latest/getting_started/quick_start.html under "Client ID & Client Secret" for pointers)
-			* bundling as .zip plugin archive
-			* release (trhough github files?), hashes?
 
+			* currently using first exchange found for the given ccy, maybe improve?
+
+			* category "read" for read items?
+
+			* menu item "view payment tx"?
+
+			* BUG: right-click on category -> exception
+
+			* tooltips in table? 
+
+			* html preview of tipping message? even parent?
 
 	* 2.0 / ideas
 
