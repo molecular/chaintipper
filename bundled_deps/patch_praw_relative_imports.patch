@@ -1,0 +1,71 @@
+diff -Naur praw/models/auth.py ../praw/models/auth.py
+--- praw/models/auth.py	2021-02-24 03:49:04.000000000 +0100
++++ ../praw/models/auth.py	2021-04-21 19:57:35.116076373 +0200
+@@ -1,7 +1,7 @@
+ """Provide the Auth class."""
+ from typing import Dict, List, Optional, Set, Union
+ 
+-from prawcore import Authorizer, ImplicitAuthorizer, UntrustedAuthenticator, session
++from ...prawcore import Authorizer, ImplicitAuthorizer, UntrustedAuthenticator, session
+ 
+ from ..exceptions import InvalidImplicitAuth, MissingRequiredAttributeException
+ from .base import PRAWBase
+diff -Naur praw/models/reddit/submission.py ../praw/models/reddit/submission.py
+--- praw/models/reddit/submission.py	2021-02-24 03:49:04.000000000 +0100
++++ ../praw/models/reddit/submission.py	2021-04-21 19:59:09.419424320 +0200
+@@ -2,7 +2,7 @@
+ from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
+ from urllib.parse import urljoin
+ 
+-from prawcore import Conflict
++from ....prawcore import Conflict
+ 
+ from ...const import API_PATH
+ from ...exceptions import InvalidURL
+diff -Naur praw/models/reddit/subreddit.py ../praw/models/reddit/subreddit.py
+--- praw/models/reddit/subreddit.py	2021-02-24 03:49:04.000000000 +0100
++++ ../praw/models/reddit/subreddit.py	2021-04-21 20:05:42.899485302 +0200
+@@ -11,8 +11,8 @@
+ from urllib.parse import urljoin
+ from xml.etree.ElementTree import XML
+ 
+-import websocket
+-from prawcore import Redirect
++from .... import websocket
++from ....prawcore import Redirect
+ from requests import Response
+ 
+ from ...const import API_PATH, JPEG_HEADER
+diff -Naur praw/models/redditors.py ../praw/models/redditors.py
+--- praw/models/redditors.py	2021-02-24 03:49:04.000000000 +0100
++++ ../praw/models/redditors.py	2021-04-21 20:00:16.619434735 +0200
+@@ -3,7 +3,7 @@
+ from types import SimpleNamespace
+ from typing import TYPE_CHECKING, Dict, Iterable, Iterator, Union
+ 
+-import prawcore
++from ... import prawcore
+ 
+ from ..const import API_PATH
+ from .base import PRAWBase
+diff -Naur praw/reddit.py ../praw/reddit.py
+--- praw/reddit.py	2021-02-24 03:49:04.000000000 +0100
++++ ../praw/reddit.py	2021-04-21 19:57:31.999409223 +0200
+@@ -20,7 +20,7 @@
+ )
+ from warnings import warn
+ 
+-from prawcore import (
++from ..prawcore import (
+     Authorizer,
+     DeviceIDAuthorizer,
+     ReadOnlyAuthorizer,
+@@ -31,7 +31,7 @@
+     UntrustedAuthenticator,
+     session,
+ )
+-from prawcore.exceptions import BadRequest
++from ..prawcore.exceptions import BadRequest
+ 
+ from . import models
+ from .config import Config
