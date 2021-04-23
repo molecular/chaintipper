@@ -7,6 +7,7 @@ from electroncash_gui.qt.util import destroyed_print_error
 from electroncash.util import finalization_print_error
 
 from . import ui
+from .qresources import qInitResources
 
 class Plugin(BasePlugin):
 	electrumcash_qt_gui = None
@@ -20,6 +21,31 @@ class Plugin(BasePlugin):
 		self.wallet_windows = {}
 		self.lw_tabs = {}
 		self.lw_tab = {}
+
+		self.print_error("plugin config: ", self.config)
+
+	# 	self.openPluginFile()
+
+	# def openPluginFile(self):
+	# 	plugin_manager = self.parent
+	# 	self.print_error("metadatas", plugin_manager.external_plugin_metadata)
+	# 	try: 
+	# 		metadata = plugin_manager.external_plugin_metadata["chaintipper"]
+	# 		plugin_file_path = metadata["__file__"]
+	# 		self.print_error("plugin file path: ", plugin_file_path)
+	# 		self.is_external_plugin = True
+	# 		self.zipfile = ZipFile(plugin_file_path)
+	# 	except KeyError:
+	# 		self.is_external_plugin = False
+
+	# def getResourceFile(self, path):
+	# 	self.print_error("getResourceFile('", path, "')")
+	# 	if self.is_external_plugin:
+	# 		self.print_error("getting file from plugin zipfile")
+	# 		return self.zipfile.open(path)
+	# 		# get icon from plugin zipfile
+	# 	else:
+	# 		return open(path)
 
 	def fullname(self):
 		return 'ChainTipper'
@@ -78,13 +104,8 @@ class Plugin(BasePlugin):
 		self.remove_ui_for_wallet(wallet_name, window)
 
 	@staticmethod
-	def _get_icon() -> QtGui.QIcon:
-		if QtCore.QFile.exists("icons/chaintip.png"):
-			icon = QtGui.QIcon("icons/chaintip.png")
-		else:
-			# png not found, must be new EC; try new EC icon -- svg
-			icon = QtGui.QIcon("icons/chaintip.svg")
-		return icon
+	def _get_icon(): # -> QtGui.QIcon:
+		return QtGui.QIcon(":icons/chaintip.png")
 
 	def add_ui_for_wallet(self, wallet_name, window):
 		l = ui.LoadRWallet(window, self, wallet_name)
