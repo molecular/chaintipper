@@ -105,7 +105,7 @@ class Plugin(BasePlugin):
 
 	@staticmethod
 	def _get_icon(): # -> QtGui.QIcon:
-		return QtGui.QIcon(":icons/chaintip.png")
+		return QtGui.QIcon(":icons/chaintip.svg")
 
 	def add_ui_for_wallet(self, wallet_name, window):
 		l = ui.LoadRWallet(window, self, wallet_name)

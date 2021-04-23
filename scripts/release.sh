@@ -11,6 +11,8 @@ for module in praw prawcore websocket; do
 	cp -ar ${module} release/chaintipper
 done
 
+cp -r icons release/chaintipper
+
 cp manifest.json release
 cd release
 zip -r ../${zipfile} *

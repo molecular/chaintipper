@@ -15,7 +15,7 @@ if not diff actual_sums.txt target_sums.txt; then
 	echo "ERROR checksum mismatch or download failed."
 	exit 1
 fi
-echo "checksums match"
+echo "checksums match, unpacking..."
 
 # unpack packages and get the library code from the packages
 
@@ -36,4 +36,8 @@ rm -rf websocket_client-0.58.0
 
 # apply patches
 
+echo "patching praw to use relative imports and include praw.ini contets as string...."
 patch -p1 < patch_praw_relative_imports.patch 
+
+# for running as internal plugin:
+#cp -r praw prawcore websocket ..

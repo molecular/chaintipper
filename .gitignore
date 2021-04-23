@@ -4,3 +4,11 @@ venv.sh
 __pycache__
 *.pyc
 /download
+/release
+/icons_from_tibanne
+/websocket
+/praw
+/prawcore
+*.zip
+*.mp4
+*.ogv

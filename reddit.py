@@ -12,7 +12,6 @@ from PyQt5.QtCore import QObject, pyqtSignal
 from .model import Tip, TipList
 from .config import c, amount_config
 
-print_error("c", c)
 # praw setup
 reddit = praw.Reddit(
 		client_id=c["reddit"]["client_id"],
@@ -164,9 +163,8 @@ class Reddit(PrintError, QObject):
 		self.tiplist = tiplist
 
 	def run(self):
-		self.print_error("Reddit.sync() called")
+		self.print_error("Reddit.run() called")
 		tips = []
-		subreddit = reddit.subreddit("learnpython")
 
 		for item in reddit.inbox.stream(pause_after=0):
 			if item is None:

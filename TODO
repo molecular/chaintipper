@@ -8,24 +8,14 @@
 			* preferences
 				* reddit credentials
 				* wallet connect
-				* tip amounts
 				* auto-pay
 
 			* implement auto-pay
-			* SECURITY: author must be "chaintip"
-			* category collapse icon, subitem indentation
 			* move thread to Reddit class?
-			* reddit.py receive loop: reparse amount on Comment change
-			* disable categories
-			* edit tipping message ("EDIT: paid with chaintipper EC plugin")
 
-			* pay (1) <- bullshit
-			* make any ccy a valid unit
+			* reddit.py receive loop: reparse amount on Comment change?
 
 			* disallow amount_bch edit if payment_status=='paid'
-
-			* context menu:
-			  * go to tipping comment (open browser)
 
 			* amount_bch sometimes scientific notation "1.0E-7", format it
 
@@ -34,6 +24,8 @@
 			* after coming back to machine after a while I get some exception (I think network related)
 
 			* precompile pyc files (as described in plugin dox)
+
+			* segfault on close (at least on blackbox)
 
 		* for any semi-public release
 
@@ -49,25 +41,32 @@
 			* LICENSE
 			* DONT RELEASE PW IN config.py!!!
 
-		* beta
+	* beta
 
-			* avoid having to ask credentials by using "reddit app" (api-key)?
-				(see https://asyncpraw.readthedocs.io/en/latest/getting_started/quick_start.html under "Client ID & Client Secret" for pointers)
+		* preferences
+			* reddit credentials
+			* wallet connect
+			* tip amounts
 
-			* currently using first exchange found for the given ccy, maybe improve?
-
-			* category "read" for read items?
-
-			* menu item "view payment tx"?
-
-			* BUG: right-click on category -> exception
-
-			* tooltips in table? 
-
-			* html preview of tipping message? even parent?
+		* currently using first exchange found for the given ccy, maybe improve?
+		* html preview of tipping message? even parent?
+		* edit tipping message ("EDIT: paid with chaintipper EC plugin")
 
 	* 2.0 / ideas
+
+		* avoid having to ask credentials by using "reddit app" (api-key)?
+			(see https://asyncpraw.readthedocs.io/en/latest/getting_started/quick_start.html under "Client ID & Client Secret" for pointers)
+
+		* enable "incoming"/"outgoing" categories
+			* category "read" for read items?
+			* category collapse icon, subitem indentation
+			* BUG: right-click on category -> exception
+	
+		* context menu:
+			* go to tipping comment (open browser)
+			* "view payment tx"?
 
 		* twitter
 		* persist Tip List
 		* utxo selection with fuzzy tip amounts (min_amount, max_amount)
+		* tooltips in table? 
