@@ -27,6 +27,9 @@
 
 			* segfault on close (at least on blackbox)
 
+			* restructure to use new qt.WalletUI class with dict of instances in qt.Plugin 
+				* class qt.Plugin: storing window, tab, ltab or whatever in separate dicts is bad design?
+
 		* for any semi-public release
 
 			* get /u/chaintipper

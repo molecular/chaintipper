@@ -1,6 +1,7 @@
 <!DOCTYPE RCC><RCC version="1.0">
 	<qresource><file alias="icons/chaintip.png">qresources/icons/chaintip.png</file></qresource>
 	<qresource><file alias="icons/chaintip.svg">qresources/icons/chaintip.svg</file></qresource>
+	<qresource><file alias="icons/chaintip_gray.svg">qresources/icons/chaintip_gray.svg</file></qresource>
 <!--
 	leftovers of failed attempt to include praw.ini into qresources (see praw/config.py)	
 	<qresource><file alias="praw.ini">praw.ini</file></qresource>

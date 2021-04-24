@@ -1,4 +1,3 @@
-
 import os
 import queue
 import random
@@ -330,16 +329,6 @@ class LoadRWallet(MessageBoxMixin, PrintError, QWidget):
 		# 	self.show_warning(_("The Inter-Wallet Transfer plugin cannot function in offline mode. "
 		# 						"Restart Electron Cash in online mode to proceed."))
 		# 	self.setDisabled(True)
-
-	@staticmethod
-	def delete_temp_wallet_file(file):
-		"""deletes the wallet file"""
-		if file and os.path.exists(file):
-			try:
-				os.remove(file)
-				print_error("[InterWalletTransfer] Removed temp file", file)
-			except Exception as e:
-				print_error("[InterWalletTransfer] Failed to remove temp file", file, "error: ", repr(e))
 
 	def transfer(self):
 		self.show_message(_("You should not use either wallet during the transfer. Leave Electron Cash active. "
