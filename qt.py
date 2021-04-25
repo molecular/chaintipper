@@ -15,25 +15,12 @@ from electroncash_gui.qt.main_window import StatusBarButton
 from electroncash.util import PrintError
 from electroncash.wallet import Abstract_Wallet
 
-from . import ui
 from .qresources import qInitResources
 
-from . import fullname
+from . import fullname, ui
 
 icon_chaintip = QtGui.QIcon(":icons/chaintip.svg")
 icon_chaintip_gray = QtGui.QIcon(":icons/chaintip_gray.svg")
-
-# class DisabledChaintipperButton(StatusBarButton):
-# 	def __init__(self, wallet, message):
-# 		super().__init__(icon_chaintip_gray, fullname, self.show_message)
-# 		self.wallet = wallet
-# 		self.message = message
-# 		self.setToolTip(_("ChainTipper (disabled)"))
-# 		self.setStatusTip(_("ChainTipper - Disabled (click to enable)"))
-
-# 	def show_message(self):
-# 		QMessageBox.information(Plugin.get_suitable_dialog_window_parent(self.wallet),
-# 								_("ChainTipper is disabled"), self.message)
 
 class ChaintipperButton(StatusBarButton):
 	@classmethod
@@ -172,7 +159,8 @@ class WalletUI(PrintError):
 			self.previous_tab_index = None
 
 	def add_ui(self):
-		self.l = ui.LoadRWallet(self.window, self, self.wallet_name)
+		self.l = ui.LoadRWallet(self.window, self.wallet)
+		self.widgets.add(self.l)
 		self.tab = self.window.create_list_tab(self.l)
 
 		self.window.tabs.addTab(self.tab, icon_chaintip, _('ChainTipper'))

@@ -79,6 +79,7 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 								_('Status'),
 							], 1, [6],  # headers, stretch_column, editable_columns
 							deferred_updates=True, save_sort_settings=True)
+
 		self.print_error("TipListWidget.__init__()")
 		self.setSelectionMode(QAbstractItemView.ExtendedSelection)
 		self.setSortingEnabled(True)
@@ -104,9 +105,14 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 		self.reddit.new_tip.connect(self.tiplist.dispatchNewTip)
 		self.reddit_thread.start()
 
-	def abort(self):
+		# So that we get told about when new coins come in, and the UI updates itself
+		if hasattr(parent, 'history_updated_signal'):
+			parent.history_updated_signal.connect(self.checkPaymentStatus)
+
+	def kill_join(self):
+		self.print_error("TiplistWidget.kill_join()")
+		self.reddit.quit()
 		self.reddit_thread.quit()
-		self.switch_signal.emit()
 
 	def create_menu(self, position):
 		"""creates context-menu for single or multiply selected items"""
@@ -277,48 +283,23 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 
 class LoadRWallet(MessageBoxMixin, PrintError, QWidget):
 
-	def __init__(self, parent: ElectrumWindow, plugin, wallet_name, recipient_wallet=None, time=None, password=None):
+	def __init__(self, parent: ElectrumWindow, wallet: Abstract_Wallet):
 		QWidget.__init__(self, parent)
-		assert isinstance(parent, ElectrumWindow)
-		self.password = password
-		self.wallet = parent.wallet
-		self.weakWindow = Weak.ref(parent)  # grab a weak reference to the ElectrumWindow
-		for x in range(10):
-			name = 'tmp_wo_wallet' + ''.join(random.choices(string.ascii_letters + string.digits, k=10))
-			self.file = os.path.join(tempfile.gettempdir(), name)
-			if not os.path.exists(self.file):
-				break
-		else:
-			raise RuntimeError('Could not find a unique temp file in tmp directory', tempfile.gettempdir())
-		self.tmp_pass = ''.join(random.choices(string.ascii_uppercase + string.digits, k=10))
-		self.storage = None
-		self.recipient_wallet = None
-		self.keystore = None
-		self.plugin = plugin
-		self.network = parent.network
-		self.wallet_name = wallet_name
-		self.keystore = None
+		self.wallet = wallet
 
+		self.weakWindow = Weak.ref(self.parent)  # grab a weak reference to the ElectrumWindow
 
 		self.print_error("ui loading")
 
 		vbox = QVBoxLayout()
 		self.setLayout(vbox)
-		l2 = QLabel(f'wallet_name: {self.wallet_name}')
-		vbox.addWidget(l2)
-		l2.setTextInteractionFlags(Qt.TextSelectableByMouse)
 
 		self.tiplist = TipListWidget(parent)
 		self.tiplist.checkPaymentStatus()
 		vbox.addWidget(self.tiplist)
 
-		if hasattr(parent, 'history_updated_signal'):
-			# So that we get told about when new coins come in, and the UI updates itself
-			parent.history_updated_signal.connect(self.update_payment_statuses)
-
-	def update_payment_statuses(self):
-		if hasattr(self, 'tiplist'):
-			self.tiplist.checkPaymentStatus()
+	def kill_join(self):
+		self.tiplist.kill_join()
 
 	def filter(self, *args):
 		"""This is here because searchable_list must define a filter method"""

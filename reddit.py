@@ -161,12 +161,18 @@ class Reddit(PrintError, QObject):
 	def __init__(self, tiplist):
 		QObject.__init__(self)
 		self.tiplist = tiplist
+		self.should_quit = False
 
+	def quit(self):
+		self.should_quit = True
+		
 	def run(self):
 		self.print_error("Reddit.run() called")
 		tips = []
 
 		for item in reddit.inbox.stream(pause_after=0):
+			if self.should_quit:
+				break
 			if item is None:
 				continue
 			if isinstance(item, Message):

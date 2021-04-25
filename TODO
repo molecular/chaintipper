@@ -30,6 +30,8 @@
 			* restructure to use new qt.WalletUI class with dict of instances in qt.Plugin 
 				* class qt.Plugin: storing window, tab, ltab or whatever in separate dicts is bad design?
 
+			* divert error reports to my github
+
 		* for any semi-public release
 
 			* get /u/chaintipper
