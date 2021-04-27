@@ -17,7 +17,7 @@ from electroncash_gui.qt import ElectrumWindow
 from electroncash_gui.qt.util import *
 from electroncash.transaction import Transaction
 from electroncash.util import PrintError, print_error, age, Weak, InvalidPassword, format_time
-from electroncash import keystore
+from electroncash import keystore, get_config
 from electroncash.bitcoin import COIN, TYPE_ADDRESS
 from electroncash.storage import WalletStorage
 from electroncash.keystore import Hardware_KeyStore
@@ -141,15 +141,29 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 			w.show_send_tab()
 
 		def doAutoPay(tips: list):
+			"""constructs and broadcasts transaction paying the given tips. No questions asked."""
+			if not hasattr(self.window, "network"):
+				return False
+
 			outputs = []
 			#outputs.append(OPReturn.output_for_stringdata(op_return))
 			for tip in tips:
 				address = tip.recipient_address
-				amount = satoshis(COIN * tip.amount_bch)
+				amount = int(COIN * tip.amount_bch)
 				outputs.append((TYPE_ADDRESS, address, amount))
 				self.print_error("address: ", address, "amount:", amount)
-			tx = self.wallet.mktx(outputs, password=None, config=None)
+			tx = self.wallet.mktx(outputs, password=None, config=get_config())
 			self.print_error("tx:", tx)
+
+			# broadcasst
+			try:
+				return self.window.network.broadcast_transaction2(tx)
+			except Exception as e:
+				self.print_error("error broadcasting tx: ", e)
+				for tip in tips:
+					tip.payment_status = "broadcast error" #: " + str(e)
+					self.tiplist.updateTip(tip)
+
 
 		def doMarkRead(tips: list):
 			"""call mark_read() on each of the 'tips' and remove them from tiplist"""
