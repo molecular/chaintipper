@@ -7,7 +7,6 @@ import threading
 import time
 from enum import IntEnum
 from decimal import Decimal
-from bitcoin import COIN, TYPE_ADDRESS
 
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
@@ -19,6 +18,7 @@ from electroncash_gui.qt.util import *
 from electroncash.transaction import Transaction
 from electroncash.util import PrintError, print_error, age, Weak, InvalidPassword, format_time
 from electroncash import keystore
+from electroncash.bitcoin import COIN, TYPE_ADDRESS
 from electroncash.storage import WalletStorage
 from electroncash.keystore import Hardware_KeyStore
 from electroncash.wallet import Standard_Wallet, Multisig_Wallet
@@ -140,16 +140,16 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 			w.message_e.setText(desc)
 			w.show_send_tab()
 
-		# def doAutoPay(tips: list):
-		# 	outputs = []
-		# 	#outputs.append(OPReturn.output_for_stringdata(op_return))
-		# 	for tip in tips:
-		# 		address = tip.recipient_address
-		# 		amount = satoshis(COIN * tip.amount_bch)
-		# 		outputs.append((TYPE_ADDRESS, address, amount))
-		# 		self.print_error("address: ", address, "amount:", amount)
-		# 	tx = self.wallet.mktx(outputs, password=None, config=None)
-		# 	self.print_error("tx:", tx)
+		def doAutoPay(tips: list):
+			outputs = []
+			#outputs.append(OPReturn.output_for_stringdata(op_return))
+			for tip in tips:
+				address = tip.recipient_address
+				amount = satoshis(COIN * tip.amount_bch)
+				outputs.append((TYPE_ADDRESS, address, amount))
+				self.print_error("address: ", address, "amount:", amount)
+			tx = self.wallet.mktx(outputs, password=None, config=None)
+			self.print_error("tx:", tx)
 
 		def doMarkRead(tips: list):
 			"""call mark_read() on each of the 'tips' and remove them from tiplist"""
@@ -183,6 +183,7 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 		menu.addAction(_(f"mark read{count_display_string}"), lambda: doMarkRead(tips))
 		if len(unpaid_tips) > 0:
 			menu.addAction(_(f"pay{unpaid_count_display_string}..."), lambda: doPay(unpaid_tips))
+			menu.addAction(_(f"autopay{unpaid_count_display_string}"), lambda: doAutoPay(unpaid_tips))
 		
 		menu.exec_(self.viewport().mapToGlobal(position))
 

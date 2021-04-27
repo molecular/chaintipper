@@ -24,7 +24,7 @@
 
 			* divert error reports to my github
 
-			* optionally activate on startup (pref)
+			* optionally activate on wallet open (pref)
 
 			* Plugin.close_wallet does nothing
 
