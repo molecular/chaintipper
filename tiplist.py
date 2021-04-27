@@ -7,6 +7,7 @@ import threading
 import time
 from enum import IntEnum
 from decimal import Decimal
+from bitcoin import COIN, TYPE_ADDRESS
 
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
@@ -22,10 +23,9 @@ from electroncash.storage import WalletStorage
 from electroncash.keystore import Hardware_KeyStore
 from electroncash.wallet import Standard_Wallet, Multisig_Wallet
 from electroncash.address import Address
-from electroncash import networks
+from electroncash.wallet import Abstract_Wallet
 
 from .model import Tip, TipList, TipListener
-from .reddit import Reddit
 from .config import c
 
 class TipListItem(QTreeWidgetItem):
@@ -39,19 +39,20 @@ class TipListItem(QTreeWidgetItem):
 			self.__init__([
 				#o.id,
 				format_time(o.chaintip_message.created_utc), 
-				o.type,
+				#o.type,
 				o.payment_status,
 				#o.chaintip_message.author.name,
-				o.chaintip_message.subject,
-				o.tipping_comment_id,
+				#o.chaintip_message.subject,
+				#o.tipping_comment_id,
 				o.username,
 				#o.direction,
+				o.tipping_comment.body.partition('\n')[0],
 				str(o.amount_bch),
 				#o.recipient_address.to_ui_string() if o.recipient_address else None,
 				o.tip_amount_text,
 				str(o.tip_quantity),
 				o.tip_unit,
-				o.status
+				#o.status
 			])
 		else:
 			QTreeWidgetItem.__init__(self)
@@ -60,35 +61,36 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 
 	default_sort = MyTreeWidget.SortSpec(1, Qt.AscendingOrder)
 
-	def __init__(self, parent):
-		MyTreeWidget.__init__(self, parent, self.create_menu, [
+	def __init__(self, window: ElectrumWindow, wallet: Abstract_Wallet, tiplist: TipList):
+		MyTreeWidget.__init__(self, window, self.create_menu, [
 								#_('ID'), 
 								_('Date'),
-								_('Type'),
+								#_('Type'),
 								_('Payment Status'), 
 								#_('Author'), 
-								_('Subject'), 
-								_('Tip Comment'), 
+								#_('Subject'), 
+								#_('Tip Comment'), 
 								_('Recipient'), 
 								#_('Direction'), 
+								_('Tipping Comment'),
 								_('Amount (BCH)'), 
 								#_('Recipient Address'),
 								_('Tip Amount Text'),
 								_('Tip Quantity'),
 								_('Tip Unit'),
-								_('Status'),
-							], 1, [6],  # headers, stretch_column, editable_columns
+								#_('Status'),
+							], 2, [],  # headers, stretch_column, editable_columns
 							deferred_updates=True, save_sort_settings=True)
+
+		self.window = window
+		self.wallet = wallet
+		self.tiplist = None
 
 		self.print_error("TipListWidget.__init__()")
 		self.setSelectionMode(QAbstractItemView.ExtendedSelection)
 		self.setSortingEnabled(True)
-		self.wallet = parent.wallet
 		self.setIndentation(0)
 
-		self.tiplist = TipList()
-		self.tiplist.registerTipListener(self)
-		self.tips_by_address = dict()
 
 		if c["use_categories"]:
 			self.outgoing_items = QTreeWidgetItem([_("outgoing")])
@@ -98,21 +100,16 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 			self.other_items = QTreeWidgetItem([_("other messages")])
 			#self.addTopLevelItem(self.other_items)
 
-		self.reddit = Reddit(self.tiplist)
-		self.reddit_thread = QThread()
-		self.reddit.moveToThread(self.reddit_thread)
-		self.reddit_thread.started.connect(self.reddit.run)
-		self.reddit.new_tip.connect(self.tiplist.dispatchNewTip)
-		self.reddit_thread.start()
+		self.setTiplist(tiplist)
 
-		# So that we get told about when new coins come in, and the UI updates itself
-		if hasattr(parent, 'history_updated_signal'):
-			parent.history_updated_signal.connect(self.checkPaymentStatus)
+	def setTiplist(self, tiplist):
+		if self.tiplist:
+			self.tiplist.unregistertipListener(self)
+			del self.tiplist
 
-	def kill_join(self):
-		self.print_error("TiplistWidget.kill_join()")
-		self.reddit.quit()
-		self.reddit_thread.quit()
+		self.tiplist = tiplist
+		self.tiplist.registerTipListener(self)
+		self.tips_by_address = dict()
 
 	def create_menu(self, position):
 		"""creates context-menu for single or multiply selected items"""
@@ -143,6 +140,16 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 			w.message_e.setText(desc)
 			w.show_send_tab()
 
+		# def doAutoPay(tips: list):
+		# 	outputs = []
+		# 	#outputs.append(OPReturn.output_for_stringdata(op_return))
+		# 	for tip in tips:
+		# 		address = tip.recipient_address
+		# 		amount = satoshis(COIN * tip.amount_bch)
+		# 		outputs.append((TYPE_ADDRESS, address, amount))
+		# 		self.print_error("address: ", address, "amount:", amount)
+		# 	tx = self.wallet.mktx(outputs, password=None, config=None)
+		# 	self.print_error("tx:", tx)
 
 		def doMarkRead(tips: list):
 			"""call mark_read() on each of the 'tips' and remove them from tiplist"""
@@ -280,50 +287,3 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 	# 		return str(e)
 	# 	except Exception:
 	# 		return _("Unspecified failure")
-
-class LoadRWallet(MessageBoxMixin, PrintError, QWidget):
-
-	def __init__(self, parent: ElectrumWindow, wallet: Abstract_Wallet):
-		QWidget.__init__(self, parent)
-		self.wallet = wallet
-
-		self.weakWindow = Weak.ref(self.parent)  # grab a weak reference to the ElectrumWindow
-
-		self.print_error("ui loading")
-
-		vbox = QVBoxLayout()
-		self.setLayout(vbox)
-
-		self.tiplist = TipListWidget(parent)
-		self.tiplist.checkPaymentStatus()
-		vbox.addWidget(self.tiplist)
-
-	def kill_join(self):
-		self.tiplist.kill_join()
-
-	def filter(self, *args):
-		"""This is here because searchable_list must define a filter method"""
-
-	def showEvent(self, e):
-		super().showEvent(e)
-		# if not self.network and self.isEnabled():
-		# 	self.show_warning(_("The Inter-Wallet Transfer plugin cannot function in offline mode. "
-		# 						"Restart Electron Cash in online mode to proceed."))
-		# 	self.setDisabled(True)
-
-	def transfer(self):
-		self.show_message(_("You should not use either wallet during the transfer. Leave Electron Cash active. "
-							"The plugin ceases operation and will have to be re-activated if Electron Cash "
-							"is stopped during the operation."))
-		self.storage = WalletStorage(self.file)
-		self.storage.set_password(self.tmp_pass, encrypt=True)
-		self.storage.put('keystore', self.keystore.dump())
-		self.recipient_wallet = Standard_Wallet(self.storage)
-		self.recipient_wallet.start_threads(self.network)
-		# comment the below out if you want to disable auto-clean of temp file
-		# otherwise the temp file will be auto-cleaned on app exit or
-		# on the recepient_wallet object's destruction (when refct drops to 0)
-		Weak.finalize(self.recipient_wallet, self.delete_temp_wallet_file, self.file)
-		self.plugin.switch_to(Transfer, self.wallet_name, self.recipient_wallet, float(self.time_e.text()),
-								self.password)
-

@@ -2,20 +2,12 @@
 
 		* alpha
 
-			* handle wallet connecting (preferrably just 1 wallet)
-				* maybe have a config per wallet, so different accounts and settings can be linked to multiple wallets?
-
 			* preferences
-				* reddit credentials
-				* wallet connect
 				* auto-pay
 
 			* implement auto-pay
-			* move thread to Reddit class?
 
 			* reddit.py receive loop: reparse amount on Comment change?
-
-			* disallow amount_bch edit if payment_status=='paid'
 
 			* amount_bch sometimes scientific notation "1.0E-7", format it
 
@@ -31,6 +23,11 @@
 				* class qt.Plugin: storing window, tab, ltab or whatever in separate dicts is bad design?
 
 			* divert error reports to my github
+
+			* optionally activate on startup (pref)
+
+			* Plugin.close_wallet does nothing
+
 
 		* for any semi-public release
 
@@ -58,6 +55,8 @@
 		* edit tipping message ("EDIT: paid with chaintipper EC plugin")
 
 	* 2.0 / ideas
+
+		* re-allow amount_bch editable, (if payment_status!='paid')
 
 		* avoid having to ask credentials by using "reddit app" (api-key)?
 			(see https://asyncpraw.readthedocs.io/en/latest/getting_started/quick_start.html under "Client ID & Client Secret" for pointers)

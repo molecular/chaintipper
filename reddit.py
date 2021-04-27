@@ -7,19 +7,68 @@ import traceback
 import re
 from . import praw
 from .praw.models import Comment, Message
+from .prawcore.exceptions import PrawcoreException
 from PyQt5.QtCore import QObject, pyqtSignal
 
 from .model import Tip, TipList
 from .config import c, amount_config
 
-# praw setup
-reddit = praw.Reddit(
-		client_id=c["reddit"]["client_id"],
-		client_secret=c["reddit"]["client_secret"],
-		user_agent="unix:electroncash.chaintipper:v0.1a (by u/moleccc)",
-		username=c["reddit"]["username"],
-		password=c["reddit"]["password"],
-)
+class Reddit(PrintError, QObject):
+	new_tip = pyqtSignal(Tip)
+
+	def __init__(self, wallet_ui):
+		QObject.__init__(self)
+		self.wallet_ui = wallet_ui
+		self.tiplist = wallet_ui.tiplist
+		self.should_quit = False
+
+	def login(self):
+		try:
+			self.reddit = praw.Reddit(
+					client_id=c["reddit"]["client_id"],
+					client_secret=c["reddit"]["client_secret"],
+					user_agent="unix:electroncash.chaintipper:v0.1a (by u/moleccc)",
+					# username=c["reddit"]["username"],
+					# password=c["reddit"]["password"],
+					username = self.wallet_ui.read_config("reddit_username"),
+					password = self.wallet_ui.read_config("reddit_password"),
+			)
+
+			# test auth (provoking OAuthException or Forbidden if login incorrect)
+			me = self.reddit.user
+			me.preferences()
+			return True
+
+		except PrawcoreException as e:
+			self.print_error(e)
+			return False
+
+	def quit(self):
+		self.should_quit = True
+
+	def run(self):
+		self.print_error("Reddit.run() called")
+		tips = []
+
+		for item in self.reddit.inbox.stream(pause_after=0):
+			if self.should_quit:
+				break
+			if item is None:
+				continue
+			self.print_error("got item from reddit stream: ", item)
+			if isinstance(item, Message):
+				tip = RedditTip(self.reddit, item)
+				if tip.isValid():
+					#self.tiplist.dispatchNewTip(tip)
+					if not self.should_quit:
+						self.new_tip.emit(tip)
+			if isinstance(item, Comment):
+				continue
+				# re-parse amount here
+				#self.update_tip.emit(tip)
+			else:
+				self.print_error(f"Unknown type {type(item)} in unread")
+		self.print_error("exited streaming")
 
 class RedditTip(PrintError, Tip):
 
@@ -28,9 +77,10 @@ class RedditTip(PrintError, Tip):
 	p_recipient = re.compile('^u/(\S*) has.*\*\*(bitcoincash:qrelay\w*)\*\*.*', re.MULTILINE | re.DOTALL)
 	p_sender = re.compile('^u/(\S*) has just sent you (\S*) Bitcoin Cash \(about \S* USD\) \[via\]\(\S*/_/(\S*)\) .*', re.MULTILINE | re.DOTALL)
 
-	def __init__(self, message: Message):
+	def __init__(self, reddit: Reddit, message: Message):
 		Tip.__init__(self)
 		self.platform = "reddit"
+		self.reddit = reddit
 		# self.print_error(f"new RedditTip, created_utc: {message.created_utc}")
 
 		self.chaintip_message = message
@@ -85,7 +135,7 @@ class RedditTip(PrintError, Tip):
 
 			# fetch tipping comment
 			if self.tipping_comment_id:
-				comment = reddit.comment(id = self.tipping_comment_id)
+				comment = self.reddit.comment(id = self.tipping_comment_id)
 				self.parseTippingComment(comment)
 
 	p_tip = re.compile('.*(/u/chaintip (\S*)\s*(\S*))', re.MULTILINE | re.DOTALL)
@@ -155,35 +205,3 @@ class RedditTip(PrintError, Tip):
 			#self.print_error("rate", rate)
 		return rate
 
-class Reddit(PrintError, QObject):
-	new_tip = pyqtSignal(Tip)
-
-	def __init__(self, tiplist):
-		QObject.__init__(self)
-		self.tiplist = tiplist
-		self.should_quit = False
-
-	def quit(self):
-		self.should_quit = True
-		
-	def run(self):
-		self.print_error("Reddit.run() called")
-		tips = []
-
-		for item in reddit.inbox.stream(pause_after=0):
-			if self.should_quit:
-				break
-			if item is None:
-				continue
-			if isinstance(item, Message):
-				tip = RedditTip(item)
-				if tip.isValid():
-					#self.tiplist.dispatchNewTip(tip)
-					self.new_tip.emit(tip)
-			if isinstance(item, Comment):
-				continue
-				# re-parse amount here
-				#self.update_tip.emit(tip)
-			else:
-				self.print_error(f"Unknown type {type(item)} in unread")
-		self.print_error("exited streaming")
