@@ -278,7 +278,7 @@ class WalletSettingsDialog(WindowModalDialog, PrintError):
 		assert not hasattr(self.wallet, '_chaintipper_settings_window')
 		main_window = self.wallet.weak_window()
 		assert main_window
-		self.wallet._cashfusion_settings_window = self
+		self.wallet._chaintipper_settings_window = self
 
 		main_layout = QVBoxLayout(self)
 
@@ -317,84 +317,11 @@ class WalletSettingsDialog(WindowModalDialog, PrintError):
 
 		self.refresh()
 
-	def refresh(self):
-		return
-		# eligible, ineligible, sum_value, has_unconfirmed, has_coinbase = select_coins(self.wallet)
-
-		# select_type, select_amount = self.conf.selector
-
-		# edit_widgets = [self.amt_selector_size, self.sb_selector_fraction, self.sb_selector_count, self.sb_queued_autofuse,
-		# 				self.cb_autofuse_only_all_confirmed, self.combo_self_fuse, self.stacked_layout, self.mode_cb,
-		# 				self.cb_coinbase]
-		# try:
-		# 	for w in edit_widgets:
-		# 		# Block spurious editingFinished signals and valueChanged signals as
-		# 		# we modify the state and focus of widgets programatically below.
-		# 		# On macOS not doing this led to a very strange/spazzy UI.
-		# 		w.blockSignals(True)
-
-		# 	self.cb_coinbase.setChecked(self.conf.autofuse_coinbase)
-		# 	if not self.gb_coinbase.isVisible():
-		# 		cb_latch = self.conf.coinbase_seen_latch
-		# 		if cb_latch or self.cb_coinbase.isChecked() or has_coinbase:
-		# 			if not cb_latch:
-		# 				# Once latched to true, this UI element will forever be
-		# 				# visible for this wallet.  It means the wallet is a miner's
-		# 				# wallet and they care about coinbase coins.
-		# 				self.conf.coinbase_seen_latch = True
-		# 			self.gb_coinbase.setHidden(False)
-		# 		del cb_latch
-
-		# 	is_custom_page = self._maybe_switch_page()
-
-		# 	idx = 0
-		# 	if self.conf.self_fuse_players > 1:
-		# 		idx = 1
-		# 	self.combo_self_fuse.setCurrentIndex(idx)
-		# 	del idx
-
-		# 	if is_custom_page:
-		# 		self.amt_selector_size.setEnabled(select_type == 'size')
-		# 		self.sb_selector_count.setEnabled(select_type == 'count')
-		# 		self.sb_selector_fraction.setEnabled(select_type == 'fraction')
-		# 		if select_type == 'size':
-		# 			self.radio_select_size.setChecked(True)
-		# 			sel_size = select_amount
-		# 			if sum_value > 0:
-		# 				sel_fraction = min(COIN_FRACTION_FUDGE_FACTOR * select_amount / sum_value, 1.)
-		# 			else:
-		# 				sel_fraction = 1.
-		# 		elif select_type == 'count':
-		# 			self.radio_select_count.setChecked(True)
-		# 			sel_size = max(sum_value / max(select_amount, 1), 10000)
-		# 			sel_fraction = COIN_FRACTION_FUDGE_FACTOR / max(select_amount, 1)
-		# 		elif select_type == 'fraction':
-		# 			self.radio_select_fraction.setChecked(True)
-		# 			sel_size = max(sum_value * select_amount / COIN_FRACTION_FUDGE_FACTOR, 10000)
-		# 			sel_fraction = select_amount
-		# 		else:
-		# 			self.conf.selector = None
-		# 			return self.refresh()
-		# 		sel_count = COIN_FRACTION_FUDGE_FACTOR / max(sel_fraction, 0.001)
-		# 		self.amt_selector_size.setAmount(round(sel_size))
-		# 		self.sb_selector_fraction.setValue(max(min(sel_fraction, 1.0), 0.001) * 100.0)
-		# 		self.sb_selector_count.setValue(sel_count)
-		# 		try: self.sb_queued_autofuse.setValue(self.conf.queued_autofuse)
-		# 		except (TypeError, ValueError): pass  # should never happen but paranoia pays off in the long-term
-		# 		conf_only = self.conf.autofuse_confirmed_only
-		# 		self.cb_autofuse_only_all_confirmed.setChecked(conf_only)
-		# 		self.l_warn_selection.setVisible(sel_fraction > 0.2 and (not conf_only or self.sb_queued_autofuse.value() > 1))
-		# finally:
-		# 	# re-enable signals
-		# 	for w in edit_widgets: w.blockSignals(False)
-
-
-
 	def closeEvent(self, event):
 		super().closeEvent(event)
 		if event.isAccepted():
 			self.setParent(None)
-			del self.wallet._cashfusion_settings_window
+			del self.wallet._chaintipper_settings_window
 
 	def showEvent(self, event):
 		super().showEvent(event)
