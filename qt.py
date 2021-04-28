@@ -1,6 +1,7 @@
 from electroncash.i18n import _
 from electroncash.plugins import BasePlugin, hook
 from .wallet_ui import WalletUI
+from .util import read_config, write_config
 
 class Plugin(BasePlugin):
 	electrumcash_qt_gui = None
@@ -62,6 +63,10 @@ class Plugin(BasePlugin):
 
 		wallet_ui = WalletUI(wallet, window)
 		self.wallet_uis[wallet_name] = wallet_ui
+
+		# activate chaintipper if desired by user
+		wallet_ui.sbbtn.set_active(read_config(wallet, "activate_on_wallet_open", False))
+
 		#self.wallet_windows[wallet_name] = window
 
 		# self.add_ui_for_wallet(wallet_name, window)

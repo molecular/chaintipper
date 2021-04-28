@@ -2,59 +2,43 @@
 
 		* alpha
 
-			* preferences
-				* auto-pay
-
-			* implement auto-pay
-
-			* reddit.py receive loop: reparse amount on Comment change?
 
 			* amount_bch sometimes scientific notation "1.0E-7", format it
 
-			* editing tipping comment doesn't update amount
-
-			* after coming back to machine after a while I get some exception (I think network related)
-
-			* precompile pyc files (as described in plugin dox)
-
 			* segfault on close (at least on blackbox)
-
-			* restructure to use new qt.WalletUI class with dict of instances in qt.Plugin 
-				* class qt.Plugin: storing window, tab, ltab or whatever in separate dicts is bad design?
+			* Plugin.close_wallet does nothing
 
 			* divert error reports to my github
 
-			* optionally activate on wallet open (pref)
+			* "go to tipping comment"
 
-			* Plugin.close_wallet does nothing
 
 
 		* for any semi-public release
 
-			* get /u/chaintipper
 			* make tg group for beta testers (don't call it beta, just "chaintipper")
 
 			* clean up the code
 			* readme.md for github
 			* rebase and push to github once code is de-cluttered
-			* bundling as .zip plugin archive
 			* release (trhough github files?), hashes?
-			* new column: amount_fiat (using historical rate), but maybe only if "fiat" user prefs say so
 			* LICENSE
 			* DONT RELEASE PW IN config.py!!!
 
 	* beta
 
+		* reddit.py receive loop: reparse amount on Comment change?
+
 		* preferences
-			* reddit credentials
-			* wallet connect
 			* tip amounts
 
 		* currently using first exchange found for the given ccy, maybe improve?
 		* html preview of tipping message? even parent?
-		* edit tipping message ("EDIT: paid with chaintipper EC plugin")
+		* auto-edit tipping message ("EDIT: paid with chaintipper EC plugin")
 
 	* 2.0 / ideas
+
+		* new column: amount_fiat (using historical rate), but maybe only if "fiat" user prefs say so
 
 		* re-allow amount_bch editable, (if payment_status!='paid')
 

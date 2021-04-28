@@ -27,6 +27,7 @@ from electroncash.wallet import Abstract_Wallet
 
 from .model import Tip, TipList, TipListener
 from .config import c
+from .util import read_config, write_config
 
 class TipListItem(QTreeWidgetItem):
 
@@ -43,16 +44,16 @@ class TipListItem(QTreeWidgetItem):
 				o.payment_status,
 				#o.chaintip_message.author.name,
 				#o.chaintip_message.subject,
-				#o.tipping_comment_id,
 				o.username,
 				#o.direction,
-				o.tipping_comment.body.partition('\n')[0],
 				str(o.amount_bch),
 				#o.recipient_address.to_ui_string() if o.recipient_address else None,
 				o.tip_amount_text,
 				str(o.tip_quantity),
 				o.tip_unit,
 				#o.status
+				#o.tipping_comment_id,
+				o.tipping_comment.body.partition('\n')[0],
 			])
 		else:
 			QTreeWidgetItem.__init__(self)
@@ -69,17 +70,17 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 								_('Payment Status'), 
 								#_('Author'), 
 								#_('Subject'), 
-								#_('Tip Comment'), 
 								_('Recipient'), 
 								#_('Direction'), 
-								_('Tipping Comment'),
 								_('Amount (BCH)'), 
 								#_('Recipient Address'),
 								_('Tip Amount Text'),
 								_('Tip Quantity'),
 								_('Tip Unit'),
 								#_('Status'),
-							], 2, [],  # headers, stretch_column, editable_columns
+								#_('Tip Comment'), 
+								_('Tip Comment body'),
+							], 9, [],  # headers, stretch_column, editable_columns
 							deferred_updates=True, save_sort_settings=True)
 
 		self.window = window
@@ -111,6 +112,51 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 		self.tiplist.registerTipListener(self)
 		self.tips_by_address = dict()
 
+	def pay(self, tips: list):
+		"""constructs and broadcasts transaction paying the given tips. No questions asked."""
+		if not hasattr(self.window, "network"):
+			return False
+
+		if len(tips) <= 0:
+			return False
+
+		# some sanity filtering just in case
+		tips = [tip for tip in tips if tip.payment_status == 'amount parsed']
+
+		# label
+		desc = "chaintip "
+		desc_separator = ""
+		for tip in tips:
+			if tip.recipient_address and tip.amount_bch and isinstance(tip.recipient_address, Address) and isinstance(tip.amount_bch, Decimal):
+				desc += f"{desc_separator}{tip.amount_bch} BCH to u/{tip.username} ({tip.chaintip_message.id})"
+				desc_separator = ", "
+
+		# construct transaction
+		outputs = []
+		#outputs.append(OPReturn.output_for_stringdata(op_return))
+		for tip in tips:
+			address = tip.recipient_address
+			amount = int(COIN * tip.amount_bch)
+			outputs.append((TYPE_ADDRESS, address, amount))
+			self.print_error("address: ", address, "amount:", amount)
+		tx = self.wallet.mktx(outputs, password=None, config=get_config())
+
+		self.print_error("txid:", tx.txid())
+		self.print_error("tx:", tx)
+
+		# set tx label for history
+		self.wallet.set_label(tx.txid(), text=desc, save=True)
+
+		# broadcast transaction
+		try:
+			return self.window.network.broadcast_transaction2(tx)
+		except Exception as e:
+			self.print_error("error broadcasting tx: ", e)
+			for tip in tips:
+				tip.payment_status = "broadcast error" #: " + str(e)
+				self.tiplist.updateTip(tip)
+
+
 	def create_menu(self, position):
 		"""creates context-menu for single or multiply selected items"""
 
@@ -129,9 +175,9 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 					payto_separator = "\n"
 					desc += f"{desc_separator}{tip.amount_bch} BCH to u/{tip.username} ({tip.chaintip_message.id})"
 					desc_separator = ", "
-				else:
-					self.print_error("recipient_address: ", type(tip.recipient_address))
-					self.print_error("amount_bch: ", type(tip.amount_bch))
+				# else:
+				# 	self.print_error("recipient_address: ", type(tip.recipient_address))
+				# 	self.print_error("amount_bch: ", type(tip.amount_bch))
 			self.print_error("  desc:", desc)
 			self.print_error("  payto:", payto)
 
@@ -141,28 +187,7 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 			w.show_send_tab()
 
 		def doAutoPay(tips: list):
-			"""constructs and broadcasts transaction paying the given tips. No questions asked."""
-			if not hasattr(self.window, "network"):
-				return False
-
-			outputs = []
-			#outputs.append(OPReturn.output_for_stringdata(op_return))
-			for tip in tips:
-				address = tip.recipient_address
-				amount = int(COIN * tip.amount_bch)
-				outputs.append((TYPE_ADDRESS, address, amount))
-				self.print_error("address: ", address, "amount:", amount)
-			tx = self.wallet.mktx(outputs, password=None, config=get_config())
-			self.print_error("tx:", tx)
-
-			# broadcasst
-			try:
-				return self.window.network.broadcast_transaction2(tx)
-			except Exception as e:
-				self.print_error("error broadcasting tx: ", e)
-				for tip in tips:
-					tip.payment_status = "broadcast error" #: " + str(e)
-					self.tiplist.updateTip(tip)
+			self.pay(tips)
 
 
 		def doMarkRead(tips: list):
@@ -213,7 +238,7 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 		return i
 
 	def newTip(self, tip):
-		self.print_error("------- newTip", tip.chaintip_message.subject)
+		#self.print_error("------- newTip", tip.chaintip_message.subject)
 		if tip.recipient_address:
 			self.tips_by_address[tip.recipient_address] = tip 
 		TipListItem(tip)
@@ -223,11 +248,13 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 			category_item.addChild(tip.tiplist_item)
 		else:
 			self.addTopLevelItem(tip.tiplist_item)
+
 		self.checkPaymentStatus()
+		self.potentiallyAutoPay([tip])
 
 
 	def removeTip(self, tip):
-		self.print_error("------- removeTip", tip.chaintip_message.subject)
+		#self.print_error("------- removeTip", tip.chaintip_message.subject)
 		if tip.recipient_address:
 			del self.tips_by_address[tip.recipient_address]
 		if hasattr(tip, 'tiplist_item'):
@@ -240,6 +267,12 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 			self.print_error("no tiplist_item")
 
 	# 
+
+	def potentiallyAutoPay(self, tips: list):
+		if read_config(self.wallet, "autopay", False):
+			tips_to_pay = [tip for tip in tips if tip.payment_status == 'amount parsed']
+			self.pay(tips_to_pay)
+
 
 	def checkPaymentStatus(self):
 		txo = self.wallet.storage.get('txo', {})

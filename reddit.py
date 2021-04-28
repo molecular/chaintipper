@@ -5,13 +5,16 @@ from decimal import Decimal
 import datetime
 import traceback
 import re
-from . import praw
-from .praw.models import Comment, Message
-from .prawcore.exceptions import PrawcoreException
+
 from PyQt5.QtCore import QObject, pyqtSignal
 
 from .model import Tip, TipList
 from .config import c, amount_config
+from .util import read_config, write_config
+
+# praw and prawcore are being imported in this "top-level"-way to avoid loading lower modules which will fail as external plugins
+from . import praw
+from . import prawcore
 
 class Reddit(PrintError, QObject):
 	new_tip = pyqtSignal(Tip)
@@ -30,16 +33,16 @@ class Reddit(PrintError, QObject):
 					user_agent="unix:electroncash.chaintipper:v0.1a (by u/moleccc)",
 					# username=c["reddit"]["username"],
 					# password=c["reddit"]["password"],
-					username = self.wallet_ui.read_config("reddit_username"),
-					password = self.wallet_ui.read_config("reddit_password"),
+					username = read_config(self.wallet_ui.wallet, "reddit_username"),
+					password = read_config(self.wallet_ui.wallet, "reddit_password"),
 			)
 
 			# test auth (provoking OAuthException or Forbidden if login incorrect)
-			me = self.reddit.user
-			me.preferences()
+			# me = self.reddit.user
+			# me.preferences()
 			return True
 
-		except PrawcoreException as e:
+		except prawcore.exceptions.PrawcoreException as e:
 			self.print_error(e)
 			return False
 
@@ -55,20 +58,14 @@ class Reddit(PrintError, QObject):
 				break
 			if item is None:
 				continue
-			self.print_error("got item from reddit stream: ", item)
-			if isinstance(item, Message):
+			if isinstance(item, praw.models.Message):
 				tip = RedditTip(self.reddit, item)
 				if tip.isValid():
-					#self.tiplist.dispatchNewTip(tip)
 					if not self.should_quit:
 						self.new_tip.emit(tip)
-			if isinstance(item, Comment):
+			if isinstance(item, praw.models.Comment):
 				continue
-				# re-parse amount here
-				#self.update_tip.emit(tip)
-			else:
-				self.print_error(f"Unknown type {type(item)} in unread")
-		self.print_error("exited streaming")
+		self.print_error("exited reddit inbox streaming")
 
 class RedditTip(PrintError, Tip):
 
@@ -77,7 +74,7 @@ class RedditTip(PrintError, Tip):
 	p_recipient = re.compile('^u/(\S*) has.*\*\*(bitcoincash:qrelay\w*)\*\*.*', re.MULTILINE | re.DOTALL)
 	p_sender = re.compile('^u/(\S*) has just sent you (\S*) Bitcoin Cash \(about \S* USD\) \[via\]\(\S*/_/(\S*)\) .*', re.MULTILINE | re.DOTALL)
 
-	def __init__(self, reddit: Reddit, message: Message):
+	def __init__(self, reddit: Reddit, message: praw.models.Message):
 		Tip.__init__(self)
 		self.platform = "reddit"
 		self.reddit = reddit
@@ -98,21 +95,19 @@ class RedditTip(PrintError, Tip):
 		 	self.chaintip_message.author == 'chaintip' and \
 		 	self.type == 'send' 
 
-	def parseChaintipMessage(self, message):
+	def parseChaintipMessage(self, message: praw.models.Message):
 		self.status = "parsing chaintip message"
 
 		# parse chaintip message
 		if self.chaintip_message.author.name == 'chaintip':
 			self.is_chaintip = True
-			self.print_error(f"parsing chaintip message {message.id}")
-			#self.print_error(self.chaintip_message.body)
+			#self.print_error(f"parsing chaintip message {message.id}")
 
 			# receive tip message
 			if self.chaintip_message.subject == "You've been tipped!":
 				m = RedditTip.p_sender.match(self.chaintip_message.body)
 				if m:
 					self.type = 'receive'
-					#self.tipping_comment_id = m.group(1)
 					self.username = m.group(1)
 					self.direction = 'incoming'
 					self.amount_bch = Decimal(m.group(2))
@@ -141,16 +136,13 @@ class RedditTip(PrintError, Tip):
 	p_tip = re.compile('.*(/u/chaintip (\S*)\s*(\S*))', re.MULTILINE | re.DOTALL)
 	def parseTippingComment(self, comment):
 		self.status = "parsing tip comment"
-		self.print_error("got tipping comment:", comment.body)
+		#self.print_error("got tipping comment:", comment.body)
 		self.tipping_comment = comment
 		m = RedditTip.p_tip.match(self.tipping_comment.body)
 		self.tip_unit = 'sat'
 		if m:
-			self.print_error("match 1,2,3", m.group(1), ",", m.group(2), ",", m.group(3))
-			self.print_error("m.lastindex", m.lastindex)
 			try:
 				self.tip_amount_text = m.group(1)
-				self.print_error("match, lastindex: ", m.lastindex)
 				if not m.group(3): # <tip_unit>
 					self.tip_unit = m.group(3)
 					self.tip_quantity = Decimal("1")
@@ -180,13 +172,13 @@ class RedditTip(PrintError, Tip):
 		if unit:
 			rate = self.getRate(unit["value_currency"])
 			self.amount_bch = round(self.tip_quantity * unit["value"] / rate, 8)
-			self.print_error("found unit", unit, "value", unit["value"], "quantity", self.tip_quantity, "rate", rate)
+			#self.print_error("found unit", unit, "value", unit["value"], "quantity", self.tip_quantity, "rate", rate)
 			self.payment_status = 'amount parsed'
 		else:		
 			# try tip_unit as currency 
 			rate = self.getRate(self.tip_unit)
 			self.amount_bch = round(self.tip_quantity / rate, 8)
-			self.print_error("rate for tip_unit", self.tip_unit, ": ", rate)
+			#self.print_error("rate for tip_unit", self.tip_unit, ": ", rate)
 			self.payment_status = 'amount parsed'
 			
 	def getRate(self, ccy: str):

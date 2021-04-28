@@ -29,6 +29,7 @@ from . import fullname
 from .reddit import Reddit
 from .model import TipList
 from .tiplist import TipListWidget
+from .util import read_config, write_config
 
 icon_chaintip = QtGui.QIcon(":icons/chaintip.svg")
 icon_chaintip_gray = QtGui.QIcon(":icons/chaintip_gray.svg")
@@ -169,52 +170,41 @@ class WalletUI(MessageBoxMixin, PrintError, QWidget):
 	def show_wallet_settings(self):
 		win = getattr(self.wallet, '_chaintipper_settings_window', None)
 		if not win:
-			# win = WalletSettingsDialog(self, ChaintipperButton.get_suitable_dialog_window_parent(self.wallet))
-			self.widgets.add(self.wallet_ui.window)  # adding to widgets list ensures if plugin is unloaded while dialog is up, that the dialog will be killed.
+			#win = WalletSettingsDialog(self, ChaintipperButton.get_suitable_dialog_window_parent(self.wallet))
+			win = WalletSettingsDialog(self, self.window)
+			self.widgets.add(self.window)  # adding to widgets list ensures if plugin is unloaded while dialog is up, that the dialog will be killed.
 		win.show()
 		win.raise_()
 
-	def read_config(self, key: str, default=None):
-		"""convenience function to write to wallet storage prefixing key with 'chaintipper_'"""
-		key = "chaintipper_" + key
-		v = self.wallet.storage.get(key)
-		if v is None:
-			v = default
-			self.write_config(key, v)
-		return v
-
-	def write_config(self, key: str, value):
-		"""convenience to read from wallet storage prefixing key with 'chaintipper_'"""
-		key = "chaintipper_" + key
-		self.wallet.storage.put(key, value)
 
 
-class ChaintipperButton(StatusBarButton):
-	"""
-	ChainTipper Button for tray. 
-	Manages (de-)activation of Chaintipper and has a menu for gloabl and wallet-specific settings
-	"""
-	@classmethod
-	def window_for_wallet(cls, wallet):
-		''' Convenience: Given a wallet instance, derefernces the weak_window
-		attribute of the wallet and returns a strong reference to the window.
-		May return None if the window is gone (deallocated).  '''
-		assert isinstance(wallet, Abstract_Wallet)
-		return (wallet.weak_window and wallet.weak_window()) or None
 
-	@classmethod
-	def get_suitable_dialog_window_parent(cls, wallet_or_window):
-		''' Convenience: Given a wallet or a window instance, return a suitable
-		'top level window' parent to use for dialog boxes. '''
-		if isinstance(wallet_or_window, Abstract_Wallet):
-			wallet = wallet_or_window
-			window = cls.window_for_wallet(wallet)
-			return (window and window.top_level_window()) or None
-		elif isinstance(wallet_or_window, ElectrumWindow):
-			window = wallet_or_window
-			return window.top_level_window()
-		else:
-			raise TypeError(f"Expected a wallet or a window instance, instead got {type(wallet_or_window)}")
+class ChaintipperButton(StatusBarButton, PrintError):
+	# """
+	# ChainTipper Button for tray. 
+	# Manages (de-)activation of Chaintipper and has a menu for gloabl and wallet-specific settings
+	# """
+	# @classmethod
+	# def window_for_wallet(cls, wallet):
+	# 	''' Convenience: Given a wallet instance, derefernces the weak_window
+	# 	attribute of the wallet and returns a strong reference to the window.
+	# 	May return None if the window is gone (deallocated).  '''
+	# 	assert isinstance(wallet, Abstract_Wallet)
+	# 	return (wallet.weak_window and wallet.weak_window()) or None
+
+	# @classmethod
+	# def get_suitable_dialog_window_parent(cls, wallet_or_window):
+	# 	''' Convenience: Given a wallet or a window instance, return a suitable
+	# 	'top level window' parent to use for dialog boxes. '''
+	# 	if isinstance(wallet_or_window, Abstract_Wallet):
+	# 		wallet = wallet_or_window
+	# 		window = cls.window_for_wallet(wallet)
+	# 		return (window and window.top_level_window()) or None
+	# 	elif isinstance(wallet_or_window, ElectrumWindow):
+	# 		window = wallet_or_window
+	# 		return window.top_level_window()
+	# 	else:
+	# 		raise TypeError(f"Expected a wallet or a window instance, instead got {type(wallet_or_window)}")
 
 	def __init__(self, wallet_ui):
 		super().__init__(icon_chaintip, fullname, self.toggle_active)
@@ -231,12 +221,11 @@ class ChaintipperButton(StatusBarButton):
 
 		action_wsettings = QAction(_("Wallet-specific Settings..."), self)
 		action_wsettings.triggered.connect(self.wallet_ui.show_wallet_settings)
-		action_settings = QAction(_("Global Settings..."), self)
-#		action_settings.triggered.connect(self.wallet_ui.plugin.show_settings_dialog)
-		action_separator2 = QAction(self); action_separator2.setSeparator(True)
+		# action_settings = QAction(_("Global Settings..."), self)
+		# action_settings.triggered.connect(self.wallet_ui.plugin.show_settings_dialog)
 
 		self.addActions([self.action_toggle, action_separator1,
-						 action_wsettings, action_settings])
+						 action_wsettings]) # ,action_settings
 
 		self.setContextMenuPolicy(Qt.ActionsContextMenu)
 
@@ -262,6 +251,11 @@ class ChaintipperButton(StatusBarButton):
 			self.is_active = True
 		self.update_state()
 
+	def set_active(self, active):
+		self.print_error("set_active(", active, "), is_active: ", self.is_active)
+		if self.is_active != active:
+			self.is_active = active
+			self.update_state()
 
 class WalletSettingsDialog(WindowModalDialog, PrintError):
 	"""Dialog for wallet-specific settings"""
@@ -282,6 +276,10 @@ class WalletSettingsDialog(WindowModalDialog, PrintError):
 
 		main_layout = QVBoxLayout(self)
 
+		# header
+		#main_layout.addWidget(QLabel(_('ChainTipper - settings for wallet "{wallet_name}"').format(wallet_name=self.wallet_ui.wallet_name)), 0, 0, Qt.AlignRight)
+
+
 		# reddit credentials
 		gbox = QGroupBox(_("Reddit Credentials"))
 		grid = QGridLayout(gbox)
@@ -292,9 +290,9 @@ class WalletSettingsDialog(WindowModalDialog, PrintError):
 		# reddit username
 		grid.addWidget(QLabel(_('Username')), 0, 0, Qt.AlignRight)
 		self.reddit_username = QLineEdit()
-		self.reddit_username.setText(self.wallet_ui.read_config("reddit_username"))
+		self.reddit_username.setText(read_config(self.wallet, "reddit_username"))
 		def on_reddit_username():
-			self.wallet_ui.write_config("reddit_username", self.reddit_username.text())
+			write_config(self.wallet, "reddit_username", self.reddit_username.text())
 		self.reddit_username.editingFinished.connect(on_reddit_username)
 		grid.addWidget(self.reddit_username, 0, 1)
 
@@ -302,20 +300,40 @@ class WalletSettingsDialog(WindowModalDialog, PrintError):
 		grid.addWidget(QLabel(_('Password')), 1, 0, Qt.AlignRight)
 		self.reddit_password = QLineEdit()
 		self.reddit_password.setEchoMode(QLineEdit.Password)
-		self.reddit_password.setText(self.wallet_ui.read_config("reddit_password"))
+		self.reddit_password.setText(read_config(self.wallet, "reddit_password"))
 		def on_reddit_password():
-			self.wallet_ui.write_config("reddit_password", self.reddit_password.text())
+			write_config(self.wallet, "reddit_password", self.reddit_password.text())
 		self.reddit_password.editingFinished.connect(on_reddit_password)
 		grid.addWidget(self.reddit_password, 1, 1)
 
+		# new group box for various stuff
+		gbox = QGroupBox(_("Various Settings"))
+		grid = QGridLayout(gbox)
+		# grid.setColumnStretch(0, 1)
+		# grid.setColumnStretch(1, 3)
+		main_layout.addWidget(gbox)
+
+		# active when wallet opens
+		self.cb_activate_on_open = QCheckBox(_("Activate ChainTipper when wallet '{wallet_name}'' is opened.").format(wallet_name=self.wallet_ui.wallet_name))
+		self.cb_activate_on_open.setChecked(read_config(self.wallet, "activate_on_wallet_open", False))
+		def on_cb_activate_on_open():
+			write_config(self.wallet, "activate_on_wallet_open", self.cb_activate_on_open.isChecked())
+		self.cb_activate_on_open.stateChanged.connect(on_cb_activate_on_open)
+		grid.addWidget(self.cb_activate_on_open)
+
+		# autopay
+		self.cb_autopay = QCheckBox(_("AutoPay - Automatically pay unpaid tips"))
+		self.cb_autopay.setChecked(read_config(self.wallet, "autopay", False))
+		def on_cb_autopay():
+			write_config(self.wallet, "autopay", self.cb_autopay.isChecked())
+		self.cb_autopay.stateChanged.connect(on_cb_autopay)
+		grid.addWidget(self.cb_autopay)
 
 		# close button
 		cbut = CloseButton(self)
 		main_layout.addLayout(Buttons(cbut))
 		cbut.setDefault(False)
 		cbut.setAutoDefault(False)
-
-		self.refresh()
 
 	def closeEvent(self, event):
 		super().closeEvent(event)
@@ -325,5 +343,5 @@ class WalletSettingsDialog(WindowModalDialog, PrintError):
 
 	def showEvent(self, event):
 		super().showEvent(event)
-		if event.isAccepted():
-			self.refresh()
+		# if event.isAccepted():
+		# 	self.refresh()
