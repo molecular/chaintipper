@@ -1,4 +1,5 @@
-version="1.0-beta1"
+cd $(dirname $0)/..
+version=$(cat manifest.json | jq -r '.version')
 zipfile="chaintipper-${version}.zip"
 
 # precompile to pyc files
@@ -13,10 +14,8 @@ mkdir -p release/chaintipper
 cp *.py release/chaintipper
 
 for module in praw prawcore websocket; do
-	cp -ar ${module} release/chaintipper
+	cp -ar bundled_deps/${module} release/chaintipper
 done
-
-cp -r icons release/chaintipper
 
 cp manifest.json release
 

@@ -1,3 +1,115 @@
+diff -Naur praw/config.py ../praw/config.py
+--- praw/config.py	2021-02-24 03:49:04.000000000 +0100
++++ ../praw/config.py	2021-04-23 10:32:14.179745591 +0200
+@@ -7,7 +7,42 @@
+ from warnings import warn
+ 
+ from .exceptions import ClientException
++from PyQt5 import QtCore
++from ..qresources import qInitResources
+ 
++# praw loads praw.ini from its module directory (or other places)
++# This approach wont work in the context of an electron cash plugin
++# To work around I tried loading praw.ini through qresources, but failed. 
++# So here include the contents of praw.ini as a string here and
++# load that directly in _load_config
++config_string="""
++[DEFAULT]
++# A boolean to indicate whether or not to check for package updates.
++check_for_updates=True
++
++# Object to kind mappings
++comment_kind=t1
++message_kind=t4
++redditor_kind=t2
++submission_kind=t3
++subreddit_kind=t5
++trophy_kind=t6
++
++# The URL prefix for OAuth-related requests.
++oauth_url=https://oauth.reddit.com
++
++# The amount of seconds of ratelimit to sleep for upon encountering a specific type of 429 error.
++ratelimit_seconds=5
++
++# The URL prefix for regular requests.
++reddit_url=https://www.reddit.com
++
++# The URL prefix for short URLs.
++short_url=https://redd.it
++
++# The timeout for requests to Reddit in number of seconds
++timeout=16
++"""
+ 
+ class _NotSet:
+     def __bool__(self):
+@@ -38,27 +73,51 @@
+ 
+     @classmethod
+     def _load_config(cls, config_interpolation: Optional[str] = None):
+-        """Attempt to load settings from various praw.ini files."""
+         if config_interpolation is not None:
+             interpolator_class = cls.INTERPOLATION_LEVEL[config_interpolation]()
+         else:
+             interpolator_class = None
+         config = configparser.ConfigParser(interpolation=interpolator_class)
+-        module_dir = os.path.dirname(sys.modules[__name__].__file__)
+-        if "APPDATA" in os.environ:  # Windows
+-            os_config_path = os.environ["APPDATA"]
+-        elif "XDG_CONFIG_HOME" in os.environ:  # Modern Linux
+-            os_config_path = os.environ["XDG_CONFIG_HOME"]
+-        elif "HOME" in os.environ:  # Legacy Linux
+-            os_config_path = os.path.join(os.environ["HOME"], ".config")
+-        else:
+-            os_config_path = None
+-        locations = [os.path.join(module_dir, "praw.ini"), "praw.ini"]
+-        if os_config_path is not None:
+-            locations.insert(1, os.path.join(os_config_path, "praw.ini"))
+-        config.read(locations)
++
++        # load config from qresources praw.ini
++        # --- THIS doesn't work, results in
++        # QIODevice::read (QFile, ":praw.ini"): device not open
++        # qfile = QtCore.QFile(":praw.ini")
++        # qfile.open(QtCore.QFile.ReadOnly)
++        # data = qfile.readAll()
++        # codec = QtCore.QTextCodec.codecForUtfText(data)
++        # config_as_string = codec.toUnicode(data)
++        # print("******************** config_as_string:", config_as_string)
++        # config.read_string(config_as_string)
++
++        # --- THIS doesn't work, config_as_string is None
++        # qr = QtCore.QResource(":praw.ini")
++        # config_as_string = qr.data()
++        # print("******************** config_as_string:", config_as_string)
++        # config.read_string(config_as_string)
++
++        # this works, but what a hackjob
++        config.read_string(config_string)
++        
+         cls.CONFIG = config
+ 
++
++        """Attempt to load settings from various praw.ini files."""
++        # module_dir = os.path.dirname(sys.modules[__name__].__file__)
++        # if "APPDATA" in os.environ:  # Windows
++        #     os_config_path = os.environ["APPDATA"]
++        # elif "XDG_CONFIG_HOME" in os.environ:  # Modern Linux
++        #     os_config_path = os.environ["XDG_CONFIG_HOME"]
++        # elif "HOME" in os.environ:  # Legacy Linux
++        #     os_config_path = os.path.join(os.environ["HOME"], ".config")
++        # else:
++        #     os_config_path = None
++        # locations = [os.path.join(module_dir, "praw.ini"), "praw.ini"]
++        # if os_config_path is not None:
++        #     locations.insert(1, os.path.join(os_config_path, "praw.ini"))
++        # config.read(locations)
++        # cls.CONFIG = config
++
+     @property
+     def short_url(self) -> str:
+         """Return the short url.
 diff -Naur praw/models/auth.py ../praw/models/auth.py
 --- praw/models/auth.py	2021-02-24 03:49:04.000000000 +0100
 +++ ../praw/models/auth.py	2021-04-21 19:57:35.116076373 +0200
