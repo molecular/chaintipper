@@ -87,15 +87,18 @@ class WalletUI(MessageBoxMixin, PrintError, QWidget):
 				self.sbbtn.set_active(False) # abort activation and toggle back to inactive
 				#self.show_wallet_settings()
 		else:
-			self.reddit_thread = QtCore.QThread()
-			self.reddit.moveToThread(self.reddit_thread)
-			self.reddit_thread.started.connect(self.reddit.run)
+			self.reddit.start_thread()
 			self.reddit.new_tip.connect(self.tiplist.dispatchNewTip)
-			self.reddit_thread.start()
+			self.reddit.dathread.finished.connect(self.reddit_thread_finished)
+
 
 			# So that we get told about when new coins come in, and the UI updates itself
 			if hasattr(self.window, 'history_updated_signal'):
 				self.window.history_updated_signal.connect(self.tiplist_widget.checkPaymentStatus)
+
+	def reddit_thread_finished(self):
+		self.print_error("reddit thread finished")
+		self.sbbtn.set_active(False)
 
 	def activate(self):
 		"""
@@ -116,8 +119,6 @@ class WalletUI(MessageBoxMixin, PrintError, QWidget):
 		self.show_previous_tab()
 		if self.reddit:
 			self.reddit.quit()
-		if self.reddit_thread:
-			self.reddit_thread.quit()
 		# self.close_wallet(wallet) # TODO: this might be misuse
 
 	def show_chaintipper_tab(self):

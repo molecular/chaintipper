@@ -13,7 +13,7 @@ import random
 import socket
 import sys
 
-from PyQt5.QtCore import QObject, pyqtSignal
+from PyQt5.QtCore import QObject, pyqtSignal, QThread
 from PyQt5.QtWidgets import QApplication, QMessageBox
 from PyQt5.QtGui import QIcon
 
@@ -138,9 +138,11 @@ class Reddit(PrintError, QObject):
 						parent = self.wallet_ui.window,
 						title = _("ChainTipper Reddit Authorization"),
 						text = _("Let's connect to your reddit account. \n\nTo do this we need to open a web browser so you can authorize the 'chaintipper' app.\n\n"),
-						buttons = (_("Cancel"), _("Open Browser"))
+						buttons = (_("Open Browser"), _("Cancel")),
+						defaultButton = _("Open Browser"),
+						escapeButton = _("Cancel")
 					)
-					if choice == 1:
+					if choice == 1: # Cancel
 						return False
 
 					webopen(url)
@@ -194,6 +196,14 @@ class Reddit(PrintError, QObject):
 
 	def quit(self):
 		self.should_quit = True
+		if hasattr(self, "dathread"):
+			self.dathread.quit()
+
+	def start_thread(self):
+		self.dathread = QThread()
+		self.moveToThread(self.dathread)
+		self.dathread.started.connect(self.run)
+		self.dathread.start()
 
 	def run(self):
 		self.print_error("Reddit.run() called")
@@ -218,6 +228,8 @@ class Reddit(PrintError, QObject):
 			self.print_error("exception in reddit inbox streaming: ", e)
 
 		self.print_error("exited reddit inbox streaming")
+		
+		self.dathread.quit()
 
 class RedditTip(PrintError, Tip):
 
