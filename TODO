@@ -1,7 +1,34 @@
 	* 1.0
 
-		* alpha
-
+			* when deleting reddit app
+				Traceback (most recent call last):
+				  File "/home/nick/bitcoin/electron-cash/electroncash_plugins/chaintipper/reddit.py", line 56, in run
+				    for item in self.reddit.inbox.stream(pause_after=0):
+				  File "/home/nick/bitcoin/electron-cash/electroncash_plugins/chaintipper/praw/models/util.py", line 187, in stream_generator
+				    for item in reversed(list(function(limit=limit, **function_kwargs))):
+				  File "/home/nick/bitcoin/electron-cash/electroncash_plugins/chaintipper/praw/models/listing/generator.py", line 63, in __next__
+				    self._next_batch()
+				  File "/home/nick/bitcoin/electron-cash/electroncash_plugins/chaintipper/praw/models/listing/generator.py", line 73, in _next_batch
+				    self._listing = self._reddit.get(self.url, params=self.params)
+				  File "/home/nick/bitcoin/electron-cash/electroncash_plugins/chaintipper/praw/reddit.py", line 566, in get
+				    return self._objectify_request(method="GET", params=params, path=path)
+				  File "/home/nick/bitcoin/electron-cash/electroncash_plugins/chaintipper/praw/reddit.py", line 666, in _objectify_request
+				    self.request(
+				  File "/home/nick/bitcoin/electron-cash/electroncash_plugins/chaintipper/praw/reddit.py", line 848, in request
+				    return self._core.request(
+				  File "/home/nick/bitcoin/electron-cash/electroncash_plugins/chaintipper/prawcore/sessions.py", line 324, in request
+				    return self._request_with_retries(
+				  File "/home/nick/bitcoin/electron-cash/electroncash_plugins/chaintipper/prawcore/sessions.py", line 247, in _request_with_retries
+				    return self._do_retry(
+				  File "/home/nick/bitcoin/electron-cash/electroncash_plugins/chaintipper/prawcore/sessions.py", line 156, in _do_retry
+				    return self._request_with_retries(
+				  File "/home/nick/bitcoin/electron-cash/electroncash_plugins/chaintipper/prawcore/sessions.py", line 247, in _request_with_retries
+				    return self._do_retry(
+				  File "/home/nick/bitcoin/electron-cash/electroncash_plugins/chaintipper/prawcore/sessions.py", line 156, in _do_retry
+				    return self._request_with_retries(
+				  File "/home/nick/bitcoin/electron-cash/electroncash_plugins/chaintipper/prawcore/sessions.py", line 260, in _request_with_retries
+				    raise self.STATUS_EXCEPTIONS[response.status_code](response)
+				electroncash_plugins.chaintipper.prawcore.exceptions.InvalidToken: received 401 HTTP response
 
 			* amount_bch sometimes scientific notation "1.0E-7", format it
 
@@ -58,3 +85,5 @@
 		* persist Tip List
 		* utxo selection with fuzzy tip amounts (min_amount, max_amount)
 		* tooltips in table? 
+
+

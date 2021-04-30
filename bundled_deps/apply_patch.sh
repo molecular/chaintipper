@@ -1,9 +1,19 @@
 #!/bin/sh
+pushd $(pwd)
 cd $(dirname $0)
 
-# apply patches
-echo "patching praw to use relative imports and include praw.ini contets as string...."
-patch -p1 < patch_praw_relative_imports.patch 
+# create copy of libs in "patched" folder
+rm -rf patched
+mkdir -p patched
+cp -ar praw prawcore websocket patched
 
-# for running as internal plugin:
-#cp -r praw prawcore websocket ..
+
+# patch the copy in "patched" folder
+echo "patching praw to use relative imports and include praw.ini contets as string...."
+cd patched
+patch -p1 < ../patch_praw_relative_imports.patch 
+
+# for running as internal plugin copy the libs to main code folder
+#cp -r praw prawcore websocket ../..
+
+popd

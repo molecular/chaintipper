@@ -14,7 +14,7 @@ mkdir -p release/chaintipper
 cp *.py release/chaintipper
 
 for module in praw prawcore websocket; do
-	cp -ar bundled_deps/${module} release/chaintipper
+	cp -ar bundled_deps/patched/${module} release/chaintipper
 done
 
 cp manifest.json release
@@ -24,4 +24,5 @@ cd release
 zip -r ../${zipfile} *
 cd ..
 
+echo "copying to blackbox..."
 scp ${zipfile} nick@blackbox:
