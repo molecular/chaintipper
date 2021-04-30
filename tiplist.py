@@ -160,8 +160,6 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 	def create_menu(self, position):
 		"""creates context-menu for single or multiply selected items"""
 
-		self.print_error("create_menu called")
-
 		def doPay(tips: list):
 			"""Start semi-automatic payment of a list of tips using the payto dialog"""
 			self.print_error("paying tips: ", [t.id for t in tips])
@@ -212,10 +210,6 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 
 		unpaid_tips = [t for t in tips if t.payment_status != 'paid' and t.amount_bch]
 		unpaid_count_display_string = f" ({len(unpaid_tips)})" if len(unpaid_tips)>1 else "" 
-
-		# debug
-		for tip in tips:
-			self.print_error("  ", tip.username)
 
 		# create the context menu
 		menu = QMenu()

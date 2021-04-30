@@ -1,4 +1,10 @@
 
+def has_config(wallet, key: str):
+	key = "chaintipper_" + key
+	if wallet.storage.get(key) is None: 
+		return False
+	return len(wallet.storage.get(key)) > 0
+
 def read_config(wallet, key: str, default=None):
 	"""convenience function to write to wallet storage prefixing key with 'chaintipper_'"""
 	key = "chaintipper_" + key
@@ -12,3 +18,4 @@ def write_config(wallet, key: str, value):
 	"""convenience to read from wallet storage prefixing key with 'chaintipper_'"""
 	key = "chaintipper_" + key
 	wallet.storage.put(key, value)
+	wallet.storage._write() # commit to hd

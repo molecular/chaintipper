@@ -34,8 +34,6 @@ from .util import read_config, write_config
 icon_chaintip = QtGui.QIcon(":icons/chaintip.svg")
 icon_chaintip_gray = QtGui.QIcon(":icons/chaintip_gray.svg")
 
-
-
 class WalletUI(MessageBoxMixin, PrintError, QWidget):
 	"""
 	Encapsulates UI for a wallet and associated window.
@@ -83,11 +81,11 @@ class WalletUI(MessageBoxMixin, PrintError, QWidget):
 		self.reddit = Reddit(self)
 		if not self.reddit.login():
 			# login fails, deactivate, inform user and open settings dialog
-			self.print_error("reddit login failed")
-			self.window.show_critical(_("Reddit authentication failed.\nMost likely reason are invalid credentials. Will open settings so you can supply correct credentials."))
+			self.print_error("reddit.login() returned False")
+			# self.window.show_critical(_("Reddit authentication failed.\n\nDeactivating chaintipper on this wallet.\n\nYou can activate it to try again."))
 			if self.sbbtn:
-				self.sbbtn.toggle_active() # abort activation and toggle back to inactive
-				self.show_wallet_settings()
+				self.sbbtn.set_active(False) # abort activation and toggle back to inactive
+				#self.show_wallet_settings()
 		else:
 			self.reddit_thread = QtCore.QThread()
 			self.reddit.moveToThread(self.reddit_thread)
@@ -178,33 +176,7 @@ class WalletUI(MessageBoxMixin, PrintError, QWidget):
 
 
 
-
 class ChaintipperButton(StatusBarButton, PrintError):
-	# """
-	# ChainTipper Button for tray. 
-	# Manages (de-)activation of Chaintipper and has a menu for gloabl and wallet-specific settings
-	# """
-	# @classmethod
-	# def window_for_wallet(cls, wallet):
-	# 	''' Convenience: Given a wallet instance, derefernces the weak_window
-	# 	attribute of the wallet and returns a strong reference to the window.
-	# 	May return None if the window is gone (deallocated).  '''
-	# 	assert isinstance(wallet, Abstract_Wallet)
-	# 	return (wallet.weak_window and wallet.weak_window()) or None
-
-	# @classmethod
-	# def get_suitable_dialog_window_parent(cls, wallet_or_window):
-	# 	''' Convenience: Given a wallet or a window instance, return a suitable
-	# 	'top level window' parent to use for dialog boxes. '''
-	# 	if isinstance(wallet_or_window, Abstract_Wallet):
-	# 		wallet = wallet_or_window
-	# 		window = cls.window_for_wallet(wallet)
-	# 		return (window and window.top_level_window()) or None
-	# 	elif isinstance(wallet_or_window, ElectrumWindow):
-	# 		window = wallet_or_window
-	# 		return window.top_level_window()
-	# 	else:
-	# 		raise TypeError(f"Expected a wallet or a window instance, instead got {type(wallet_or_window)}")
 
 	def __init__(self, wallet_ui):
 		super().__init__(icon_chaintip, fullname, self.toggle_active)
@@ -221,11 +193,14 @@ class ChaintipperButton(StatusBarButton, PrintError):
 
 		action_wsettings = QAction(_("Wallet-specific Settings..."), self)
 		action_wsettings.triggered.connect(self.wallet_ui.show_wallet_settings)
+
+		action_settings = QAction(_("Disconnect reddit app (e.g. to switch reddit account)"), self)
+		action_settings.triggered.connect(self.disconnect_reddit)
 		# action_settings = QAction(_("Global Settings..."), self)
 		# action_settings.triggered.connect(self.wallet_ui.plugin.show_settings_dialog)
 
 		self.addActions([self.action_toggle, action_separator1,
-						 action_wsettings]) # ,action_settings
+						 action_wsettings,action_settings])
 
 		self.setContextMenuPolicy(Qt.ActionsContextMenu)
 
@@ -256,6 +231,10 @@ class ChaintipperButton(StatusBarButton, PrintError):
 		if self.is_active != active:
 			self.is_active = active
 			self.update_state()
+
+	def disconnect_reddit(self):
+		self.wallet_ui.reddit.disconnect()
+		self.set_active(False)
 
 class WalletSettingsDialog(WindowModalDialog, PrintError):
 	"""Dialog for wallet-specific settings"""
