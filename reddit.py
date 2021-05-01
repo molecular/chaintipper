@@ -70,7 +70,15 @@ class Reddit(PrintError, QObject):
 
 	def send_message(self, client, message):
 		"""Send message to client and close the connection."""
-		print(message)
+		message = """
+		<html><body>
+			<script type="text/javascript">
+			  window.close() ;
+			</script>
+		""" + message + """
+		<br><br>You can close this tab.
+		</body></html>
+		"""
 		client.send(f"HTTP/1.1 200 OK\r\n\r\n{message}".encode("utf-8"))
 		client.close()
 
@@ -120,24 +128,21 @@ class Reddit(PrintError, QObject):
 					self.state = str(random.randint(0, 65000))
 					url = self.reddit.auth.url(scopes, self.state, "permanent")
 
-					# choice = self.wallet_ui.window.query_choice(
-					# 	("Let's connect to your reddit account. \n\nTo do this we need to open a web browser so you can authorize the 'chaintipper' app.\n\nAfter clicking 'Ok', the gui will completely freeze until you allow or deny app access."),
-					# 	[_("Open browser"), _("Copy URL, I will open it manually")]
-					# )
-
-					# if choice == 0: # open browser
-					# 	webopen(url)
-					# 	message = _("Your system's browser should now open.")
-					# elif choice == 1: # copy url
-					# 	QApplication.instance().clipboard().setText("hello")
-					# 	message = _("URL copied to clipboard, please open it in browser.")
-					# message += "\n\n" + _("The gui will freeze (listening for a redirect on localhost until you allow access for chaintipper on that page.")
-
 					choice = self.wallet_ui.window.msg_box(
 						icon = QMessageBox.Question,
 						parent = self.wallet_ui.window,
 						title = _("ChainTipper Reddit Authorization"),
-						text = _("Let's connect to your reddit account. \n\nTo do this we need to open a web browser so you can authorize the 'chaintipper' app.\n\n"),
+						rich_text = True,
+						text = "".join([
+							"<h3>", _("Let's connect to your reddit account."), "</h3>",
+							_("To do this we need to open a web browser so you can authorize the 'chaintipper' app."),
+							"<br><br>", _("ChainTipper will request the following permissions: "),
+							"<ul>",
+							"<li><b>", _("Private Messages"), "</b>: ", _("Access my inbox and send private messages to other users."), "</li>",
+							"<li><b>", _("Read"), "</b>: ", _("Access posts and comments through my account."), "</li>",
+							"</ul>"
+							"<small>", _("Note: unfortunately there is no read-only permission for private messages. ChainTipper doesn't write messages."), "</small>"
+						]),
 						buttons = (_("Open Browser"), _("Cancel")),
 						defaultButton = _("Open Browser"),
 						escapeButton = _("Cancel")
@@ -178,13 +183,13 @@ class Reddit(PrintError, QObject):
 				)
 				return False
 			elif "error" in params:
-				self.send_message(client, params["error"])
+				self.send_message(client, f'Authorization failed with "{params["error"]}".<br><br>Chaintipper will deactivate.')
 				return False
 
 			#msgbox.close()
 			refresh_token = self.reddit.auth.authorize(params["code"])
 			self.print_error("refresh_token: ", refresh_token)
-			self.send_message(client, f"Refresh token: {refresh_token}")
+			self.send_message(client, f"Refresh token: {refresh_token}<br><br>Chaintipper should now be connected to your Reddit Account")
 
 			# store refresh token into wallet storage (wonder why praw doesn't call token manager to do this)
 			write_config(self.wallet_ui.wallet, WalletStorageTokenManager.REFRESH_TOKEN_KEY, refresh_token)
@@ -228,7 +233,7 @@ class Reddit(PrintError, QObject):
 			self.print_error("exception in reddit inbox streaming: ", e)
 
 		self.print_error("exited reddit inbox streaming")
-		
+
 		self.dathread.quit()
 
 class RedditTip(PrintError, Tip):

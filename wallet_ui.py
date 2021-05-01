@@ -91,7 +91,6 @@ class WalletUI(MessageBoxMixin, PrintError, QWidget):
 			self.reddit.new_tip.connect(self.tiplist.dispatchNewTip)
 			self.reddit.dathread.finished.connect(self.reddit_thread_finished)
 
-
 			# So that we get told about when new coins come in, and the UI updates itself
 			if hasattr(self.window, 'history_updated_signal'):
 				self.window.history_updated_signal.connect(self.tiplist_widget.checkPaymentStatus)
@@ -195,7 +194,7 @@ class ChaintipperButton(StatusBarButton, PrintError):
 		action_wsettings = QAction(_("Wallet-specific Settings..."), self)
 		action_wsettings.triggered.connect(self.wallet_ui.show_wallet_settings)
 
-		action_settings = QAction(_("Disconnect reddit app (e.g. to switch reddit account)"), self)
+		action_settings = QAction(_("Forget Reddit Authorization (e.g. to switch reddit account)"), self)
 		action_settings.triggered.connect(self.disconnect_reddit)
 		# action_settings = QAction(_("Global Settings..."), self)
 		# action_settings.triggered.connect(self.wallet_ui.plugin.show_settings_dialog)
@@ -237,6 +236,8 @@ class ChaintipperButton(StatusBarButton, PrintError):
 		self.wallet_ui.reddit.disconnect()
 		self.set_active(False)
 
+
+
 class WalletSettingsDialog(WindowModalDialog, PrintError):
 	"""Dialog for wallet-specific settings"""
 
@@ -260,34 +261,32 @@ class WalletSettingsDialog(WindowModalDialog, PrintError):
 		#main_layout.addWidget(QLabel(_('ChainTipper - settings for wallet "{wallet_name}"').format(wallet_name=self.wallet_ui.wallet_name)), 0, 0, Qt.AlignRight)
 
 
-		# reddit credentials
-		gbox = QGroupBox(_("Reddit Credentials"))
-		grid = QGridLayout(gbox)
-		# grid.setColumnStretch(0, 1)
-		# grid.setColumnStretch(1, 3)
-		main_layout.addWidget(gbox)
+		# # reddit credentials
+		# gbox = QGroupBox(_("Reddit Credentials"))
+		# grid = QGridLayout(gbox)
+		# main_layout.addWidget(gbox)
 
-		# reddit username
-		grid.addWidget(QLabel(_('Username')), 0, 0, Qt.AlignRight)
-		self.reddit_username = QLineEdit()
-		self.reddit_username.setText(read_config(self.wallet, "reddit_username"))
-		def on_reddit_username():
-			write_config(self.wallet, "reddit_username", self.reddit_username.text())
-		self.reddit_username.editingFinished.connect(on_reddit_username)
-		grid.addWidget(self.reddit_username, 0, 1)
+		# # reddit username
+		# grid.addWidget(QLabel(_('Username')), 0, 0, Qt.AlignRight)
+		# self.reddit_username = QLineEdit()
+		# self.reddit_username.setText(read_config(self.wallet, "reddit_username"))
+		# def on_reddit_username():
+		# 	write_config(self.wallet, "reddit_username", self.reddit_username.text())
+		# self.reddit_username.editingFinished.connect(on_reddit_username)
+		# grid.addWidget(self.reddit_username, 0, 1)
 
-		# reddit password
-		grid.addWidget(QLabel(_('Password')), 1, 0, Qt.AlignRight)
-		self.reddit_password = QLineEdit()
-		self.reddit_password.setEchoMode(QLineEdit.Password)
-		self.reddit_password.setText(read_config(self.wallet, "reddit_password"))
-		def on_reddit_password():
-			write_config(self.wallet, "reddit_password", self.reddit_password.text())
-		self.reddit_password.editingFinished.connect(on_reddit_password)
-		grid.addWidget(self.reddit_password, 1, 1)
+		# # reddit password
+		# grid.addWidget(QLabel(_('Password')), 1, 0, Qt.AlignRight)
+		# self.reddit_password = QLineEdit()
+		# self.reddit_password.setEchoMode(QLineEdit.Password)
+		# self.reddit_password.setText(read_config(self.wallet, "reddit_password"))
+		# def on_reddit_password():
+		# 	write_config(self.wallet, "reddit_password", self.reddit_password.text())
+		# self.reddit_password.editingFinished.connect(on_reddit_password)
+		# grid.addWidget(self.reddit_password, 1, 1)
 
 		# new group box for various stuff
-		gbox = QGroupBox(_("Various Settings"))
+		gbox = QGroupBox(_("Behavior"))
 		grid = QGridLayout(gbox)
 		# grid.setColumnStretch(0, 1)
 		# grid.setColumnStretch(1, 3)
