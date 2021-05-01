@@ -349,6 +349,12 @@ class RedditTip(PrintError, Tip):
 			self.amount_bch = round(self.tip_quantity / rate, 8)
 			#self.print_error("rate for tip_unit", self.tip_unit, ": ", rate)
 			self.payment_status = 'amount parsed'
+
+		# if self.payment_status == 'amount parsed':
+		# 	autopay_use_limit = read_config(self.wallet, "autopay_use_limit", c["default_autopay_use_limit"])
+		# 	autopay_limit_bch = Decimal(read_config(self.wallet, "autopay_limit_bch", c["default_autopay_limit_bch"]))
+		# 	if autopay_use_limit and autopay_limit_bch < self.amount_bch:
+		# 		self.payment_status = 'autopay limited'
 			
 	def getRate(self, ccy: str):
 		if ccy == 'BCH':

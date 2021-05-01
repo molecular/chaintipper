@@ -121,7 +121,12 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 			return False
 
 		# some sanity filtering just in case
-		tips = [tip for tip in tips if tip.payment_status == 'amount parsed']
+		autopay_use_limit = read_config(self.wallet, "autopay_use_limit", c["default_autopay_use_limit"])
+		autopay_limit_bch = Decimal(read_config(self.wallet, "autopay_limit_bch", c["default_autopay_limit_bch"]))
+		tips = [tip for tip in tips if tip.payment_status == 'amount parsed' and (not autopay_use_limit or tip.amount_bch < autopay_limit_bch)]
+
+		if len(tips) <= 0:
+			return
 
 		# label
 		desc = "chaintip "

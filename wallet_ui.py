@@ -30,6 +30,7 @@ from .reddit import Reddit
 from .model import TipList
 from .tiplist import TipListWidget
 from .util import read_config, write_config
+from .config import c
 
 icon_chaintip = QtGui.QIcon(":icons/chaintip.svg")
 icon_chaintip_gray = QtGui.QIcon(":icons/chaintip_gray.svg")
@@ -285,11 +286,9 @@ class WalletSettingsDialog(WindowModalDialog, PrintError):
 		# self.reddit_password.editingFinished.connect(on_reddit_password)
 		# grid.addWidget(self.reddit_password, 1, 1)
 
-		# new group box for various stuff
-		gbox = QGroupBox(_("Behavior"))
+		# --- group for startup settings
+		gbox = QGroupBox(_("Startup Settings"))
 		grid = QGridLayout(gbox)
-		# grid.setColumnStretch(0, 1)
-		# grid.setColumnStretch(1, 3)
 		main_layout.addWidget(gbox)
 
 		# active when wallet opens
@@ -300,13 +299,46 @@ class WalletSettingsDialog(WindowModalDialog, PrintError):
 		self.cb_activate_on_open.stateChanged.connect(on_cb_activate_on_open)
 		grid.addWidget(self.cb_activate_on_open)
 
-		# autopay
+		# --- group autopay
+		gbox = QGroupBox(_("AutoPay"))
+		vbox = QVBoxLayout(gbox)
+		main_layout.addWidget(gbox)
+
+		# autopay checkbox
 		self.cb_autopay = QCheckBox(_("AutoPay - Automatically pay unpaid tips"))
 		self.cb_autopay.setChecked(read_config(self.wallet, "autopay", False))
 		def on_cb_autopay():
+			self.cb_autopay_limit.setEnabled(self.cb_autopay.isChecked())
 			write_config(self.wallet, "autopay", self.cb_autopay.isChecked())
+			on_cb_autopay_limit()
 		self.cb_autopay.stateChanged.connect(on_cb_autopay)
-		grid.addWidget(self.cb_autopay)
+		vbox.addWidget(self.cb_autopay)
+
+		# autopay limit checkbox
+		self.cb_autopay_limit = QCheckBox(_("Limit AutoPay Amount"))
+		self.cb_autopay_limit.setChecked(read_config(self.wallet, "autopay_use_limit", c["default_autopay_use_limit"]))
+		def on_cb_autopay_limit():
+			self.autopay_limit_bch_label.setEnabled(self.cb_autopay.isChecked() and self.cb_autopay_limit.isChecked())
+			self.autopay_limit_bch.setEnabled(self.cb_autopay.isChecked() and self.cb_autopay_limit.isChecked())
+			write_config(self.wallet, "autopay_use_limit", self.cb_autopay_limit.isChecked())
+		self.cb_autopay_limit.stateChanged.connect(on_cb_autopay_limit)
+		vbox.addWidget(self.cb_autopay_limit)
+
+		# autopay limit (amount)
+		hbox = QHBoxLayout()
+		vbox.addLayout(hbox)
+		self.autopay_limit_bch_label = QLabel(_('AutoPay Limit (BCH)'))
+		hbox.addWidget(self.autopay_limit_bch_label, 10, Qt.AlignRight)
+		self.autopay_limit_bch = QLineEdit()
+		self.autopay_limit_bch.setText(read_config(self.wallet, "autopay_limit_bch", c["default_autopay_limit_bch"]))
+		def on_autopay_limit_bch():
+			write_config(self.wallet, "autopay_limit_bch", self.autopay_limit_bch.text())
+		self.autopay_limit_bch.editingFinished.connect(on_autopay_limit_bch)
+		hbox.addWidget(self.autopay_limit_bch, 40)
+
+		# ensure correct enable state
+		on_cb_autopay()
+
 
 		# close button
 		cbut = CloseButton(self)
