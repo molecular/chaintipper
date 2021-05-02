@@ -47,6 +47,9 @@ class WalletStorageTokenManager(praw.util.token_manager.BaseTokenManager, PrintE
 		return has_config(self.wallet, WalletStorageTokenManager.REFRESH_TOKEN_KEY)
 
 class Reddit(PrintError, QObject):
+	"""implement reddit client to read new inbox messages, parse tip comments and so on
+	authorization stuff was largely taken from https://praw.readthedocs.io/en/latest/tutorials/refresh_token.html#using-refresh-tokens
+	"""
 	new_tip = pyqtSignal(Tip)
 
 	def __init__(self, wallet_ui):
@@ -268,7 +271,7 @@ class RedditTip(PrintError, Tip):
 		self.status = "parsing chaintip message"
 
 		# parse chaintip message
-		if self.chaintip_message.author.name == 'chaintip':
+		if hasattr(self.chaintip_message.author, "name") and self.chaintip_message.author.name == 'chaintip':
 			self.is_chaintip = True
 			#self.print_error(f"parsing chaintip message {message.id}")
 
@@ -357,6 +360,7 @@ class RedditTip(PrintError, Tip):
 		# 		self.payment_status = 'autopay limited'
 			
 	def getRate(self, ccy: str):
+		ccy = ccy.upper()
 		if ccy == 'BCH':
 			rate = Decimal("1.0")
 		else:

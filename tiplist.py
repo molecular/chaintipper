@@ -14,7 +14,7 @@ from PyQt5.QtWidgets import *
 
 from electroncash.i18n import _
 from electroncash_gui.qt import ElectrumWindow
-from electroncash_gui.qt.util import *
+from electroncash_gui.qt.util import webopen, MessageBoxMixin, MyTreeWidget
 from electroncash.transaction import Transaction
 from electroncash.util import PrintError, print_error, age, Weak, InvalidPassword, format_time
 from electroncash import keystore, get_config
@@ -41,6 +41,7 @@ class TipListItem(QTreeWidgetItem):
 				#o.id,
 				format_time(o.chaintip_message.created_utc), 
 				#o.type,
+				o.status,
 				o.payment_status,
 				#o.chaintip_message.author.name,
 				#o.chaintip_message.subject,
@@ -51,7 +52,6 @@ class TipListItem(QTreeWidgetItem):
 				o.tip_amount_text,
 				str(o.tip_quantity),
 				o.tip_unit,
-				#o.status
 				#o.tipping_comment_id,
 				o.tipping_comment.body.partition('\n')[0],
 			])
@@ -67,6 +67,7 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 								#_('ID'), 
 								_('Date'),
 								#_('Type'),
+								_('Status'),
 								_('Payment Status'), 
 								#_('Author'), 
 								#_('Subject'), 
@@ -77,10 +78,9 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 								_('Tip Amount Text'),
 								_('Tip Quantity'),
 								_('Tip Unit'),
-								#_('Status'),
 								#_('Tip Comment'), 
 								_('Tip Comment body'),
-							], 9, [],  # headers, stretch_column, editable_columns
+							], 8, [],  # headers, stretch_column, editable_columns
 							deferred_updates=True, save_sort_settings=True)
 
 		self.window = window
@@ -192,6 +192,8 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 		def doAutoPay(tips: list):
 			self.pay(tips)
 
+		def doOpenBrowser(tip: Tip):
+			webopen(c["reddit"]["url_prefix"] + tip.tipping_comment.permalink)
 
 		def doMarkRead(tips: list):
 			"""call mark_read() on each of the 'tips' and remove them from tiplist"""
@@ -207,7 +209,7 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 		# put tips into array (single or multiple if selection)
 		count_display_string = ""
 		item = self.itemAt(position)
-		if len(self.selectedItems()) <= 1:
+		if len(self.selectedItems()) == 1:
 			tips = [item.tip]
 		else:
 			tips = [s.tip for s in self.selectedItems()]
@@ -218,7 +220,10 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 
 		# create the context menu
 		menu = QMenu()
-		menu.addAction(_(f"mark read{count_display_string}"), lambda: doMarkRead(tips))
+		if len(tips) > 0:
+			menu.addAction(_(f"mark read{count_display_string}"), lambda: doMarkRead(tips))
+		if len(self.selectedItems()) == 1:
+			menu.addAction(_(f"open browser to tipping comment"), lambda: doOpenBrowser(tips[0]))
 		if len(unpaid_tips) > 0:
 			menu.addAction(_(f"pay{unpaid_count_display_string}..."), lambda: doPay(unpaid_tips))
 			menu.addAction(_(f"autopay{unpaid_count_display_string}"), lambda: doAutoPay(unpaid_tips))

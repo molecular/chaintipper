@@ -9,6 +9,7 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import Qt
 
 import weakref
+import decimal
 
 from electroncash.i18n import _
 from electroncash_gui.qt import ElectrumWindow, MessageBoxMixin
@@ -30,7 +31,7 @@ from .reddit import Reddit
 from .model import TipList
 from .tiplist import TipListWidget
 from .util import read_config, write_config
-from .config import c
+from .config import c, amount_config_to_rich_text
 
 icon_chaintip = QtGui.QIcon(":icons/chaintip.svg")
 icon_chaintip_gray = QtGui.QIcon(":icons/chaintip_gray.svg")
@@ -200,12 +201,32 @@ class ChaintipperButton(StatusBarButton, PrintError):
 		# action_settings = QAction(_("Global Settings..."), self)
 		# action_settings.triggered.connect(self.wallet_ui.plugin.show_settings_dialog)
 
-		self.addActions([self.action_toggle, action_separator1,
-						 action_wsettings,action_settings])
+		action_separator2 = QAction(self); action_separator2.setSeparator(True)
+
+		show_monikers = QAction(_("Show Amount Monikers"), self)
+		show_monikers.triggered.connect(self.showMonikers)
+
+		self.addActions([
+			self.action_toggle, 
+			action_separator1,
+			action_wsettings,
+			action_settings,
+			action_separator2, 
+			show_monikers
+		])
 
 		self.setContextMenuPolicy(Qt.ActionsContextMenu)
 
 		self.update_state()
+
+	def showMonikers(self):
+		self.wallet_ui.msg_box(
+			icon = QMessageBox.Question,
+			parent = self.wallet_ui.window,
+			title = _("Amount Monikers"),
+			rich_text = True,
+			text = amount_config_to_rich_text()
+		)
 
 	def update_state(self):
 		self.action_toggle.setChecked(self.is_active)
@@ -239,7 +260,7 @@ class ChaintipperButton(StatusBarButton, PrintError):
 
 
 
-class WalletSettingsDialog(WindowModalDialog, PrintError):
+class WalletSettingsDialog(WindowModalDialog, PrintError, MessageBoxMixin):
 	"""Dialog for wallet-specific settings"""
 
 	def __init__(self, wallet_ui, parent):
@@ -291,6 +312,7 @@ class WalletSettingsDialog(WindowModalDialog, PrintError):
 		grid = QGridLayout(gbox)
 		main_layout.addWidget(gbox)
 
+
 		# active when wallet opens
 		self.cb_activate_on_open = QCheckBox(_("Activate ChainTipper when wallet '{wallet_name}'' is opened.").format(wallet_name=self.wallet_ui.wallet_name))
 		self.cb_activate_on_open.setChecked(read_config(self.wallet, "activate_on_wallet_open", False))
@@ -299,20 +321,63 @@ class WalletSettingsDialog(WindowModalDialog, PrintError):
 		self.cb_activate_on_open.stateChanged.connect(on_cb_activate_on_open)
 		grid.addWidget(self.cb_activate_on_open)
 
+		# --- group Default Tip Amount
+		gbox = QGroupBox(_("Default Tip Amount (used when amount parsing doesn\'t yield a result)"))
+		grid = QGridLayout(gbox)
+		main_layout.addWidget(gbox)
+
+		# amount
+		grid.addWidget(QLabel(_('Amount')), 0, 0, Qt.AlignRight)
+		self.default_amount = QLineEdit()
+		self.default_amount.setText(read_config(self.wallet, "default_amount", c["default_amount"]))
+		def on_default_amount():
+			try:
+				self.default_amount.setText(str(decimal.Decimal(self.default_amount.text())))
+			except decimal.InvalidOperation as e:
+				self.show_error(_("Cannot parse {string} as decimal number. Please try again.").format(string=self.default_amount.text()))
+				self.default_amount.setText(read_config(self.wallet, "default_amount", c["default_amount"]))
+			write_config(self.wallet, "default_amount", self.default_amount.text())
+		self.default_amount.editingFinished.connect(on_default_amount)
+		grid.addWidget(self.default_amount, 0, 1)
+
+		# currency
+		self.currencies = sorted(self.wallet_ui.window.fx.get_currencies(self.wallet_ui.window.fx.get_history_config()))
+		grid.addWidget(QLabel(_('Currency')), 1, 0, Qt.AlignRight)
+		self.default_amount_currency = QComboBox()
+		self.default_amount_currency.addItems(self.currencies)
+		self.default_amount_currency.setCurrentIndex(
+			self.default_amount_currency.findText(
+				read_config(self.wallet, "default_amount_currency", c["default_amount_currency"])
+			)
+		)
+		def on_default_amount_currency():
+			write_config(self.wallet, "default_amount_currency", self.currencies[self.default_amount_currency.currentIndex()])
+		self.default_amount_currency.currentIndexChanged.connect(on_default_amount_currency)
+		grid.addWidget(self.default_amount_currency, 1, 1)
+
 		# --- group autopay
 		gbox = QGroupBox(_("AutoPay"))
 		vbox = QVBoxLayout(gbox)
 		main_layout.addWidget(gbox)
 
 		# autopay checkbox
-		self.cb_autopay = QCheckBox(_("AutoPay - Automatically pay unpaid tips"))
+		self.cb_autopay = QCheckBox(_("AutoPay - Automatically pay unpaid tips as chaintip message comes in"))
 		self.cb_autopay.setChecked(read_config(self.wallet, "autopay", False))
 		def on_cb_autopay():
 			self.cb_autopay_limit.setEnabled(self.cb_autopay.isChecked())
+			self.cb_autopay_disallow_default.setEnabled(self.cb_autopay.isChecked())
 			write_config(self.wallet, "autopay", self.cb_autopay.isChecked())
 			on_cb_autopay_limit()
 		self.cb_autopay.stateChanged.connect(on_cb_autopay)
 		vbox.addWidget(self.cb_autopay)
+
+		# don't autopay when default amount is used
+		self.cb_autopay_disallow_default = QCheckBox(_("Disallow AutoPay when Default Tip Amount is used"))
+		self.cb_autopay_disallow_default.setChecked(read_config(self.wallet, "autopay_disallow_default", False))
+		def on_cb_autopay_disallow_default():
+			write_config(self.wallet, "autopay_disallow_default", self.cb_autopay_disallow_default.isChecked())
+		self.cb_autopay_disallow_default.stateChanged.connect(on_cb_autopay_disallow_default)
+		vbox.addWidget(self.cb_autopay_disallow_default)
 
 		# autopay limit checkbox
 		self.cb_autopay_limit = QCheckBox(_("Limit AutoPay Amount"))

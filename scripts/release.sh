@@ -1,6 +1,6 @@
 cd $(dirname $0)/..
 version=$(cat manifest.json | jq -r '.version')
-zipfile="chaintipper-${version}.zip"
+zipfile="ChainTipper-${version}.zip"
 
 # precompile to pyc files
 python -m compileall .
@@ -24,5 +24,9 @@ cd release
 zip -r ../${zipfile} *
 cd ..
 
-echo "copying to blackbox..."
-scp ${zipfile} nick@blackbox:
+sha256sum ChainTipper*.zip > "SHA256.ChainTipper.txt"
+
+# run any post-release copying 
+if [ -e "scripts/local_release.sh" ]; then
+	scripts/local_release.sh ${zipfile}
+fi
