@@ -1,54 +1,14 @@
 	* 1.0
 
-			* when deleting reddit app
-				Traceback (most recent call last):
-				  File "/home/nick/bitcoin/electron-cash/electroncash_plugins/chaintipper/reddit.py", line 56, in run
-				    for item in self.reddit.inbox.stream(pause_after=0):
-				  File "/home/nick/bitcoin/electron-cash/electroncash_plugins/chaintipper/praw/models/util.py", line 187, in stream_generator
-				    for item in reversed(list(function(limit=limit, **function_kwargs))):
-				  File "/home/nick/bitcoin/electron-cash/electroncash_plugins/chaintipper/praw/models/listing/generator.py", line 63, in __next__
-				    self._next_batch()
-				  File "/home/nick/bitcoin/electron-cash/electroncash_plugins/chaintipper/praw/models/listing/generator.py", line 73, in _next_batch
-				    self._listing = self._reddit.get(self.url, params=self.params)
-				  File "/home/nick/bitcoin/electron-cash/electroncash_plugins/chaintipper/praw/reddit.py", line 566, in get
-				    return self._objectify_request(method="GET", params=params, path=path)
-				  File "/home/nick/bitcoin/electron-cash/electroncash_plugins/chaintipper/praw/reddit.py", line 666, in _objectify_request
-				    self.request(
-				  File "/home/nick/bitcoin/electron-cash/electroncash_plugins/chaintipper/praw/reddit.py", line 848, in request
-				    return self._core.request(
-				  File "/home/nick/bitcoin/electron-cash/electroncash_plugins/chaintipper/prawcore/sessions.py", line 324, in request
-				    return self._request_with_retries(
-				  File "/home/nick/bitcoin/electron-cash/electroncash_plugins/chaintipper/prawcore/sessions.py", line 247, in _request_with_retries
-				    return self._do_retry(
-				  File "/home/nick/bitcoin/electron-cash/electroncash_plugins/chaintipper/prawcore/sessions.py", line 156, in _do_retry
-				    return self._request_with_retries(
-				  File "/home/nick/bitcoin/electron-cash/electroncash_plugins/chaintipper/prawcore/sessions.py", line 247, in _request_with_retries
-				    return self._do_retry(
-				  File "/home/nick/bitcoin/electron-cash/electroncash_plugins/chaintipper/prawcore/sessions.py", line 156, in _do_retry
-				    return self._request_with_retries(
-				  File "/home/nick/bitcoin/electron-cash/electroncash_plugins/chaintipper/prawcore/sessions.py", line 260, in _request_with_retries
-				    raise self.STATUS_EXCEPTIONS[response.status_code](response)
-				electroncash_plugins.chaintipper.prawcore.exceptions.InvalidToken: received 401 HTTP response
-
-			* amount_bch sometimes scientific notation "1.0E-7", format it
 
 			* segfault on close (at least on blackbox)
-			* Plugin.close_wallet does nothing
-
-			* divert error reports to my github
-
-			* "go to tipping comment"
-
-			* tiplistwidget cut off on the rigth?!?
-
-			* default amount in settings
-
-			* reddit logon: display "waiting for yout to authorize chaintipper to access your reddit account, check your browser"?
+			* maybe related: Plugin.close_wallet does nothing
 
 		* for any semi-public release
 
 			* make tg group for beta testers (don't call it beta, just "chaintipper")
 
+			* divert error reports to my github
 			* clean up the code
 			* readme.md for github
 			* rebase and push to github once code is de-cluttered
@@ -56,7 +16,15 @@
 			* LICENSE
 			* DONT RELEASE PW IN config.py!!!
 
-	* beta
+	* later
+
+		* autopay_amount_currency: add BCH option
+
+		* menu-item "set amount" with a dialog
+
+		* reddit logon: display "waiting for yout to authorize chaintipper to access your reddit account, check your browser"?
+
+		* amount_bch sometimes scientific notation "1.0E-7", format it
 
 		* reddit.py receive loop: reparse amount on Comment change?
 

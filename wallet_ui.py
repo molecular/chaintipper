@@ -362,7 +362,7 @@ class WalletSettingsDialog(WindowModalDialog, PrintError, MessageBoxMixin):
 
 		# autopay checkbox
 		self.cb_autopay = QCheckBox(_("AutoPay - Automatically pay unpaid tips as chaintip message comes in"))
-		self.cb_autopay.setChecked(read_config(self.wallet, "autopay", False))
+		self.cb_autopay.setChecked(read_config(self.wallet, "autopay", c["default_autopay"]))
 		def on_cb_autopay():
 			self.cb_autopay_limit.setEnabled(self.cb_autopay.isChecked())
 			self.cb_autopay_disallow_default.setEnabled(self.cb_autopay.isChecked())
@@ -373,7 +373,7 @@ class WalletSettingsDialog(WindowModalDialog, PrintError, MessageBoxMixin):
 
 		# don't autopay when default amount is used
 		self.cb_autopay_disallow_default = QCheckBox(_("Disallow AutoPay when Default Tip Amount is used"))
-		self.cb_autopay_disallow_default.setChecked(read_config(self.wallet, "autopay_disallow_default", False))
+		self.cb_autopay_disallow_default.setChecked(read_config(self.wallet, "autopay_disallow_default", c["default_autopay_disallow_default"]))
 		def on_cb_autopay_disallow_default():
 			write_config(self.wallet, "autopay_disallow_default", self.cb_autopay_disallow_default.isChecked())
 		self.cb_autopay_disallow_default.stateChanged.connect(on_cb_autopay_disallow_default)

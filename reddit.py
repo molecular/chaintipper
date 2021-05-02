@@ -226,7 +226,7 @@ class Reddit(PrintError, QObject):
 				if item is None:
 					continue
 				if isinstance(item, praw.models.Message):
-					tip = RedditTip(self.reddit, item)
+					tip = RedditTip(self, item)
 					if tip.isValid():
 						if not self.should_quit:
 							self.new_tip.emit(tip)
@@ -302,7 +302,7 @@ class RedditTip(PrintError, Tip):
 
 			# fetch tipping comment
 			if self.tipping_comment_id:
-				comment = self.reddit.comment(id = self.tipping_comment_id)
+				comment = self.reddit.reddit.comment(id = self.tipping_comment_id)
 				self.parseTippingComment(comment)
 
 	p_tip = re.compile('.*(/u/chaintip (\S*)\s*(\S*))', re.MULTILINE | re.DOTALL)
@@ -311,7 +311,7 @@ class RedditTip(PrintError, Tip):
 		#self.print_error("got tipping comment:", comment.body)
 		self.tipping_comment = comment
 		m = RedditTip.p_tip.match(self.tipping_comment.body)
-		self.tip_unit = 'sat'
+		self.tip_unit = ''
 		if m:
 			try:
 				self.tip_amount_text = m.group(1)
@@ -331,12 +331,20 @@ class RedditTip(PrintError, Tip):
 			except Exception as e:
 				self.print_error("Error parsing tip amount: ", repr(e))
 				traceback.print_exc()
-				self.amount_bch = amount_config["default_amount_bch"]
+				self.status = 'default amount'
+				self.payment_status = 'ready to pay'
+				self.amount_bch = self.getDefaultAmountBCH()
+		else: # use default amount
+			self.status = 'default amount'
+			self.payment_status = 'ready to pay'
+			self.amount_bch = self.getDefaultAmountBCH()
+
+		self.qualifiesForAutopay() # will update payment_status
 
 	def evaluateAmount(self):
 		# in case all else fails, use default amount
-		self.payment_status = 'using default amount'
-		self.amount_bch = amount_config["default_amount_bch"]
+		self.status = 'default amount'
+		self.amount_bch = self.getDefaultAmountBCH()
 
 		# find unit from amount config
 		matching_units = (unit for unit in amount_config["units"] if self.tip_unit in unit["names"])
@@ -345,20 +353,30 @@ class RedditTip(PrintError, Tip):
 			rate = self.getRate(unit["value_currency"])
 			self.amount_bch = round(self.tip_quantity * unit["value"] / rate, 8)
 			#self.print_error("found unit", unit, "value", unit["value"], "quantity", self.tip_quantity, "rate", rate)
-			self.payment_status = 'amount parsed'
+			self.status = 'amount parsed'
+			self.payment_status = 'ready to pay'
 		else:		
 			# try tip_unit as currency 
 			rate = self.getRate(self.tip_unit)
 			self.amount_bch = round(self.tip_quantity / rate, 8)
 			#self.print_error("rate for tip_unit", self.tip_unit, ": ", rate)
-			self.payment_status = 'amount parsed'
+			self.status = 'amount parsed'
+			self.payment_status = 'ready to pay'
 
-		# if self.payment_status == 'amount parsed':
+		# if self.payment_status == 'ready to pay':
 		# 	autopay_use_limit = read_config(self.wallet, "autopay_use_limit", c["default_autopay_use_limit"])
 		# 	autopay_limit_bch = Decimal(read_config(self.wallet, "autopay_limit_bch", c["default_autopay_limit_bch"]))
 		# 	if autopay_use_limit and autopay_limit_bch < self.amount_bch:
 		# 		self.payment_status = 'autopay limited'
 			
+	def getDefaultAmountBCH(self):
+		wallet = self.reddit.wallet_ui.wallet
+		amount = Decimal(read_config(wallet, "default_amount"))
+		currency = read_config(wallet, "default_amount_currency")
+		rate = self.getRate(currency)
+		amount_bch = round(amount / rate, 8)
+		return amount_bch
+
 	def getRate(self, ccy: str):
 		ccy = ccy.upper()
 		if ccy == 'BCH':
@@ -376,3 +394,24 @@ class RedditTip(PrintError, Tip):
 			#self.print_error("rate", rate)
 		return rate
 
+	def qualifiesForAutopay(self):
+		wallet = self.reddit.wallet_ui.wallet
+
+		if self.payment_status != 'ready to pay': return False
+
+		if not read_config(wallet, "autopay", c["default_autopay"]): 
+			self.payment_status = 'autopay disabled'
+			return False		
+
+		if read_config(wallet, "autopay_disallow_default", c["default_autopay_disallow_default"]): 
+			self.payment_status = 'autopay default amount disallowed'
+			return False
+
+		autopay_use_limit = read_config(wallet, "autopay_use_limit", c["default_autopay_use_limit"])
+		autopay_limit_bch = Decimal(read_config(wallet, "autopay_limit_bch", c["default_autopay_limit_bch"]))
+
+		if autopay_use_limit and self.amount_bch > autopay_limit_bch: 
+			self.payment_status = "autopay limited"
+			return False
+
+		return True

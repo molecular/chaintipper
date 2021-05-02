@@ -43,6 +43,7 @@ class TipListItem(QTreeWidgetItem):
 				#o.type,
 				o.status,
 				o.payment_status,
+				str(o.qualifiesForAutopay()),
 				#o.chaintip_message.author.name,
 				#o.chaintip_message.subject,
 				o.username,
@@ -68,7 +69,8 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 								_('Date'),
 								#_('Type'),
 								_('Status'),
-								_('Payment Status'), 
+								_('Payment Status'),
+								_('will autopay'), 
 								#_('Author'), 
 								#_('Subject'), 
 								_('Recipient'), 
@@ -121,9 +123,10 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 			return False
 
 		# some sanity filtering just in case
-		autopay_use_limit = read_config(self.wallet, "autopay_use_limit", c["default_autopay_use_limit"])
-		autopay_limit_bch = Decimal(read_config(self.wallet, "autopay_limit_bch", c["default_autopay_limit_bch"]))
-		tips = [tip for tip in tips if tip.payment_status == 'amount parsed' and (not autopay_use_limit or tip.amount_bch < autopay_limit_bch)]
+		# autopay_use_limit = read_config(self.wallet, "autopay_use_limit", c["default_autopay_use_limit"])
+		# autopay_limit_bch = Decimal(read_config(self.wallet, "autopay_limit_bch", c["default_autopay_limit_bch"]))
+		# tips = [tip for tip in tips if tip.payment_status == 'ready to pay' and (not autopay_use_limit or tip.amount_bch < autopay_limit_bch)]
+		tips = [tip for tip in tips if tip.qualifiesForAutopay()]
 
 		if len(tips) <= 0:
 			return
@@ -158,7 +161,7 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 		except Exception as e:
 			self.print_error("error broadcasting tx: ", e)
 			for tip in tips:
-				tip.payment_status = "broadcast error" #: " + str(e)
+				tip.payment_status = "tx broadcast error" #: " + str(e)
 				self.tiplist.updateTip(tip)
 
 
@@ -218,6 +221,10 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 		unpaid_tips = [t for t in tips if t.payment_status != 'paid' and t.amount_bch]
 		unpaid_count_display_string = f" ({len(unpaid_tips)})" if len(unpaid_tips)>1 else "" 
 
+		autopay_tips = [t for t in unpaid_tips if t.qualifiesForAutopay()]
+		autopay_display_string = f" ({len(autopay_tips)})" if len(autopay_tips)>1 else "" 
+
+
 		# create the context menu
 		menu = QMenu()
 		if len(tips) > 0:
@@ -226,7 +233,8 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 			menu.addAction(_(f"open browser to tipping comment"), lambda: doOpenBrowser(tips[0]))
 		if len(unpaid_tips) > 0:
 			menu.addAction(_(f"pay{unpaid_count_display_string}..."), lambda: doPay(unpaid_tips))
-			menu.addAction(_(f"autopay{unpaid_count_display_string}"), lambda: doAutoPay(unpaid_tips))
+		if len(autopay_tips) > 0:
+			menu.addAction(_(f"autopay{autopay_count_display_string}"), lambda: doAutoPay(autopay_tips))
 		
 		menu.exec_(self.viewport().mapToGlobal(position))
 
@@ -274,7 +282,7 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 
 	def potentiallyAutoPay(self, tips: list):
 		if read_config(self.wallet, "autopay", False):
-			tips_to_pay = [tip for tip in tips if tip.payment_status == 'amount parsed']
+			tips_to_pay = [tip for tip in tips if tip.payment_status == 'ready to pay']
 			self.pay(tips_to_pay)
 
 

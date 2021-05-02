@@ -12,3 +12,4 @@ __pycache__
 *.zip
 *.mp4
 *.ogv
+/scripts/local_release.sh
