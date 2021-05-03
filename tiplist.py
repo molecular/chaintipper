@@ -16,7 +16,7 @@ from electroncash.i18n import _
 from electroncash_gui.qt import ElectrumWindow
 from electroncash_gui.qt.util import webopen, MessageBoxMixin, MyTreeWidget
 from electroncash.transaction import Transaction
-from electroncash.util import PrintError, print_error, age, Weak, InvalidPassword, format_time
+from electroncash.util import PrintError, print_error, age, Weak, InvalidPassword, format_time, NotEnoughFunds
 from electroncash import keystore, get_config
 from electroncash.bitcoin import COIN, TYPE_ADDRESS
 from electroncash.storage import WalletStorage
@@ -41,9 +41,8 @@ class TipListItem(QTreeWidgetItem):
 				#o.id,
 				format_time(o.chaintip_message.created_utc), 
 				#o.type,
-				o.status,
 				o.payment_status,
-				str(o.qualifiesForAutopay()),
+				#str(o.qualifiesForAutopay()),
 				#o.chaintip_message.author.name,
 				#o.chaintip_message.subject,
 				o.username,
@@ -68,9 +67,8 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 								#_('ID'), 
 								_('Date'),
 								#_('Type'),
-								_('Status'),
 								_('Payment Status'),
-								_('will autopay'), 
+								#_('will autopay'), 
 								#_('Author'), 
 								#_('Subject'), 
 								_('Recipient'), 
@@ -138,6 +136,7 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 			if tip.recipient_address and tip.amount_bch and isinstance(tip.recipient_address, Address) and isinstance(tip.amount_bch, Decimal):
 				desc += f"{desc_separator}{tip.amount_bch} BCH to u/{tip.username} ({tip.chaintip_message.id})"
 				desc_separator = ", "
+		self.print_error("label for tx: ", desc)
 
 		# construct transaction
 		outputs = []
@@ -147,22 +146,28 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 			amount = int(COIN * tip.amount_bch)
 			outputs.append((TYPE_ADDRESS, address, amount))
 			self.print_error("address: ", address, "amount:", amount)
-		tx = self.wallet.mktx(outputs, password=None, config=get_config())
 
-		self.print_error("txid:", tx.txid())
-		self.print_error("tx:", tx)
-
-		# set tx label for history
-		self.wallet.set_label(tx.txid(), text=desc, save=True)
-
-		# broadcast transaction
 		try:
+			tx = self.wallet.mktx(outputs, password=None, config=get_config())
+
+			self.print_error("txid:", tx.txid())
+			self.print_error("tx:", tx)
+
+			# set tx label for history
+			self.wallet.set_label(tx.txid(), text=desc, save=True)
+
 			return self.window.network.broadcast_transaction2(tx)
 		except Exception as e:
-			self.print_error("error broadcasting tx: ", e)
+			self.print_error("error creating/sending tx: ", e)
+			if isinstance(e, NotEnoughFunds):
+				error = "not enough funds"
+			else:
+				error = "tx create/send error" #: " + str(e)
 			for tip in tips:
-				tip.payment_status = "tx broadcast error" #: " + str(e)
+				tip.payment_status = error
 				self.tiplist.updateTip(tip)
+
+		except NotEnoughFunds:
 
 
 	def create_menu(self, position):

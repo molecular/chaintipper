@@ -268,7 +268,6 @@ class RedditTip(PrintError, Tip):
 			self.type == 'send' 
 
 	def parseChaintipMessage(self, message: praw.models.Message):
-		self.status = "parsing chaintip message"
 
 		# parse chaintip message
 		if hasattr(self.chaintip_message.author, "name") and self.chaintip_message.author.name == 'chaintip':
@@ -307,7 +306,6 @@ class RedditTip(PrintError, Tip):
 
 	p_tip = re.compile('.*(/u/chaintip (\S*)\s*(\S*))', re.MULTILINE | re.DOTALL)
 	def parseTippingComment(self, comment):
-		self.status = "parsing tip comment"
 		#self.print_error("got tipping comment:", comment.body)
 		self.tipping_comment = comment
 		m = RedditTip.p_tip.match(self.tipping_comment.body)
@@ -331,11 +329,9 @@ class RedditTip(PrintError, Tip):
 			except Exception as e:
 				self.print_error("Error parsing tip amount: ", repr(e))
 				traceback.print_exc()
-				self.status = 'default amount'
 				self.payment_status = 'ready to pay'
 				self.amount_bch = self.getDefaultAmountBCH()
 		else: # use default amount
-			self.status = 'default amount'
 			self.payment_status = 'ready to pay'
 			self.amount_bch = self.getDefaultAmountBCH()
 
@@ -343,7 +339,6 @@ class RedditTip(PrintError, Tip):
 
 	def evaluateAmount(self):
 		# in case all else fails, use default amount
-		self.status = 'default amount'
 		self.amount_bch = self.getDefaultAmountBCH()
 
 		# find unit from amount config
@@ -353,14 +348,12 @@ class RedditTip(PrintError, Tip):
 			rate = self.getRate(unit["value_currency"])
 			self.amount_bch = round(self.tip_quantity * unit["value"] / rate, 8)
 			#self.print_error("found unit", unit, "value", unit["value"], "quantity", self.tip_quantity, "rate", rate)
-			self.status = 'amount parsed'
 			self.payment_status = 'ready to pay'
 		else:		
 			# try tip_unit as currency 
 			rate = self.getRate(self.tip_unit)
 			self.amount_bch = round(self.tip_quantity / rate, 8)
 			#self.print_error("rate for tip_unit", self.tip_unit, ": ", rate)
-			self.status = 'amount parsed'
 			self.payment_status = 'ready to pay'
 
 		# if self.payment_status == 'ready to pay':
@@ -371,8 +364,8 @@ class RedditTip(PrintError, Tip):
 			
 	def getDefaultAmountBCH(self):
 		wallet = self.reddit.wallet_ui.wallet
-		amount = Decimal(read_config(wallet, "default_amount"))
-		currency = read_config(wallet, "default_amount_currency")
+		amount = Decimal(read_config(wallet, "default_amount", c["default_amount"]))
+		currency = read_config(wallet, "default_amount_currency", c["default_amount_currency"])
 		rate = self.getRate(currency)
 		amount_bch = round(amount / rate, 8)
 		return amount_bch

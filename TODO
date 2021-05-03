@@ -3,6 +3,9 @@
 
 			* segfault on close (at least on blackbox)
 			* maybe related: Plugin.close_wallet does nothing
+			* save settings only at dialog close? what other places write config, though?
+			* reparse tips after relevant settings edited
+
 
 		* for any semi-public release
 
