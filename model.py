@@ -19,9 +19,13 @@ class Tip:
 		self.tip_op_return = None
 		self.payment_status = None
 
-class TipList():
+	def getID(self):
+		raise Exception("getID() not implemented by subclass")
+
+class TipList(PrintError):
 	def __init__(self):
 		self.tip_listeners = []
+		self.tips = {} # tip instances by tipping_comment id
 
 	def registerTipListener(self, tip_listener):
 		self.tip_listeners.append(tip_listener)
@@ -29,22 +33,25 @@ class TipList():
 	def unregisterTipListnere(self, tip_listener):
 		self.tip_listeners.remove(tip_listener)
 
-	def dispatchNewTip(self, tip):
+	def addTip(self, tip):
+		self.tips[tip.getID()] = tip
 		for tip_listener in self.tip_listeners:
-			tip_listener.newTip(tip)
-
-	def dispatchRemoveTip(self, tip):
-		for tip_listener in self.tip_listeners:
-			tip_listener.removeTip(tip)
-
-	def updateTip(self, tip):
-		self.dispatchRemoveTip(tip)
-		self.dispatchNewTip(tip)
-
-class TipListener():
-	def newTip(self, tip):
-		print_error("not implemented")
+			tip_listener.tipAdded(tip)
 
 	def removeTip(self, tip):
+		del self.tips[tip.getID()]
+		for tip_listener in self.tip_listeners:
+			tip_listener.tipRemoved(tip)
+
+	def updateTip(self, tip):
+		self.removeTip(tip)
+		self.addTip(tip)
+		self.print_error("tip update, payment_status:", tip.payment_status)
+
+class TipListener():
+	def tipAdded(self, tip):
+		print_error("not implemented")
+
+	def tipRemoved(self, tip):
 		print_error("not implemented")
 

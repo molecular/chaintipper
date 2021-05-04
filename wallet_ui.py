@@ -90,7 +90,7 @@ class WalletUI(MessageBoxMixin, PrintError, QWidget):
 				#self.show_wallet_settings()
 		else:
 			self.reddit.start_thread()
-			self.reddit.new_tip.connect(self.tiplist.dispatchNewTip)
+			self.reddit.new_tip.connect(self.tiplist.addTip)
 			self.reddit.dathread.finished.connect(self.reddit_thread_finished)
 
 			# So that we get told about when new coins come in, and the UI updates itself
@@ -420,7 +420,7 @@ class WalletSettingsDialog(WindowModalDialog, PrintError, MessageBoxMixin):
 		if event.isAccepted():
 			self.setParent(None)
 			del self.wallet._chaintipper_settings_window
-		#self.wallet_ui.tiplist.reparse();
+		self.wallet_ui.reddit.triggerRefreshTips();
 
 	def showEvent(self, event):
 		super().showEvent(event)

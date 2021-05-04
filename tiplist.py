@@ -45,6 +45,7 @@ class TipListItem(QTreeWidgetItem):
 				#str(o.qualifiesForAutopay()),
 				#o.chaintip_message.author.name,
 				#o.chaintip_message.subject,
+				o.subreddit_str,
 				o.username,
 				#o.direction,
 				str(o.amount_bch),
@@ -71,6 +72,7 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 								#_('will autopay'), 
 								#_('Author'), 
 								#_('Subject'), 
+								_('Subreddit'), 
 								_('Recipient'), 
 								#_('Direction'), 
 								_('Amount (BCH)'), 
@@ -154,15 +156,20 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 			self.print_error("tx:", tx)
 
 			status, msg = self.window.network.broadcast_transaction(tx)
+			self.print_error("status: ", status, "msg: ", msg)
 
 			if status: # success
 				# set tx label for history
 				self.wallet.set_label(tx.txid(), text=desc, save=True)
+			else:
+				for tip in tips:
+					tip.payment_status = "autopay error: " + msg
+					self.tiplist.updateTip(tip)
 
 			return status
 
 			#self.wallet.wait_until_synchronized()
-			#self.wallet.add_transactions(tx.txid(), tx)
+			#self.wallet.add_transaction(tx.txid(), tx)
 			#self.wallet.add_tx_to_history(tx.txid())
 			#self.window.broadcast_transaction(tx, desc)
 
@@ -217,7 +224,7 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 			for tip in tips:
 				if tip.chaintip_message:
 					tip.chaintip_message.mark_read()
-					self.tiplist.dispatchRemoveTip(tip)
+					self.tiplist.removeTip(tip)
 
 		col = self.currentColumn()
 		column_title = self.headerItem().text(col)
@@ -262,8 +269,9 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 			i = self.outgoing_items
 		return i
 
-	def newTip(self, tip):
-		#self.print_error("------- newTip", tip.chaintip_message.subject)
+	# TipListener implementation
+
+	def tipAdded(self, tip):
 		if tip.recipient_address:
 			self.tips_by_address[tip.recipient_address] = tip 
 		TipListItem(tip)
@@ -278,8 +286,7 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 		self.potentiallyAutoPay([tip])
 
 
-	def removeTip(self, tip):
-		#self.print_error("------- removeTip", tip.chaintip_message.subject)
+	def tipRemoved(self, tip):
 		if tip.recipient_address:
 			del self.tips_by_address[tip.recipient_address]
 		if hasattr(tip, 'tiplist_item'):

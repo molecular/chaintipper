@@ -58,6 +58,7 @@ class Reddit(PrintError, QObject):
 		self.tiplist = wallet_ui.tiplist
 		self.should_quit = False
 		self.state = None # used in reddit auth flow
+		self.tips_to_refresh = []
 
 	def receive_connection(self, port):
 		"""Wait for and then return a connected socket..
@@ -197,6 +198,17 @@ class Reddit(PrintError, QObject):
 			# store refresh token into wallet storage (wonder why praw doesn't call token manager to do this)
 			write_config(self.wallet_ui.wallet, WalletStorageTokenManager.REFRESH_TOKEN_KEY, refresh_token)
 
+	def triggerRefreshTips(self):
+		self.tips_to_refresh += [tip for tip in self.tiplist.tips.values()]
+
+	def refreshTips(self):
+		while len(self.tips_to_refresh) > 0:
+			tip = self.tips_to_refresh.pop()
+			self.print_error("refreshing ", tip)
+			self.tiplist.removeTip(tip)
+			tip.refresh()
+			self.tiplist.addTip(tip)
+
 
 	def disconnect(self):
 		write_config(self.wallet_ui.wallet, WalletStorageTokenManager.ACCESS_TOKEN_KEY, None)
@@ -221,6 +233,7 @@ class Reddit(PrintError, QObject):
 
 		try:
 			for item in self.reddit.inbox.stream(pause_after=0):
+				self.refreshTips()
 				if self.should_quit:
 					break
 				if item is None:
@@ -254,6 +267,17 @@ class RedditTip(PrintError, Tip):
 		self.chaintip_message = message
 
 		self.parseChaintipMessage()
+
+	# Tip overrides
+
+	def getID(self):
+		return self.tipping_comment_id
+
+	def refresh(self):
+		if self.payment_status != 'paid':
+			self.parseChaintipMessage()
+
+	#
 
 	def isValid(self):
 		 return \
@@ -310,6 +334,7 @@ class RedditTip(PrintError, Tip):
 	def parseTippingComment(self, comment):
 		#self.print_error("got tipping comment:", comment.body)
 		self.tipping_comment = comment
+		self.subreddit_str = "r/" + self.tipping_comment.subreddit.display_name
 		m = RedditTip.p_tip.match(self.tipping_comment.body)
 		self.tip_unit = ''
 		if m:
@@ -413,7 +438,7 @@ class RedditTip(PrintError, Tip):
 		autopay_limit_bch = Decimal(read_config(wallet, "autopay_limit_bch", c["default_autopay_limit_bch"]))
 
 		if autopay_use_limit and self.amount_bch > autopay_limit_bch: 
-			self.payment_status = "autopay limited"
+			self.payment_status = "autopay amount-limited"
 			return False
 
 		return True
