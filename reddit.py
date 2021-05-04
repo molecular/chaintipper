@@ -268,7 +268,7 @@ class RedditTip(PrintError, Tip):
 
 	p_subject = re.compile('Tip (\S*)')
 	p_tip_comment = re.compile('.*\[your tip\]\(\S*/_/(\S*)\).*', re.MULTILINE | re.DOTALL)
-	p_recipient = re.compile('^u/(\S*) has.*\*\*(bitcoincash:qrelay\w*)\*\*.*', re.MULTILINE | re.DOTALL)
+	p_recipient = re.compile('^u/(\S*) has.*\*\*(bitcoincash:q\w*)\*\*.*', re.MULTILINE | re.DOTALL)
 	p_sender = re.compile('^u/(\S*) has just sent you (\S*) Bitcoin Cash \(about \S* USD\) \[via\]\(\S*/_/(\S*)\) .*', re.MULTILINE | re.DOTALL)
 
 	def __init__(self, reddit: Reddit, message: praw.models.Message):
