@@ -9,3 +9,4 @@ CHANGES
 	* refresh tips on settings change
 	* add new column "subreddit" showing subreddit of tipping comment
 	* whacky hackjob using sleep() to lessen the double-spend problem
+	* fixed: mark read takes forever and locks the gui

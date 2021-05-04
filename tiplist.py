@@ -30,6 +30,8 @@ from .model import Tip, TipList, TipListener
 from .config import c
 from .util import read_config, write_config
 
+from .reddit import Reddit
+
 class TipListItem(QTreeWidgetItem):
 
 	def __init__(self, o):
@@ -64,7 +66,7 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 
 	default_sort = MyTreeWidget.SortSpec(1, Qt.AscendingOrder)
 
-	def __init__(self, window: ElectrumWindow, wallet: Abstract_Wallet, tiplist: TipList):
+	def __init__(self, window: ElectrumWindow, wallet: Abstract_Wallet, tiplist: TipList, reddit: Reddit):
 		MyTreeWidget.__init__(self, window, self.create_menu, [
 								#_('ID'), 
 								_('Date'),
@@ -88,7 +90,11 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 
 		self.window = window
 		self.wallet = wallet
-		self.tiplist = None
+		self.tiplist = None # will be set at end of __init__
+		self.reddit = reddit
+
+		if self.reddit == None:
+			raise Exception("no reddit")
 
 		self.print_error("TipListWidget.__init__()")
 		self.setSelectionMode(QAbstractItemView.ExtendedSelection)
@@ -226,10 +232,11 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 		def doMarkRead(tips: list):
 			"""call mark_read() on each of the 'tips' and remove them from tiplist"""
 
-			for tip in tips:
-				if tip.chaintip_message:
-					tip.chaintip_message.mark_read()
-					self.tiplist.removeTip(tip)
+			self.reddit.triggerMarkRead(tips)
+			# for tip in tips:
+			# 	if tip.chaintip_message:
+			# 		tip.chaintip_message.mark_read()
+			# 		self.tiplist.removeTip(tip)
 
 		col = self.currentColumn()
 		column_title = self.headerItem().text(col)

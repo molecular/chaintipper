@@ -20,11 +20,11 @@
 			* reparse tips on relevant config change?
 			* autopay disallow default amount is broken
 			* autopay on 3rd tx in a row doublespends
-			* mark read takes forever and locks the gui: use reddit thread like for refresh!
 			* settings: only refresh on relevant changes
-			
+
 	* beta3
 
+			* better tipUpdated implementation (the flickering und sort-screwing sucks)
 			* column with <subreddit> of tip
 			* show fiat tip amount
 			* save settings only at dialog close? what other places write config, though?

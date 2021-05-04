@@ -80,7 +80,6 @@ class WalletUI(MessageBoxMixin, PrintError, QWidget):
 
 	def setup_reddit(self):
 		"""log in to reddit, start a thread and begin receiving messages"""
-		self.reddit = Reddit(self)
 		if not self.reddit.login():
 			# login fails, deactivate, inform user and open settings dialog
 			self.print_error("reddit.login() returned False")
@@ -110,6 +109,7 @@ class WalletUI(MessageBoxMixin, PrintError, QWidget):
 		# wait for wallet to sync to help avoid spending spent utxos
 		self.wallet.wait_until_synchronized()
 
+		self.reddit = Reddit(self)
 		self.add_ui()
 		self.setup_reddit()
 		self.refresh_ui()
@@ -142,7 +142,7 @@ class WalletUI(MessageBoxMixin, PrintError, QWidget):
 	def add_ui(self):
 		"""construct tab with tiplist widget and add it to window"""
 		self.tiplist = TipList()
-		self.tiplist_widget = TipListWidget(self.window, self.wallet, self.tiplist)
+		self.tiplist_widget = TipListWidget(self.window, self.wallet, self.tiplist, self.reddit)
 		self.tiplist_widget.checkPaymentStatus()
 		self.vbox.addWidget(self.tiplist_widget)
 
@@ -423,6 +423,7 @@ class WalletSettingsDialog(WindowModalDialog, PrintError, MessageBoxMixin):
 		self.wallet_ui.reddit.triggerRefreshTips();
 
 	def showEvent(self, event):
+		self.print_error("setting show even")
 		super().showEvent(event)
 		# if event.isAccepted():
 		# 	self.refresh()

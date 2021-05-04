@@ -55,10 +55,10 @@ class Reddit(PrintError, QObject):
 	def __init__(self, wallet_ui):
 		QObject.__init__(self)
 		self.wallet_ui = wallet_ui
-		self.tiplist = wallet_ui.tiplist
 		self.should_quit = False
 		self.state = None # used in reddit auth flow
 		self.tips_to_refresh = []
+		self.tips_to_mark_read = []
 
 	def receive_connection(self, port):
 		"""Wait for and then return a connected socket..
@@ -199,16 +199,24 @@ class Reddit(PrintError, QObject):
 			write_config(self.wallet_ui.wallet, WalletStorageTokenManager.REFRESH_TOKEN_KEY, refresh_token)
 
 	def triggerRefreshTips(self):
-		self.tips_to_refresh += [tip for tip in self.tiplist.tips.values()]
+		self.tips_to_refresh += [tip for tip in self.wallet_ui.tiplist.tips.values()]
 
 	def refreshTips(self):
 		while len(self.tips_to_refresh) > 0:
 			tip = self.tips_to_refresh.pop()
 			self.print_error("refreshing ", tip)
-			self.tiplist.removeTip(tip)
+			self.wallet_ui.tiplist.removeTip(tip)
 			tip.refresh()
-			self.tiplist.addTip(tip)
+			self.wallet_ui.tiplist.addTip(tip)
 
+	def triggerMarkRead(self, tips):
+		self.tips_to_mark_read += tips
+
+	def markReadTips(self):
+		while len(self.tips_to_mark_read):
+			tip = self.tips_to_mark_read.pop()
+			tip.chaintip_message.mark_read()
+			self.wallet_ui.tiplist.removeTip(tip)
 
 	def disconnect(self):
 		write_config(self.wallet_ui.wallet, WalletStorageTokenManager.ACCESS_TOKEN_KEY, None)
@@ -233,7 +241,11 @@ class Reddit(PrintError, QObject):
 
 		try:
 			for item in self.reddit.inbox.stream(pause_after=0):
+				# some "background tasks"
 				self.refreshTips()
+				self.markReadTips()
+
+				# digest item
 				if self.should_quit:
 					break
 				if item is None:
