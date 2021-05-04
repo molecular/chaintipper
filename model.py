@@ -47,3 +47,4 @@ class TipListener():
 
 	def removeTip(self, tip):
 		print_error("not implemented")
+

@@ -250,15 +250,10 @@ class RedditTip(PrintError, Tip):
 		Tip.__init__(self)
 		self.platform = "reddit"
 		self.reddit = reddit
-		# self.print_error(f"new RedditTip, created_utc: {message.created_utc}")
 
 		self.chaintip_message = message
-		self.id = message.id
-		self.subject = message.subject
-		self.is_chaintip = False
-		self.type = None
 
-		self.parseChaintipMessage(message)
+		self.parseChaintipMessage()
 
 	def isValid(self):
 		 return \
@@ -267,7 +262,14 @@ class RedditTip(PrintError, Tip):
 			self.chaintip_message.author == 'chaintip' and \
 			self.type == 'send' 
 
-	def parseChaintipMessage(self, message: praw.models.Message):
+	def parseChaintipMessage(self):
+		self.is_chaintip = False
+		self.type = None
+		self.default_amount_used = False
+
+		message = self.chaintip_message
+		self.id = message.id
+		self.subject = message.subject
 
 		# parse chaintip message
 		if hasattr(self.chaintip_message.author, "name") and self.chaintip_message.author.name == 'chaintip':
@@ -304,7 +306,7 @@ class RedditTip(PrintError, Tip):
 				comment = self.reddit.reddit.comment(id = self.tipping_comment_id)
 				self.parseTippingComment(comment)
 
-	p_tip = re.compile('.*(/u/chaintip (\S*)\s*(\S*))', re.MULTILINE | re.DOTALL)
+	p_tip = re.compile('.*(u/chaintip (\S*)\s*(\S*))', re.MULTILINE | re.DOTALL)
 	def parseTippingComment(self, comment):
 		#self.print_error("got tipping comment:", comment.body)
 		self.tipping_comment = comment
@@ -331,15 +333,18 @@ class RedditTip(PrintError, Tip):
 				traceback.print_exc()
 				self.payment_status = 'ready to pay'
 				self.amount_bch = self.getDefaultAmountBCH()
+				self.default_amount_used = True
 		else: # use default amount
 			self.payment_status = 'ready to pay'
 			self.amount_bch = self.getDefaultAmountBCH()
+			self.default_amount_used = True
 
 		self.qualifiesForAutopay() # will update payment_status
 
 	def evaluateAmount(self):
 		# in case all else fails, use default amount
 		self.amount_bch = self.getDefaultAmountBCH()
+		self.default_amount_used = True
 
 		# find unit from amount config
 		matching_units = (unit for unit in amount_config["units"] if self.tip_unit in unit["names"])
@@ -347,12 +352,14 @@ class RedditTip(PrintError, Tip):
 		if unit:
 			rate = self.getRate(unit["value_currency"])
 			self.amount_bch = round(self.tip_quantity * unit["value"] / rate, 8)
+			self.default_amount_used = False
 			#self.print_error("found unit", unit, "value", unit["value"], "quantity", self.tip_quantity, "rate", rate)
 			self.payment_status = 'ready to pay'
 		else:		
 			# try tip_unit as currency 
 			rate = self.getRate(self.tip_unit)
 			self.amount_bch = round(self.tip_quantity / rate, 8)
+			self.default_amount_used = False
 			#self.print_error("rate for tip_unit", self.tip_unit, ": ", rate)
 			self.payment_status = 'ready to pay'
 
@@ -396,7 +403,9 @@ class RedditTip(PrintError, Tip):
 			self.payment_status = 'autopay disabled'
 			return False		
 
-		if read_config(wallet, "autopay_disallow_default", c["default_autopay_disallow_default"]): 
+		if read_config(wallet, "autopay_disallow_default", c["default_autopay_disallow_default"]) \
+			and self.default_amount_used \
+		: 
 			self.payment_status = 'autopay default amount disallowed'
 			return False
 

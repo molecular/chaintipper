@@ -153,10 +153,19 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 			self.print_error("txid:", tx.txid())
 			self.print_error("tx:", tx)
 
-			# set tx label for history
-			self.wallet.set_label(tx.txid(), text=desc, save=True)
+			status, msg = self.window.network.broadcast_transaction(tx)
 
-			return self.window.network.broadcast_transaction2(tx)
+			if status: # success
+				# set tx label for history
+				self.wallet.set_label(tx.txid(), text=desc, save=True)
+
+			return status
+
+			#self.wallet.wait_until_synchronized()
+			#self.wallet.add_transactions(tx.txid(), tx)
+			#self.wallet.add_tx_to_history(tx.txid())
+			#self.window.broadcast_transaction(tx, desc)
+
 		except Exception as e:
 			self.print_error("error creating/sending tx: ", e)
 			if isinstance(e, NotEnoughFunds):
@@ -166,8 +175,7 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 			for tip in tips:
 				tip.payment_status = error
 				self.tiplist.updateTip(tip)
-
-		except NotEnoughFunds:
+			return False
 
 
 	def create_menu(self, position):
@@ -227,7 +235,7 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 		unpaid_count_display_string = f" ({len(unpaid_tips)})" if len(unpaid_tips)>1 else "" 
 
 		autopay_tips = [t for t in unpaid_tips if t.qualifiesForAutopay()]
-		autopay_display_string = f" ({len(autopay_tips)})" if len(autopay_tips)>1 else "" 
+		autopay_count_display_string = f" ({len(autopay_tips)})" if len(autopay_tips)>1 else "" 
 
 
 		# create the context menu
@@ -237,7 +245,7 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 		if len(self.selectedItems()) == 1:
 			menu.addAction(_(f"open browser to tipping comment"), lambda: doOpenBrowser(tips[0]))
 		if len(unpaid_tips) > 0:
-			menu.addAction(_(f"pay{unpaid_count_display_string}..."), lambda: doPay(unpaid_tips))
+			menu.addAction(_(f"pay...{unpaid_count_display_string}"), lambda: doPay(unpaid_tips))
 		if len(autopay_tips) > 0:
 			menu.addAction(_(f"autopay{autopay_count_display_string}"), lambda: doAutoPay(autopay_tips))
 		
@@ -311,6 +319,7 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 					#self.print_error("   ****** TIP", tip, "paid in txhash", txhash)
 					if tip.payment_status != "paid":
 						tip.payment_status = "paid"
+						tip.payment_txid = txhash
 						self.tiplist.updateTip(tip)
 				except KeyError:
 					continue

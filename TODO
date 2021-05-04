@@ -1,12 +1,5 @@
 	* 1.0
 
-
-			* segfault on close (at least on blackbox)
-			* maybe related: Plugin.close_wallet does nothing
-			* save settings only at dialog close? what other places write config, though?
-			* reparse tips after relevant settings edited
-
-
 		* for any semi-public release
 
 			* make tg group for beta testers (don't call it beta, just "chaintipper")
@@ -18,6 +11,35 @@
 			* release (trhough github files?), hashes?
 			* LICENSE
 			* DONT RELEASE PW IN config.py!!!
+
+	* beta2 (stuff from users)
+
+		* do it
+
+			* don't use send to many if only 1 tip
+			* reparse tips on relevant config change?
+			* autopay disallow default amount is broken
+			* autopay on 3rd tx in a row doublespends
+			* mark read takes forever and locks the gui
+
+
+	* beta3
+
+			* column with <subreddit> of tip
+			* show fiat tip amount
+			* save settings only at dialog close? what other places write config, though?
+			* reparse tips after relevant settings edited
+
+		* consider it
+
+			* segfault on close (at least on blackbox)
+			* maybe related: Plugin.close_wallet does nothing
+
+			* re-enable "autopay" menu entry for quickly paying tips when autopay is off (currently doesn't work because tips are filtered for autopay-eligible ones only) or "send now" that ignores all autopay constraints
+			* double clicking in the Chaintipper tab should open the "pay..."/send window
+			* parse "u/chaintip $1.50"?
+			* another column in Chaintipper could be 'subreddit'.
+			* checkmark if user has already linked an address, or empty if they havent.
 
 	* later
 

@@ -106,6 +106,10 @@ class WalletUI(MessageBoxMixin, PrintError, QWidget):
 		Will be called by the ChaintipperButton on activation.
 		Constructs UI and starts reddit thread
 		"""
+		
+		# wait for wallet to sync to help avoid spending spent utxos
+		self.wallet.wait_until_synchronized()
+
 		self.add_ui()
 		self.setup_reddit()
 		self.refresh_ui()
@@ -416,6 +420,7 @@ class WalletSettingsDialog(WindowModalDialog, PrintError, MessageBoxMixin):
 		if event.isAccepted():
 			self.setParent(None)
 			del self.wallet._chaintipper_settings_window
+		#self.wallet_ui.tiplist.reparse();
 
 	def showEvent(self, event):
 		super().showEvent(event)
