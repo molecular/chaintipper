@@ -13,3 +13,4 @@ __pycache__
 *.mp4
 *.ogv
 /scripts/local_release.sh
+/doc/manual/manual.html

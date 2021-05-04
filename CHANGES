@@ -1,0 +1,8 @@
+CHANGES
+
+1.0-beta2:
+
+	* gui: improve "show amount monikers"
+	* tip comment parser: don't require leading "/" before "u/chaintip" 
+	* wait for wallet to sync on activation
+	* fix bug with "disallow autopay when default amount used" always disallowing
