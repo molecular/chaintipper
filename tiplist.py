@@ -7,6 +7,7 @@ import threading
 import time
 from enum import IntEnum
 from decimal import Decimal
+from time import sleep
 
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
@@ -161,6 +162,10 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 			if status: # success
 				# set tx label for history
 				self.wallet.set_label(tx.txid(), text=desc, save=True)
+
+				# this is a half-baked workaround for utxo set not being up-to-date on next payment
+				self.wallet.wait_until_synchronized() # should give some time
+				sleep(1) # my god, where have I gone?
 			else:
 				for tip in tips:
 					tip.payment_status = "autopay error: " + msg

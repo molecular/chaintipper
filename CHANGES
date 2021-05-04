@@ -6,3 +6,6 @@ CHANGES
 	* tip comment parser: don't require leading "/" before "u/chaintip" 
 	* wait for wallet to sync on activation
 	* fix bug with "disallow autopay when default amount used" always disallowing
+	* refresh tips on settings change
+	* add new column "subreddit" showing subreddit of tipping comment
+	* whacky hackjob using sleep() to lessen the double-spend problem
