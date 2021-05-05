@@ -1,5 +1,15 @@
 CHANGES
 
+
+1.0-beta4:
+
+	* TipList: new column "amount (fiat)"
+	* remove all <quantity_alias>es except "a" and "an"
+
+1.0-beta3:
+
+	* remove "qrelay" prefix requirement when parsing chaintip messages
+
 1.0-beta2:
 
 	* gui: improve "show amount monikers"
@@ -10,7 +20,3 @@ CHANGES
 	* add new column "subreddit" showing subreddit of tipping comment
 	* whacky hackjob using sleep() to lessen the double-spend problem
 	* fixed: mark read takes forever and locks the gui
-
-1.0-beta3
-
-	* remove "qrelay" prefix requirement when parsing chaintip messages

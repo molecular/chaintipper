@@ -8,6 +8,7 @@ import time
 from enum import IntEnum
 from decimal import Decimal
 from time import sleep
+from datetime import datetime
 
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
@@ -51,7 +52,8 @@ class TipListItem(QTreeWidgetItem):
 				o.subreddit_str,
 				o.username,
 				#o.direction,
-				str(o.amount_bch),
+				"{0:.8f}".format(o.amount_bch),
+				"{0:.2f}".format(o.amount_fiat),
 				#o.recipient_address.to_ui_string() if o.recipient_address else None,
 				o.tip_amount_text,
 				str(o.tip_quantity),
@@ -66,32 +68,44 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 
 	default_sort = MyTreeWidget.SortSpec(1, Qt.AscendingOrder)
 
+	def refresh_headers(self):
+		headers = [
+			#_('ID'), 
+			_('Date'),
+			#_('Type'),
+			_('Payment Status'),
+			#_('will autopay'), 
+			#_('Author'), 
+			#_('Subject'), 
+			_('Subreddit'), 
+			_('Recipient'), 
+			#_('Direction'), 
+			_('Amount (BCH)'),
+			"amount_fiat", 
+			#_('Recipient Address'),
+			_('Tip Amount Text'),
+			_('Tip Quantity'),
+			_('Tip Unit'),
+			#_('Tip Comment'), 
+			_('Tip Comment body'),
+		]
+		fx = self.window.fx
+		
+		# replace 'amount_fiat' header
+		if fx and fx.show_history():
+			headers = [_('Amount ({ccy})').format(ccy=fx.ccy) if h=='amount_fiat' else h for h in headers]
+		self.update_headers(headers)
+
 	def __init__(self, window: ElectrumWindow, wallet: Abstract_Wallet, tiplist: TipList, reddit: Reddit):
-		MyTreeWidget.__init__(self, window, self.create_menu, [
-								#_('ID'), 
-								_('Date'),
-								#_('Type'),
-								_('Payment Status'),
-								#_('will autopay'), 
-								#_('Author'), 
-								#_('Subject'), 
-								_('Subreddit'), 
-								_('Recipient'), 
-								#_('Direction'), 
-								_('Amount (BCH)'), 
-								#_('Recipient Address'),
-								_('Tip Amount Text'),
-								_('Tip Quantity'),
-								_('Tip Unit'),
-								#_('Tip Comment'), 
-								_('Tip Comment body'),
-							], 8, [],  # headers, stretch_column, editable_columns
+		MyTreeWidget.__init__(self, window, self.create_menu, [], 8, [],  # headers, stretch_column, editable_columns
 							deferred_updates=True, save_sort_settings=True)
 
 		self.window = window
 		self.wallet = wallet
 		self.tiplist = None # will be set at end of __init__
 		self.reddit = reddit
+
+		self.refresh_headers()
 
 		if self.reddit == None:
 			raise Exception("no reddit")
@@ -286,6 +300,12 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 	def tipAdded(self, tip):
 		if tip.recipient_address:
 			self.tips_by_address[tip.recipient_address] = tip 
+
+		# calc tip.amount_fiat
+		d_t = datetime.utcfromtimestamp(tip.chaintip_message.created_utc)
+		fx_rate = self.window.fx.history_rate(d_t)
+		tip.amount_fiat = fx_rate * tip.amount_bch
+
 		TipListItem(tip)
 		if c["use_categories"]:
 			category_item = self.getCategoryItemForTip(tip)

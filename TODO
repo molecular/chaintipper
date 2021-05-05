@@ -12,7 +12,7 @@
 			* LICENSE
 			* DONT RELEASE PW IN config.py!!!
 
-	* beta2 (stuff from users)
+	* beta4
 
 		* do it
 
@@ -22,11 +22,9 @@
 			* autopay on 3rd tx in a row doublespends
 			* settings: only refresh on relevant changes
 
-	* beta3
 
 			* better tipUpdated implementation (the flickering und sort-screwing sucks)
 			* column with <subreddit> of tip
-			* show fiat tip amount
 			* save settings only at dialog close? what other places write config, though?
 			* reparse tips after relevant settings edited
 
