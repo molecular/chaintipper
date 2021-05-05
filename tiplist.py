@@ -92,8 +92,7 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 		fx = self.window.fx
 		
 		# replace 'amount_fiat' header
-		if fx and fx.show_history():
-			headers = [_('Amount ({ccy})').format(ccy=fx.ccy) if h=='amount_fiat' else h for h in headers]
+		headers = [_('Amount ({ccy})').format(ccy=fx.ccy) if h=='amount_fiat' else h for h in headers]
 		self.update_headers(headers)
 
 	def __init__(self, window: ElectrumWindow, wallet: Abstract_Wallet, tiplist: TipList, reddit: Reddit):
