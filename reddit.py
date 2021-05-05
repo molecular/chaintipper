@@ -436,19 +436,29 @@ class RedditTip(PrintError, Tip):
 
 		if self.payment_status != 'ready to pay': return False
 
+		# recipient_address set?
+		if \
+			self.recipient_address == None or \
+			not isinstance(self.recipient_address, Address) \
+		:
+			self.payment_status = 'invalid recipient address'
+			return False
+
+		# autopay activated?
 		if not read_config(wallet, "autopay", c["default_autopay"]): 
 			self.payment_status = 'autopay disabled'
 			return False		
 
+		# default amount disallowed?
 		if read_config(wallet, "autopay_disallow_default", c["default_autopay_disallow_default"]) \
 			and self.default_amount_used \
 		: 
 			self.payment_status = 'autopay default amount disallowed'
 			return False
 
+		# amount limit exceeded?
 		autopay_use_limit = read_config(wallet, "autopay_use_limit", c["default_autopay_use_limit"])
 		autopay_limit_bch = Decimal(read_config(wallet, "autopay_limit_bch", c["default_autopay_limit_bch"]))
-
 		if autopay_use_limit and self.amount_bch > autopay_limit_bch: 
 			self.payment_status = "autopay amount-limited"
 			return False
