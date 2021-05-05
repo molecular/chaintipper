@@ -5,6 +5,7 @@ CHANGES
 
 	* TipList: new column "amount (fiat)"
 	* remove all <quantity_alias>es except "a" and "an"
+	* fix parser to catch correct relay address in case of unlinked recipients
 
 1.0-beta3:
 
