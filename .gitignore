@@ -14,3 +14,4 @@ __pycache__
 *.ogv
 /scripts/local_release.sh
 /doc/manual/manual.html
+qresources.py
