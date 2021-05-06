@@ -9,7 +9,7 @@
 			* LICENSE
 			* DONT RELEASE PW IN config.py!!!
 
-	* beta4
+	* next beta
 
 		* do it
 
@@ -38,6 +38,8 @@
 			* parse "u/chaintip $1.50"?
 			* another column in Chaintipper could be 'subreddit'.
 			* checkmark if user has already linked an address, or empty if they havent.
+			* setting to "Stop autotip if the user has already linked a wallet. "
+			* column to show "wallet linked" status
 
 	* later
 
