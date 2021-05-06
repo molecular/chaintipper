@@ -1,5 +1,9 @@
 CHANGES
 
+1.0-beta6:
+
+	* translate amount_fiat header even if ec pref "show history rates" unchecked
+
 1.0-beta5:
 
 	* fix parser again 

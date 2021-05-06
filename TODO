@@ -2,11 +2,8 @@
 
 		* for any semi-public release
 
-			* make tg group for beta testers (don't call it beta, just "chaintipper")
-
-			* divert error reports to my github
 			* clean up the code
-			* readme.md for github
+			* readme.md for github (linking to manual.md, build_and_review.md)
 			* rebase and push to github once code is de-cluttered
 			* release (trhough github files?), hashes?
 			* LICENSE
@@ -17,11 +14,16 @@
 		* do it
 
 			* don't use send to many if only 1 tip
-			* reparse tips on relevant config change?
 			* autopay disallow default amount is broken
-			* autopay on 3rd tx in a row doublespends
 			* settings: only refresh on relevant changes
+			* updateTip(): real implementation
 
+			* segfault on close (at least on blackbox)
+			* maybe related: Plugin.close_wallet does nothing
+
+			* "paid" status: when is it set? there was report of unpaid tips set to "paid"
+			* menu-item "view payment tx on block explorer"
+			* amount_fiat column not replaced for tibanne
 
 			* better tipUpdated implementation (the flickering und sort-screwing sucks)
 			* column with <subreddit> of tip
@@ -30,8 +32,6 @@
 
 		* consider it
 
-			* segfault on close (at least on blackbox)
-			* maybe related: Plugin.close_wallet does nothing
 
 			* re-enable "autopay" menu entry for quickly paying tips when autopay is off (currently doesn't work because tips are filtered for autopay-eligible ones only) or "send now" that ignores all autopay constraints
 			* double clicking in the Chaintipper tab should open the "pay..."/send window
