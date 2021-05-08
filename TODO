@@ -28,36 +28,36 @@ TypeError: unsupported operand type(s) for *: 'NoneType' and 'decimal.Decimal'
 ---
 		* do it
 
-			* don't use send to many if only 1 tip
-			* autopay disallow default amount is broken
-			* settings: only refresh on relevant changes
-			* updateTip(): real implementation
 
+			* reparse tips after relevant settings edited
+			* settings: only refresh on relevant changes
+
+			* updateTip(): real implementation
+			* better tipUpdated implementation (the flickering und sort-screwing sucks)
+
+			* why is this in close()
+			* self.wallet_ui.reddit.triggerRefreshTips(); # why!?!? TODO
 
 			* segfault on close (at least on blackbox)
-			* maybe related: Plugin.close_wallet does nothing
 
-			* menu-item "view payment tx on block explorer"
-			* amount_fiat column not replaced for tibanne
+			* parse "u/chaintip $1.50"?
 
-			* better tipUpdated implementation (the flickering und sort-screwing sucks)
-			* column with <subreddit> of tip
-			* save settings only at dialog close? what other places write config, though?
-			* reparse tips after relevant settings edited
+			* checkmark if user has already linked an address, or empty if they havent.
+			* column to show "wallet linked" status
+			* setting to "Stop autotip if the user has already linked a wallet. "
 
 		* consider it
 
+			* save settings only at dialog close? what other places write config, though?
+
+			* detect payment status from other wallets (use network, blockchain whatever)
 			* history rate available if "show history rate" unchecked?
 
 			* parse chaintip confirmation comment
 
 			* re-enable "autopay" menu entry for quickly paying tips when autopay is off (currently doesn't work because tips are filtered for autopay-eligible ones only) or "send now" that ignores all autopay constraints
 			* double clicking in the Chaintipper tab should open the "pay..."/send window
-			* parse "u/chaintip $1.50"?
-			* another column in Chaintipper could be 'subreddit'.
-			* checkmark if user has already linked an address, or empty if they havent.
-			* setting to "Stop autotip if the user has already linked a wallet. "
-			* column to show "wallet linked" status
+
 
 	* later
 

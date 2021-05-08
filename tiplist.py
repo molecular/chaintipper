@@ -216,23 +216,28 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 		def doPay(tips: list):
 			"""Start semi-automatic payment of a list of tips using the payto dialog"""
 			self.print_error("paying tips: ", [t.id for t in tips])
-			desc = "chaintip "
-			desc_separator = ""
-			payto = ""
-			payto_separator = ""
-			for tip in tips:
-				if tip.recipient_address and tip.amount_bch and isinstance(tip.recipient_address, Address) and isinstance(tip.amount_bch, Decimal):
+			w = self.parent # main_window
+
+			valid_tips = [tip for tip in tips if tip.recipient_address and tip.amount_bch and isinstance(tip.recipient_address, Address) and isinstance(tip.amount_bch, Decimal)]
+
+			# calc description
+			desc, desc_separator = ("chaintip ", "")
+			for tip in valid_tips:
+				desc += f"{desc_separator}{tip.amount_bch} BCH to u/{tip.username} ({tip.chaintip_message.id})"
+				desc_separator = ", "
+
+			# calc payto
+			(payto, payto_separator) = ("", "")
+			if len(valid_tips) > 1:
+				for tip in valid_tips:
 					payto += payto_separator + tip.recipient_address.to_string(Address.FMT_CASHADDR) + ', ' + str(tip.amount_bch)
 					payto_separator = "\n"
-					desc += f"{desc_separator}{tip.amount_bch} BCH to u/{tip.username} ({tip.chaintip_message.id})"
-					desc_separator = ", "
-				# else:
-				# 	self.print_error("recipient_address: ", type(tip.recipient_address))
-				# 	self.print_error("amount_bch: ", type(tip.amount_bch))
+			else:
+				payto = valid_tips[0].recipient_address.to_string(Address.FMT_CASHADDR)
+				w.amount_e.setText(str(valid_tips[0].amount_bch))
+
 			self.print_error("  desc:", desc)
 			self.print_error("  payto:", payto)
-
-			w = self.parent # main_window
 			w.payto_e.setText(payto)
 			w.message_e.setText(desc)
 			w.show_send_tab()
@@ -281,7 +286,7 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 			menu.addAction(_(f"mark read{count_display_string}"), lambda: doMarkRead(tips))
 		if len(self.selectedItems()) == 1:
 			menu.addAction(_(f"open browser to tipping comment"), lambda: doOpenBrowser(tips[0]))
-			if tips[0].payment_txid:
+			if hasattr(tips[0], "payment_txid") and tips[0].payment_txid:
 				menu.addAction(_(f"open blockexplorer to payment tx"), lambda: doOpenBlockExplorer(tips[0]))
 		if len(unpaid_tips) > 0:
 			menu.addAction(_(f"pay...{unpaid_count_display_string}"), lambda: doPay(unpaid_tips))
@@ -311,7 +316,7 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 		d_t = datetime.utcfromtimestamp(tip.chaintip_message.created_utc)
 		fx_rate = self.window.fx.history_rate(d_t)
 		if fx_rate != None:
-			self.print_error("fx_rate", fx_rate, "tip amount", tip.amount_bch)
+			#self.print_error("fx_rate", fx_rate, "tip amount", tip.amount_bch)
 			tip.amount_fiat = fx_rate * tip.amount_bch
 		else:
 			tip.amount_fiat = None

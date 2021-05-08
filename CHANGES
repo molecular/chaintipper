@@ -5,6 +5,7 @@ CHANGES
 	* translate amount_fiat header even if ec pref "show history rates" unchecked
 	* new menu item: "open blockexplorer to payment tx"
 	* batch "mark_read" actions through reddit api
+	* don't use send to many when "pay..."ing only 1 tip (so amount can then be edited on send tab)
 
 1.0-beta5:
 
