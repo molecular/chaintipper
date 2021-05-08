@@ -26,6 +26,7 @@ from electroncash.keystore import Hardware_KeyStore
 from electroncash.wallet import Standard_Wallet, Multisig_Wallet
 from electroncash.address import Address
 from electroncash.wallet import Abstract_Wallet
+import electroncash.web as web
 
 from .model import Tip, TipList, TipListener
 from .config import c
@@ -242,6 +243,10 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 		def doOpenBrowser(tip: Tip):
 			webopen(c["reddit"]["url_prefix"] + tip.tipping_comment.permalink)
 
+		def doOpenBlockExplorer(tip: Tip):
+			tx_URL = web.BE_URL(self.config, 'tx', tips[0].payment_txid)
+			webopen(tx_URL)
+
 		def doMarkRead(tips: list):
 			"""call mark_read() on each of the 'tips' and remove them from tiplist"""
 
@@ -276,6 +281,8 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 			menu.addAction(_(f"mark read{count_display_string}"), lambda: doMarkRead(tips))
 		if len(self.selectedItems()) == 1:
 			menu.addAction(_(f"open browser to tipping comment"), lambda: doOpenBrowser(tips[0]))
+			if tips[0].payment_txid:
+				menu.addAction(_(f"open blockexplorer to payment tx"), lambda: doOpenBlockExplorer(tips[0]))
 		if len(unpaid_tips) > 0:
 			menu.addAction(_(f"pay...{unpaid_count_display_string}"), lambda: doPay(unpaid_tips))
 		if len(autopay_tips) > 0:
@@ -303,7 +310,9 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 		# calc tip.amount_fiat
 		d_t = datetime.utcfromtimestamp(tip.chaintip_message.created_utc)
 		fx_rate = self.window.fx.history_rate(d_t)
-		tip.amount_fiat = fx_rate * tip.amount_bch
+		if fx_rate != None:
+			self.print_error("fx_rate", fx_rate, "tip amount", tip.amount_bch)
+			tip.amount_fiat = fx_rate * tip.amount_bch
 
 		TipListItem(tip)
 		if c["use_categories"]:
