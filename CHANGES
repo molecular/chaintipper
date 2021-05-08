@@ -3,6 +3,8 @@ CHANGES
 1.0-beta6:
 
 	* translate amount_fiat header even if ec pref "show history rates" unchecked
+	* new menu item: "open blockexplorer to payment tx"
+	* batch "mark_read" actions through reddit api
 
 1.0-beta5:
 

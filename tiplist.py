@@ -32,7 +32,7 @@ from .model import Tip, TipList, TipListener
 from .config import c
 from .util import read_config, write_config
 
-from .reddit import Reddit
+from .reddit import Reddit, RedditTip
 
 class TipListItem(QTreeWidgetItem):
 
@@ -250,11 +250,11 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 		def doMarkRead(tips: list):
 			"""call mark_read() on each of the 'tips' and remove them from tiplist"""
 
-			self.reddit.triggerMarkRead(tips)
-			# for tip in tips:
-			# 	if tip.chaintip_message:
-			# 		tip.chaintip_message.mark_read()
-			# 		self.tiplist.removeTip(tip)
+			#self.reddit.triggerMarkRead(tips)
+			tips_with_messages = [tip for tip in tips if tip.chaintip_message and isinstance(tip, RedditTip)]
+			self.reddit.reddit.inbox.mark_read([tip.chaintip_message for tip in tips_with_messages])
+			for tip in tips_with_messages:
+				self.tiplist.removeTip(tip)
 
 		col = self.currentColumn()
 		column_title = self.headerItem().text(col)
@@ -313,6 +313,8 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 		if fx_rate != None:
 			self.print_error("fx_rate", fx_rate, "tip amount", tip.amount_bch)
 			tip.amount_fiat = fx_rate * tip.amount_bch
+		else:
+			tip.amount_fiat = None
 
 		TipListItem(tip)
 		if c["use_categories"]:

@@ -58,7 +58,6 @@ class Reddit(PrintError, QObject):
 		self.should_quit = False
 		self.state = None # used in reddit auth flow
 		self.tips_to_refresh = []
-		self.tips_to_mark_read = []
 
 	def receive_connection(self, port):
 		"""Wait for and then return a connected socket..
@@ -209,15 +208,6 @@ class Reddit(PrintError, QObject):
 			tip.refresh()
 			self.wallet_ui.tiplist.addTip(tip)
 
-	def triggerMarkRead(self, tips):
-		self.tips_to_mark_read += tips
-
-	def markReadTips(self):
-		while len(self.tips_to_mark_read):
-			tip = self.tips_to_mark_read.pop()
-			tip.chaintip_message.mark_read()
-			self.wallet_ui.tiplist.removeTip(tip)
-
 	def disconnect(self):
 		write_config(self.wallet_ui.wallet, WalletStorageTokenManager.ACCESS_TOKEN_KEY, None)
 		write_config(self.wallet_ui.wallet, WalletStorageTokenManager.REFRESH_TOKEN_KEY, None)
@@ -241,15 +231,18 @@ class Reddit(PrintError, QObject):
 
 		try:
 			for item in self.reddit.inbox.stream(pause_after=0):
+
 				# some "background tasks"
 				self.refreshTips()
-				self.markReadTips()
 
 				# digest item
 				if self.should_quit:
 					break
 				if item is None:
 					continue
+
+				self.print_error("incoming item of type", type(item))
+
 				if isinstance(item, praw.models.Message):
 					tip = RedditTip(self, item)
 					if tip.isValid():

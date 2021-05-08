@@ -11,6 +11,21 @@
 
 	* next beta
 
+Traceback (most recent call last):
+  File "/home/nick/bitcoin/electron-cash/electroncash_plugins/chaintipper/model.py", line 39, in addTip
+    tip_listener.tipAdded(tip)
+  File "/home/nick/bitcoin/electron-cash/electroncash_plugins/chaintipper/tiplist.py", line 306, in tipAdded
+    tip.amount_fiat = fx_rate * tip.amount_bch
+TypeError: unsupported operand type(s) for *: 'NoneType' and 'decimal.Decimal'
+
+---
+
+| 47.251| |00| [WalletStorage] saved /home/nick/.electron-cash/wallets/chaintipper2
+| 47.267| |00| [WalletStorage] saved /home/nick/.electron-cash/wallets/chaintipper2
+| 47.267| |00| [Reddit] scopes of authenticated user: {'read', 'privatemessages'}
+| 47.267| |00| [Reddit] scopes of authenticated user: {'read', 'privatemessages'}
+
+---
 		* do it
 
 			* don't use send to many if only 1 tip
@@ -18,10 +33,10 @@
 			* settings: only refresh on relevant changes
 			* updateTip(): real implementation
 
+
 			* segfault on close (at least on blackbox)
 			* maybe related: Plugin.close_wallet does nothing
 
-			* "paid" status: when is it set? there was report of unpaid tips set to "paid"
 			* menu-item "view payment tx on block explorer"
 			* amount_fiat column not replaced for tibanne
 
@@ -32,6 +47,9 @@
 
 		* consider it
 
+			* history rate available if "show history rate" unchecked?
+
+			* parse chaintip confirmation comment
 
 			* re-enable "autopay" menu entry for quickly paying tips when autopay is off (currently doesn't work because tips are filtered for autopay-eligible ones only) or "send now" that ignores all autopay constraints
 			* double clicking in the Chaintipper tab should open the "pay..."/send window
