@@ -170,7 +170,7 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 			self.addTopLevelItem(tip.tiplist_item)
 
 		self.checkPaymentStatus()
-		self.potentiallyAutoPay([tip])
+		self.pay([tip])
 
 
 	def tipRemoved(self, tip):
@@ -203,10 +203,7 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 		if len(tips) <= 0:
 			return False
 
-		# some sanity filtering just in case
-		# autopay_use_limit = read_config(self.wallet, "autopay_use_limit", c["default_autopay_use_limit"])
-		# autopay_limit_bch = Decimal(read_config(self.wallet, "autopay_limit_bch", c["default_autopay_limit_bch"]))
-		# tips = [tip for tip in tips if tip.payment_status == 'ready to pay' and (not autopay_use_limit or tip.amount_bch < autopay_limit_bch)]
+		# (re)check wether tips qualify for autopay
 		tips = [tip for tip in tips if tip.qualifiesForAutopay()]
 
 		if len(tips) <= 0:
@@ -372,12 +369,10 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 			i = self.outgoing_items
 		return i
 
-
 	def potentiallyAutoPay(self, tips: list):
 		if read_config(self.wallet, "autopay", False):
 			tips_to_pay = [tip for tip in tips if tip.payment_status == 'ready to pay']
 			self.pay(tips_to_pay)
-
 
 	def checkPaymentStatus(self):
 		txo = self.wallet.storage.get('txo', {})
@@ -404,10 +399,6 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 				except KeyError:
 					continue
 					#self.print_error("   cannot find tip for address", address)
-
-					# if address == tip.recipient_address:
-					# 	self.print_error("   ****** TIP PAID, txhash", txhash)
-					# 	tip.payment_status = "paid"
 
 
 

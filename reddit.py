@@ -506,6 +506,7 @@ class RedditTip(PrintError, Tip):
 	def qualifiesForAutopay(self):
 		wallet = self.reddit.wallet_ui.wallet
 
+		# not ready to pay?
 		if self.payment_status != 'ready to pay': return False
 
 		# recipient_address set?
@@ -525,7 +526,14 @@ class RedditTip(PrintError, Tip):
 		if read_config(wallet, "autopay_disallow_default", c["default_autopay_disallow_default"]) \
 			and self.default_amount_used \
 		: 
-			self.payment_status = 'autopay default amount disallowed'
+			self.payment_status = 'autopay disallowed (default amount)'
+			return False
+
+		# linked address disallowed (only fresh people)
+		if read_config(wallet, "autopay_disallow_linked", c["default_autopay_disallow_linked"]) \
+			and self.acceptance_status == "linked" \
+		: 
+			self.payment_status = 'autopay disallowed (already linked)'
 			return False
 
 		# amount limit exceeded?

@@ -19,7 +19,7 @@ c = {
 		"default_autopay_use_limit": False,
 		"default_autopay_limit_bch": "0.01",
 		"default_autopay_disallow_default": False,
-
+		"default_autopay_disallow_linked": False,
 }
 
 amount_config = {

@@ -17,62 +17,61 @@
 
 			* setting to "Stop autotip if the user has already linked a wallet. "
 
+			* about box
+
+			* store first activation time and mark tips before that as payment_status='too old'. Invert payment_status logic
+
 		* consider it
 
 			* treeview beauty
 				* use monospaced font like on history tab
-				* align right amount columns
+				* align right (or better decimal point) amount columns
+				* amount colums: sort by number, not text
 
 			* save settings only at dialog close? what other places write config, though?
 
 			* detect payment status from other wallets (use network, blockchain whatever)
+
 			* history rate available if "show history rate" unchecked?
 
-			* parse chaintip confirmation comment
+			* parse chaintip confirmation comment <- no added value?
 
-			* re-enable "autopay" menu entry for quickly paying tips when autopay is off (currently doesn't work because tips are filtered for autopay-eligible ones only) or "send now" that ignores all autopay constraints
-			* double clicking in the Chaintipper tab should open the "pay..."/send window
+			* Jon F suggestoin: re-enable "autopay" menu entry for quickly paying tips when autopay is off (currently doesn't work because tips are filtered for autopay-eligible ones only) or "send now" that ignores all autopay constraints
 
+			* Jon F: "double clicking in the Chaintipper tab should open the "pay..."/send window"
+	
+			* default tip amount currency: add BCH option
 
-	* later
+			* headless operation
 
-		* pla-plingggg sound?
+			* pla-plingggg sound?
 
-		* autopay_amount_currency: add BCH option
+			* menu-item "set amount" with a dialog
 
-		* menu-item "set amount" with a dialog
+			* reddit logon: display "waiting for yout to authorize chaintipper to access your reddit account, check your browser"?
 
-		* reddit logon: display "waiting for yout to authorize chaintipper to access your reddit account, check your browser"?
+			* amount_bch sometimes scientific notation "1.0E-7", format it
 
-		* amount_bch sometimes scientific notation "1.0E-7", format it
+			* reddit.py receive loop: reparse amount on Comment change?
 
-		* reddit.py receive loop: reparse amount on Comment change?
+			* preferences
+				* amount config (tip amount monikers)
 
-		* preferences
-			* tip amounts
+			* currently using first exchange found for the given ccy, maybe improve?
 
-		* currently using first exchange found for the given ccy, maybe improve?
-		* html preview of tipping message? even parent?
-		* auto-edit tipping message ("EDIT: paid with chaintipper EC plugin")
+			* html preview of tipping message? even parent?
+
+			* auto-edit tipping message ("EDIT: paid with chaintipper EC plugin")
 
 	* 2.0 / ideas
 
-		* new column: amount_fiat (using historical rate), but maybe only if "fiat" user prefs say so
-
 		* re-allow amount_bch editable, (if payment_status!='paid')
-
-		* avoid having to ask credentials by using "reddit app" (api-key)?
-			(see https://asyncpraw.readthedocs.io/en/latest/getting_started/quick_start.html under "Client ID & Client Secret" for pointers)
 
 		* enable "incoming"/"outgoing" categories
 			* category "read" for read items?
 			* category collapse icon, subitem indentation
 			* BUG: right-click on category -> exception
 	
-		* context menu:
-			* go to tipping comment (open browser)
-			* "view payment tx"?
-
 		* twitter
 		* persist Tip List
 		* utxo selection with fuzzy tip amounts (min_amount, max_amount)

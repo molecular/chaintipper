@@ -370,18 +370,27 @@ class WalletSettingsDialog(WindowModalDialog, PrintError, MessageBoxMixin):
 		def on_cb_autopay():
 			self.cb_autopay_limit.setEnabled(self.cb_autopay.isChecked())
 			self.cb_autopay_disallow_default.setEnabled(self.cb_autopay.isChecked())
+			self.cb_autopay_disallow_linked.setEnabled(self.cb_autopay.isChecked())
 			write_config(self.wallet, "autopay", self.cb_autopay.isChecked())
 			on_cb_autopay_limit()
 		self.cb_autopay.stateChanged.connect(on_cb_autopay)
 		vbox.addWidget(self.cb_autopay)
 
-		# don't autopay when default amount is used
+		# disallow autopay when default amount is used
 		self.cb_autopay_disallow_default = QCheckBox(_("Disallow AutoPay when Default Tip Amount is used"))
 		self.cb_autopay_disallow_default.setChecked(read_config(self.wallet, "autopay_disallow_default", c["default_autopay_disallow_default"]))
 		def on_cb_autopay_disallow_default():
 			write_config(self.wallet, "autopay_disallow_default", self.cb_autopay_disallow_default.isChecked())
 		self.cb_autopay_disallow_default.stateChanged.connect(on_cb_autopay_disallow_default)
 		vbox.addWidget(self.cb_autopay_disallow_default)
+
+		# disallow autopay when tipee has already linked address
+		self.cb_autopay_disallow_linked = QCheckBox(_("Disallow AutoPay when recipient has already linked an address (i.e. autopay only 'fresh' people)"))
+		self.cb_autopay_disallow_linked.setChecked(read_config(self.wallet, "autopay_disallow_linked", c["default_autopay_disallow_linked"]))
+		def on_cb_autopay_disallow_linked():
+			write_config(self.wallet, "autopay_disallow_linked", self.cb_autopay_disallow_linked.isChecked())
+		self.cb_autopay_disallow_linked.stateChanged.connect(on_cb_autopay_disallow_linked)
+		vbox.addWidget(self.cb_autopay_disallow_linked)
 
 		# autopay limit checkbox
 		self.cb_autopay_limit = QCheckBox(_("Limit AutoPay Amount"))
