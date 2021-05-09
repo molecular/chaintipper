@@ -26,6 +26,7 @@ class Plugin(BasePlugin):
 		"""
 		# for window in list(self.wallet_windows.values()):
 		# 	self.close_wallet(window.wallet)
+		self.print_error("++++++++++++++++++++++ plugin.on_close() called")
 		for wallet_ui in list(self.wallet_uis.values()):
 			wallet_ui.close()
 
@@ -75,7 +76,7 @@ class Plugin(BasePlugin):
 	@hook
 	def close_wallet(self, wallet):
 		self.print_error("************************ close_wallet (currently does nothing)")
-		#self.wallet_uis[wallet.basename()].close()
+		self.wallet_uis[wallet.basename()].close()
 		# window = self.wallet_windows[wallet_name]
 		# del self.wallet_windows[wallet_name]
 		# self.remove_ui_for_wallet(wallet_name, window)

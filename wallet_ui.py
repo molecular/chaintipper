@@ -423,7 +423,6 @@ class WalletSettingsDialog(WindowModalDialog, PrintError, MessageBoxMixin):
 		self.wallet_ui.reddit.triggerRefreshTips();
 
 	def showEvent(self, event):
-		self.print_error("setting show even")
 		super().showEvent(event)
 		# if event.isAccepted():
 		# 	self.refresh()
