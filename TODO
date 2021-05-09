@@ -15,8 +15,6 @@
 
 			* segfault on close (at least on blackbox)
 
-			* mark_read (including claim/return messages)
-
 			* setting to "Stop autotip if the user has already linked a wallet. "
 
 		* consider it

@@ -312,12 +312,17 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 			tx_URL = web.BE_URL(self.config, 'tx', tips[0].payment_txid)
 			webopen(tx_URL)
 
-		def doMarkRead(tips: list):
-			"""call mark_read() on each of the 'tips' and remove them from tiplist"""
+		def doMarkRead(tips: list, include_claim_returned_messages: bool = False):
+			"""call mark_read() on messages associated with the given 'tips' 
+			and remove the tips from tiplist"""
 
-			#self.reddit.triggerMarkRead(tips)
 			tips_with_messages = [tip for tip in tips if tip.chaintip_message and isinstance(tip, RedditTip)]
-			self.reddit.reddit.inbox.mark_read([tip.chaintip_message for tip in tips_with_messages])
+			messages = [tip.chaintip_message for tip in tips_with_messages]
+			if include_claim_returned_messages:
+				messages += [tip.claim_or_returned_message for tip in tips_with_messages if hasattr(tip, "claim_or_returned_message")]
+			self.print_error(f"will mark_read() {len(messages)} messages (associated from {len(tips_with_messages)}) tips.")
+
+			self.reddit.reddit.inbox.mark_read(messages)
 			for tip in tips_with_messages:
 				self.tiplist.removeTip(tip)
 
@@ -343,7 +348,8 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 		# create the context menu
 		menu = QMenu()
 		if len(tips) > 0:
-			menu.addAction(_(f"mark read{count_display_string}"), lambda: doMarkRead(tips))
+			menu.addAction(_(f"mark read{count_display_string}"), lambda: doMarkRead(tips, False))
+			menu.addAction(_(f"mark read (including claim/returned msgs) {count_display_string}"), lambda: doMarkRead(tips, True))
 		if len(self.selectedItems()) == 1:
 			menu.addAction(_(f"open browser to tipping comment"), lambda: doOpenBrowser(tips[0]))
 			if hasattr(tips[0], "payment_txid") and tips[0].payment_txid:
