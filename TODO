@@ -18,14 +18,6 @@ Traceback (most recent call last):
     tip.amount_fiat = fx_rate * tip.amount_bch
 TypeError: unsupported operand type(s) for *: 'NoneType' and 'decimal.Decimal'
 
----
-
-| 47.251| |00| [WalletStorage] saved /home/nick/.electron-cash/wallets/chaintipper2
-| 47.267| |00| [WalletStorage] saved /home/nick/.electron-cash/wallets/chaintipper2
-| 47.267| |00| [Reddit] scopes of authenticated user: {'read', 'privatemessages'}
-| 47.267| |00| [Reddit] scopes of authenticated user: {'read', 'privatemessages'}
-
----
 		* do it
 
 			* segfault on close (at least on blackbox)
