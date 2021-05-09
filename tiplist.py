@@ -188,6 +188,8 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 		self.print_error("tip updated: ", tip)
 		if hasattr(tip, 'tiplist_item'):
 			tip.tiplist_item.refreshData()
+			self.checkPaymentStatus()
+			self.potentiallyAutoPay([tip])
 
 	# 
 
