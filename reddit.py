@@ -12,6 +12,7 @@ import re
 import random
 import socket
 import sys
+from time import time
 
 from PyQt5.QtCore import QObject, pyqtSignal, QThread
 from PyQt5.QtWidgets import QApplication, QMessageBox
@@ -203,11 +204,53 @@ class Reddit(PrintError, QObject):
 	def refreshTips(self):
 		while len(self.tips_to_refresh) > 0:
 			tip = self.tips_to_refresh.pop()
+			self.print_error("refreshing", tip)
 			tip.refresh()
 			self.wallet_ui.tiplist.updateTip(tip)
 
+	p_claimed_subject = re.compile('Tip claimed.')
+	p_returned_subject = re.compile('Tip returned to you.')
+	p_claimed_or_returned_message = re.compile('Your \[tip\]\(.*_/(\S*)\) of (\d*\.\d*) Bitcoin Cash.*to u/(\S*).* has \[been (\S*)\].*', re.MULTILINE | re.DOTALL)
+	def parseClaimedOrReturnedMessage(self, message: praw.models.Message):
+		"""returns true if message is a "Tip claimed" message, false otherwise"""
+
+		# claimed message
+		if self.p_claimed_subject.match(message.subject) or self.p_returned_subject.match(message.subject):
+			#print_error("detected claimed/returned message, body", message.body)
+			m = self.p_claimed_or_returned_message.match(message.body)
+			if m:
+				confirmation_comment_id = m.group(1)
+				tipping_comment_id = self.reddit.comment(confirmation_comment_id).parent_id[3:] # remove "t1_" prefix
+				amount = m.group(2)
+				claimant = m.group(3)
+				action = m.group(4)
+				# print_error("parsed claimed message", message.id)
+				# print_error("   tipping_comment_id:", tipping_comment_id)
+				# print_error("   amount: ", amount)
+				# print_error("   claimant:", claimant)
+				# print_error("   action:", action)
+
+				# find tip matching claim and set its acceptance_status
+				try:
+					tip = self.wallet_ui.tiplist.tips[tipping_comment_id]
+					self.print_error(f"when parsing claim/returned message {message.id}: found matching tip (for claim)", tip)
+					tip.claim_or_returned_message = message
+					tip.acceptance_status = action
+					self.wallet_ui.tiplist.updateTip(tip)
+				except: 
+					self.print_error(f"when parsing claim/returned message {message.id}: tip with tipping_comment_id {tipping_comment_id} not found. Not registering '{action}' status.")
+
+				return True
+
+		# returned message
+		if self.p_returned_subject.match(message.subject):
+			print_error("detected returned message, body", message.body)
+
+			return True
+			return False
+
 	def markChaintipMessagesUnread(self):
-		chaintip_messages = [message for message in self.reddit.inbox.messages(limit=10000) if 
+		chaintip_messages = [message for message in self.reddit.inbox.messages(limit=100) if 
 			message.author == 'chaintip' and
 			not message.new
 		]
@@ -252,10 +295,20 @@ class Reddit(PrintError, QObject):
 				#self.print_error("incoming item of type", type(item))
 
 				if isinstance(item, praw.models.Message):
-					tip = RedditTip(self, item)
-					if tip.isValid():
-						if not self.should_quit:
-							self.new_tip.emit(tip)
+					message = item
+					claimed_or_returned = self.parseClaimedOrReturnedMessage(message)
+					if not claimed_or_returned:
+						tip = RedditTip(self, message)
+						if tip.isValid():
+							if not self.should_quit:
+								self.new_tip.emit(tip)
+						# else:
+						# 	twodays_ago = time() - 60*60*24*2
+						# 	self.print_error("not valid, type: ", tip.type, "message id:", tip.chaintip_message.id)
+						# 	if tip.chaintip_message.created_utc < twodays_ago:
+						# 		tip.chaintip_message.mark_read()
+
+
 				if isinstance(item, praw.models.Comment):
 					continue
 		except prawcore.exceptions.PrawcoreException as e:
@@ -267,19 +320,23 @@ class Reddit(PrintError, QObject):
 
 class RedditTip(PrintError, Tip):
 
-	p_subject = re.compile('Tip (\S*)')
+	p_subject_outgoing_tip = re.compile('Tip (\S*)')
 	p_tip_comment = re.compile('.*\[your tip\]\(\S*/_/(\S*)\).*', re.MULTILINE | re.DOTALL)
-	p_recipient = re.compile('^u/(\S*) has.*Bitcoin Cash \(BCH\) to: \*\*(bitcoincash:q\w*)\*\*.*', re.MULTILINE | re.DOTALL)
+	p_recipient = re.compile('^u/(\S*) has (.*linked).*Bitcoin Cash \(BCH\) to: \*\*(bitcoincash:q\w*)\*\*.*', re.MULTILINE | re.DOTALL)
 	p_sender = re.compile('^u/(\S*) has just sent you (\S*) Bitcoin Cash \(about \S* USD\) \[via\]\(\S*/_/(\S*)\) .*', re.MULTILINE | re.DOTALL)
 
 	def __init__(self, reddit: Reddit, message: praw.models.Message):
 		Tip.__init__(self)
 		self.platform = "reddit"
 		self.reddit = reddit
+		self.acceptance_status = ""
 
 		self.chaintip_message = message
 
 		self.parseChaintipMessage()
+
+	def __str__(self):
+		return f"RedditTip {self.chaintip_message.id}: {self.amount_bch} to {self.username}"
 
 	# Tip overrides
 
@@ -299,6 +356,7 @@ class RedditTip(PrintError, Tip):
 			self.chaintip_message.author == 'chaintip' and \
 			self.type == 'send' 
 
+
 	def parseChaintipMessage(self):
 		self.is_chaintip = False
 		self.type = None
@@ -308,8 +366,10 @@ class RedditTip(PrintError, Tip):
 		self.id = message.id
 		self.subject = message.subject
 
+
 		# parse chaintip message
 		if hasattr(self.chaintip_message.author, "name") and self.chaintip_message.author.name == 'chaintip':
+			self.print_error("parsing chaintip message, subject:", self.subject)
 			self.is_chaintip = True
 			#self.print_error(f"parsing chaintip message {message.id}")
 			#self.print_error(self.chaintip_message.body)
@@ -327,8 +387,7 @@ class RedditTip(PrintError, Tip):
 					self.print_error("p_sender doesn't match")
 
 			# match outgoing tip
-			m = RedditTip.p_subject.match(self.chaintip_message.subject)
-			if m:
+			if RedditTip.p_subject_outgoing_tip.match(self.chaintip_message.subject):
 				m = RedditTip.p_tip_comment.match(self.chaintip_message.body)
 				if m:
 					self.type = 'send'
@@ -337,14 +396,18 @@ class RedditTip(PrintError, Tip):
 				m = RedditTip.p_recipient.match(self.chaintip_message.body)
 				if m:
 					self.username = m.group(1)
-					self.recipient_address = Address.from_cashaddr_string(m.group(2))
+					if m.group(2) == "not yet linked":
+						self.acceptance_status = 'not yet linked'
+					else:
+						self.acceptance_status = 'linked'
+					self.recipient_address = Address.from_cashaddr_string(m.group(3))
 
 			# fetch tipping comment
 			if self.tipping_comment_id:
 				comment = self.reddit.reddit.comment(id = self.tipping_comment_id)
 				self.parseTippingComment(comment)
 
-	p_tip = re.compile('.*(u/chaintip (\S*)\s*(\S*))', re.MULTILINE | re.DOTALL)
+	p_tip = re.compile('.*u/chaintip ((\S*)\s*(\S*))', re.MULTILINE | re.DOTALL)
 	def parseTippingComment(self, comment):
 		#self.print_error("got tipping comment:", comment.body)
 		self.tipping_comment = comment

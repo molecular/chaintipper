@@ -28,18 +28,12 @@ TypeError: unsupported operand type(s) for *: 'NoneType' and 'decimal.Decimal'
 ---
 		* do it
 
-
-			* settings: only reparse on relevant changes
-
-			* why is this in close()
-			* self.wallet_ui.reddit.triggerRefreshTips(); # why!?!? TODO
-
 			* segfault on close (at least on blackbox)
 
 			* parse "u/chaintip $1.50"?
 
-			* checkmark if user has already linked an address, or empty if they havent.
-			* column to show "wallet linked" status
+			* mark_read (including claim/return messages)
+
 			* setting to "Stop autotip if the user has already linked a wallet. "
 
 		* consider it

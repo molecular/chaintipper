@@ -52,18 +52,19 @@ class TipListItem(QTreeWidgetItem):
 			format_time(tip.chaintip_message.created_utc), 
 			#tip.type,
 			tip.payment_status,
+			tip.acceptance_status,
 			#str(tip.qualifiesForAutopay()),
 			#tip.chaintip_message.author.name,
 			#tip.chaintip_message.subject,
 			tip.subreddit_str,
 			tip.username,
 			#tip.direction,
-			"{0:.8f}".format(tip.amount_bch),
-			"{0:.2f}".format(tip.amount_fiat),
-			#tip.recipient_address.to_ui_string() if tip.recipient_address else None,
 			tip.tip_amount_text,
-			str(tip.tip_quantity),
-			tip.tip_unit,
+			"{0:.8f}".format(tip.amount_bch),
+			"{0:.2f}".format(tip.amount_fiat) if tip.amount_fiat else "<no rate>",
+			#tip.recipient_address.to_ui_string() if tip.recipient_address else None,
+			#str(tip.tip_quantity),
+			#tip.tip_unit,
 			#tip.tipping_comment_id,
 			tip.tipping_comment.body.partition('\n')[0],
 		]
@@ -82,19 +83,20 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 			#_('ID'), 
 			_('Date'),
 			#_('Type'),
-			_('Payment Status'),
+			_('Payment'),
+			_('Acceptance'),
 			#_('will autopay'), 
 			#_('Author'), 
 			#_('Subject'), 
 			_('Subreddit'), 
 			_('Recipient'), 
 			#_('Direction'), 
+			_('Tip Amount Text'),
 			_('Amount (BCH)'),
 			"amount_fiat", 
 			#_('Recipient Address'),
-			_('Tip Amount Text'),
-			_('Tip Quantity'),
-			_('Tip Unit'),
+			#_('Tip Quantity'),
+			#_('Tip Unit'),
 			#_('Tip Comment'), 
 			_('Tip Comment body'),
 		]
@@ -185,13 +187,13 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 			self.print_error("no tiplist_item")
 
 	def tipUpdated(self, tip):
-		self.print_error("tip updated: ", tip)
+		#self.print_error("tip updated: ", tip)
 		if hasattr(tip, 'tiplist_item'):
 			tip.tiplist_item.refreshData()
 			self.checkPaymentStatus()
 			self.potentiallyAutoPay([tip])
 
-	# 
+	#
 
 	def pay(self, tips: list):
 		"""constructs and broadcasts transaction paying the given tips. No questions asked."""
