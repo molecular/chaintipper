@@ -407,39 +407,58 @@ class RedditTip(PrintError, Tip):
 				comment = self.reddit.reddit.comment(id = self.tipping_comment_id)
 				self.parseTippingComment(comment)
 
-	p_tip = re.compile('.*u/chaintip ((\S*)\s*(\S*))', re.MULTILINE | re.DOTALL)
+	p_tip_amount_unit = re.compile('.*u/chaintip ((\S*)\s*(\S*))', re.MULTILINE | re.DOTALL)
+	p_tip_prefix_symbol_decimal = re.compile('.*u/chaintip (.) ?(\d+\.?\d*).*', re.MULTILINE | re.DOTALL)
 	def parseTippingComment(self, comment):
 		#self.print_error("got tipping comment:", comment.body)
 		self.tipping_comment = comment
 		self.subreddit_str = "r/" + self.tipping_comment.subreddit.display_name
-		m = RedditTip.p_tip.match(self.tipping_comment.body)
 		self.tip_unit = ''
+
+		# match u/chaintip <prefix_symbol> <decimal>
+		self.print_error(self.tipping_comment.body)
+		m = RedditTip.p_tip_prefix_symbol_decimal.match(self.tipping_comment.body)
 		if m:
 			try:
-				self.tip_amount_text = m.group(1)
-				if not m.group(3): # <tip_unit>
-					self.tip_unit = m.group(3)
-					self.tip_quantity = Decimal("1")
-				else: # <tip_quantity> <tip_unit>
-					try:
-						self.tip_quantity = amount_config["quantity_aliases"][m.group(2)]
-					except Exception as e:
-						self.tip_quantity = Decimal(m.group(2))
-					self.tip_unit = m.group(3)
-					# <onchain_message>
-					# if m.lastindex >= 3:
-					# 	self.tip_op_return = m.group(3)
+				prefix_symbol = m.group(1)
+				amount = m.group(2)
+				self.print_error("parsed <prefix_symbox><decimal>: ", prefix_symbol, amount)
+				self.tip_quantity = Decimal(amount)
+				self.tip_unit = amount_config["prefix_symbols"][prefix_symbol]
 				self.evaluateAmount()
 			except Exception as e:
-				self.print_error("Error parsing tip amount: ", repr(e))
-				#traceback.print_exc()
+				self.print_error("Error parsing tip amount <prefix_symbol><decimal>: ", repr(e))
+				traceback.print_exc()
+
+		# match u/chaintip <amount> <unit>
+		if self.tip_unit == '':
+			m = RedditTip.p_tip_amount_unit.match(self.tipping_comment.body)
+			if m:
+				try:
+					self.tip_amount_text = m.group(1)
+					if not m.group(3): # <tip_unit>
+						self.tip_unit = m.group(3)
+						self.tip_quantity = Decimal("1")
+					else: # <tip_quantity> <tip_unit>
+						try:
+							self.tip_quantity = amount_config["quantity_aliases"][m.group(2)]
+						except Exception as e:
+							self.tip_quantity = Decimal(m.group(2))
+						self.tip_unit = m.group(3)
+						# <onchain_message>
+						# if m.lastindex >= 3:
+						# 	self.tip_op_return = m.group(3)
+					self.evaluateAmount()
+				except Exception as e:
+					self.print_error("Error parsing tip amount <amount> <unit>: ", repr(e))
+					#traceback.print_exc()
+					self.payment_status = 'ready to pay'
+					self.amount_bch = self.getDefaultAmountBCH()
+					self.default_amount_used = True
+			else: # use default amount
 				self.payment_status = 'ready to pay'
 				self.amount_bch = self.getDefaultAmountBCH()
 				self.default_amount_used = True
-		else: # use default amount
-			self.payment_status = 'ready to pay'
-			self.amount_bch = self.getDefaultAmountBCH()
-			self.default_amount_used = True
 
 		self.qualifiesForAutopay() # will update payment_status
 

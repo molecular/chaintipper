@@ -22,8 +22,6 @@ TypeError: unsupported operand type(s) for *: 'NoneType' and 'decimal.Decimal'
 
 			* segfault on close (at least on blackbox)
 
-			* parse "u/chaintip $1.50"?
-
 			* mark_read (including claim/return messages)
 
 			* setting to "Stop autotip if the user has already linked a wallet. "

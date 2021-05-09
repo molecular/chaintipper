@@ -9,6 +9,7 @@ CHANGES
 	* better tipUpdated implementation (less flickering und sort-screwing)
 	* parse claimed/returned messages
 	* new column "Acceptance Status" (can be linked, not yet linked, claimed, returned)
+	* allow u/chaintip <currency_symbol><decimal> (exmaple: "u/chaintip $1")
 
 1.0-beta5:
 
