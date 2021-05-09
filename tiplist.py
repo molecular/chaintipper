@@ -63,8 +63,8 @@ class TipListItem(QTreeWidgetItem):
 			"{0:.8f}".format(tip.amount_bch),
 			"{0:.2f}".format(tip.amount_fiat) if tip.amount_fiat else "<no rate>",
 			#tip.recipient_address.to_ui_string() if tip.recipient_address else None,
-			#str(tip.tip_quantity),
-			#tip.tip_unit,
+			str(tip.tip_quantity),
+			tip.tip_unit,
 			#tip.tipping_comment_id,
 			tip.tipping_comment.body.partition('\n')[0],
 		]
@@ -95,8 +95,8 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 			_('Amount (BCH)'),
 			"amount_fiat", 
 			#_('Recipient Address'),
-			#_('Tip Quantity'),
-			#_('Tip Unit'),
+			_('Tip Quantity'),
+			_('Tip Unit'),
 			#_('Tip Comment'), 
 			_('Tip Comment body'),
 		]

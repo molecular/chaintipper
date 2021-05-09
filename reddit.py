@@ -242,11 +242,6 @@ class Reddit(PrintError, QObject):
 
 				return True
 
-		# returned message
-		if self.p_returned_subject.match(message.subject):
-			print_error("detected returned message, body", message.body)
-
-			return True
 			return False
 
 	def markChaintipMessagesUnread(self):
@@ -416,7 +411,6 @@ class RedditTip(PrintError, Tip):
 		self.tip_unit = ''
 
 		# match u/chaintip <prefix_symbol> <decimal>
-		self.print_error(self.tipping_comment.body)
 		m = RedditTip.p_tip_prefix_symbol_decimal.match(self.tipping_comment.body)
 		if m:
 			try:

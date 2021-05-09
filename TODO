@@ -11,13 +11,6 @@
 
 	* next beta
 
-Traceback (most recent call last):
-  File "/home/nick/bitcoin/electron-cash/electroncash_plugins/chaintipper/model.py", line 39, in addTip
-    tip_listener.tipAdded(tip)
-  File "/home/nick/bitcoin/electron-cash/electroncash_plugins/chaintipper/tiplist.py", line 306, in tipAdded
-    tip.amount_fiat = fx_rate * tip.amount_bch
-TypeError: unsupported operand type(s) for *: 'NoneType' and 'decimal.Decimal'
-
 		* do it
 
 			* segfault on close (at least on blackbox)
@@ -27,6 +20,10 @@ TypeError: unsupported operand type(s) for *: 'NoneType' and 'decimal.Decimal'
 			* setting to "Stop autotip if the user has already linked a wallet. "
 
 		* consider it
+
+			* treeview beauty
+				* use monospaced font like on history tab
+				* align right amount columns
 
 			* save settings only at dialog close? what other places write config, though?
 
