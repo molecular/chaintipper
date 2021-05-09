@@ -29,11 +29,9 @@ TypeError: unsupported operand type(s) for *: 'NoneType' and 'decimal.Decimal'
 		* do it
 
 
-			* reparse tips after relevant settings edited
-			* settings: only refresh on relevant changes
+			* settings: only reparse on relevant changes
 
-			* updateTip(): real implementation
-			* better tipUpdated implementation (the flickering und sort-screwing sucks)
+		
 
 			* why is this in close()
 			* self.wallet_ui.reddit.triggerRefreshTips(); # why!?!? TODO

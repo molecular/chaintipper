@@ -203,10 +203,16 @@ class Reddit(PrintError, QObject):
 	def refreshTips(self):
 		while len(self.tips_to_refresh) > 0:
 			tip = self.tips_to_refresh.pop()
-			self.print_error("refreshing ", tip)
-			self.wallet_ui.tiplist.removeTip(tip)
 			tip.refresh()
-			self.wallet_ui.tiplist.addTip(tip)
+			self.wallet_ui.tiplist.updateTip(tip)
+
+	def markChaintipMessagesUnread(self):
+		chaintip_messages = [message for message in self.reddit.inbox.messages(limit=10000) if 
+			message.author == 'chaintip' and
+			not message.new
+		]
+		self.print_error("found ", len(chaintip_messages), "messages")
+		self.reddit.inbox.mark_unread(chaintip_messages)
 
 	def disconnect(self):
 		write_config(self.wallet_ui.wallet, WalletStorageTokenManager.ACCESS_TOKEN_KEY, None)
@@ -229,6 +235,8 @@ class Reddit(PrintError, QObject):
 
 		self.await_reddit_authorization()
 
+		#self.markChaintipMessagesUnread()
+
 		try:
 			for item in self.reddit.inbox.stream(pause_after=0):
 
@@ -241,7 +249,7 @@ class Reddit(PrintError, QObject):
 				if item is None:
 					continue
 
-				self.print_error("incoming item of type", type(item))
+				#self.print_error("incoming item of type", type(item))
 
 				if isinstance(item, praw.models.Message):
 					tip = RedditTip(self, item)
@@ -361,7 +369,7 @@ class RedditTip(PrintError, Tip):
 				self.evaluateAmount()
 			except Exception as e:
 				self.print_error("Error parsing tip amount: ", repr(e))
-				traceback.print_exc()
+				#traceback.print_exc()
 				self.payment_status = 'ready to pay'
 				self.amount_bch = self.getDefaultAmountBCH()
 				self.default_amount_used = True
@@ -393,12 +401,6 @@ class RedditTip(PrintError, Tip):
 			self.default_amount_used = False
 			#self.print_error("rate for tip_unit", self.tip_unit, ": ", rate)
 			self.payment_status = 'ready to pay'
-
-		# if self.payment_status == 'ready to pay':
-		# 	autopay_use_limit = read_config(self.wallet, "autopay_use_limit", c["default_autopay_use_limit"])
-		# 	autopay_limit_bch = Decimal(read_config(self.wallet, "autopay_limit_bch", c["default_autopay_limit_bch"]))
-		# 	if autopay_use_limit and autopay_limit_bch < self.amount_bch:
-		# 		self.payment_status = 'autopay limited'
 			
 	def getDefaultAmountBCH(self):
 		wallet = self.reddit.wallet_ui.wallet
@@ -438,7 +440,7 @@ class RedditTip(PrintError, Tip):
 			self.payment_status = 'invalid recipient address'
 			return False
 
-		# autopay activated?
+		# autopay deactivated?
 		if not read_config(wallet, "autopay", c["default_autopay"]): 
 			self.payment_status = 'autopay disabled'
 			return False		

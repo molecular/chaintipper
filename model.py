@@ -44,9 +44,8 @@ class TipList(PrintError):
 			tip_listener.tipRemoved(tip)
 
 	def updateTip(self, tip):
-		self.removeTip(tip)
-		self.addTip(tip)
-		self.print_error("tip update, payment_status:", tip.payment_status)
+		for tip_listener in self.tip_listeners:
+			tip_listener.tipUpdated(tip)
 
 class TipListener():
 	def tipAdded(self, tip):
@@ -54,4 +53,8 @@ class TipListener():
 
 	def tipRemoved(self, tip):
 		print_error("not implemented")
+
+	def tipUpdated(self, tip):
+		print_error("not implemented")
+
 

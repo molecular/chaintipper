@@ -6,6 +6,7 @@ CHANGES
 	* new menu item: "open blockexplorer to payment tx"
 	* batch "mark_read" actions through reddit api
 	* don't use send to many when "pay..."ing only 1 tip (so amount can then be edited on send tab)
+	* better tipUpdated implementation (less flickering und sort-screwing sucks)
 
 1.0-beta5:
 

@@ -42,28 +42,36 @@ class TipListItem(QTreeWidgetItem):
 		elif isinstance(o, Tip):
 			self.tip = o
 			self.tip.tiplist_item = self
-			self.__init__([
-				#o.id,
-				format_time(o.chaintip_message.created_utc), 
-				#o.type,
-				o.payment_status,
-				#str(o.qualifiesForAutopay()),
-				#o.chaintip_message.author.name,
-				#o.chaintip_message.subject,
-				o.subreddit_str,
-				o.username,
-				#o.direction,
-				"{0:.8f}".format(o.amount_bch),
-				"{0:.2f}".format(o.amount_fiat),
-				#o.recipient_address.to_ui_string() if o.recipient_address else None,
-				o.tip_amount_text,
-				str(o.tip_quantity),
-				o.tip_unit,
-				#o.tipping_comment_id,
-				o.tipping_comment.body.partition('\n')[0],
-			])
+			self.__init__(self.getDataArray(self.tip))
 		else:
 			QTreeWidgetItem.__init__(self)
+
+	def getDataArray(self, tip):
+		return [
+			#tip.id,
+			format_time(tip.chaintip_message.created_utc), 
+			#tip.type,
+			tip.payment_status,
+			#str(tip.qualifiesForAutopay()),
+			#tip.chaintip_message.author.name,
+			#tip.chaintip_message.subject,
+			tip.subreddit_str,
+			tip.username,
+			#tip.direction,
+			"{0:.8f}".format(tip.amount_bch),
+			"{0:.2f}".format(tip.amount_fiat),
+			#tip.recipient_address.to_ui_string() if tip.recipient_address else None,
+			tip.tip_amount_text,
+			str(tip.tip_quantity),
+			tip.tip_unit,
+			#tip.tipping_comment_id,
+			tip.tipping_comment.body.partition('\n')[0],
+		]
+
+	def refreshData(self):
+		data = self.getDataArray(self.tip)
+		for idx, value in enumerate(data, start=0):
+			self.setData(idx, Qt.DisplayRole, value)
 
 class TipListWidget(PrintError, MyTreeWidget, TipListener):
 
@@ -134,6 +142,54 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 		self.tiplist = tiplist
 		self.tiplist.registerTipListener(self)
 		self.tips_by_address = dict()
+
+	# TipListener implementation
+
+	def tipAdded(self, tip):
+		if tip.recipient_address:
+			self.tips_by_address[tip.recipient_address] = tip 
+
+		# calc tip.amount_fiat
+		d_t = datetime.utcfromtimestamp(tip.chaintip_message.created_utc)
+		fx_rate = self.window.fx.history_rate(d_t)
+		if fx_rate != None:
+			#self.print_error("fx_rate", fx_rate, "tip amount", tip.amount_bch)
+			tip.amount_fiat = fx_rate * tip.amount_bch
+		else:
+			tip.amount_fiat = None
+
+		TipListItem(tip) 
+
+		if c["use_categories"]:
+			category_item = self.getCategoryItemForTip(tip)
+			category_item.setExpanded(True)
+			category_item.addChild(tip.tiplist_item)
+		else:
+			self.addTopLevelItem(tip.tiplist_item)
+
+		self.checkPaymentStatus()
+		self.potentiallyAutoPay([tip])
+
+
+	def tipRemoved(self, tip):
+		if tip.recipient_address:
+			del self.tips_by_address[tip.recipient_address]
+		if hasattr(tip, 'tiplist_item'):
+			if c["use_categories"]:
+				category_item = self.getCategoryItemForTip(tip)
+				category_item.removeChild(tip.tiplist_item)
+			else:
+				self.takeTopLevelItem(self.indexOfTopLevelItem(tip.tiplist_item))
+			del tip.tiplist_item
+		else:
+			self.print_error("no tiplist_item")
+
+	def tipUpdated(self, tip):
+		self.print_error("tip updated: ", tip)
+		if hasattr(tip, 'tiplist_item'):
+			tip.tiplist_item.refreshData()
+
+	# 
 
 	def pay(self, tips: list):
 		"""constructs and broadcasts transaction paying the given tips. No questions asked."""
@@ -306,46 +362,6 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 			i = self.outgoing_items
 		return i
 
-	# TipListener implementation
-
-	def tipAdded(self, tip):
-		if tip.recipient_address:
-			self.tips_by_address[tip.recipient_address] = tip 
-
-		# calc tip.amount_fiat
-		d_t = datetime.utcfromtimestamp(tip.chaintip_message.created_utc)
-		fx_rate = self.window.fx.history_rate(d_t)
-		if fx_rate != None:
-			#self.print_error("fx_rate", fx_rate, "tip amount", tip.amount_bch)
-			tip.amount_fiat = fx_rate * tip.amount_bch
-		else:
-			tip.amount_fiat = None
-
-		TipListItem(tip)
-		if c["use_categories"]:
-			category_item = self.getCategoryItemForTip(tip)
-			category_item.setExpanded(True)
-			category_item.addChild(tip.tiplist_item)
-		else:
-			self.addTopLevelItem(tip.tiplist_item)
-
-		self.checkPaymentStatus()
-		self.potentiallyAutoPay([tip])
-
-
-	def tipRemoved(self, tip):
-		if tip.recipient_address:
-			del self.tips_by_address[tip.recipient_address]
-		if hasattr(tip, 'tiplist_item'):
-			if c["use_categories"]:
-				category_item = self.getCategoryItemForTip(tip)
-				category_item.removeChild(tip.tiplist_item)
-			else:
-				self.takeTopLevelItem(self.indexOfTopLevelItem(tip.tiplist_item))
-		else:
-			self.print_error("no tiplist_item")
-
-	# 
 
 	def potentiallyAutoPay(self, tips: list):
 		if read_config(self.wallet, "autopay", False):
