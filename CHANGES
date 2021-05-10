@@ -10,8 +10,9 @@ CHANGES
 	* parse claimed/returned messages
 	* new column "Acceptance Status" (can be linked, not yet linked, claimed, returned)
 	* allow u/chaintip <currency_symbol><decimal> (exmaple: "u/chaintip $1")
-	* new menu item "mark_read (including claim/return messages)"
+	* "mark_read" also marks claim/returned messages
 	* setting to "Disallow autopay if the user has already linked a wallet."
+	* commit settings when dialog closes, not at every read/write (could speed up opening settings dialog)
 
 1.0-beta5:
 

@@ -10,7 +10,6 @@
 	* beta 6
 
 		* test zip
-		* "mark read": only count and act on read_status == 'new'
 
 		* save settings only at dialog close? what other places write config, though?
 
@@ -20,10 +19,12 @@
 		* enable initial loading of read messages
 		* max_age in settings
 		* move reddit forget button to settings
+		* "mark read": only count and act on read_status == 'new'
 
 		* segfault on close (at least on blackbox)
 
 		* about box
+		* "mark read" removes tip, which it shouldn't do any more
 
 
 		* check for update (some json on github?)

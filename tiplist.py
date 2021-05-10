@@ -337,6 +337,9 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 			tips = [s.tip for s in self.selectedItems()]
 			count_display_string = f" ({len(tips)})"
 
+		new_tips = [t for t in tips if t.read_status == 'new']
+		new_count_display_string = f" ({len(new_tips)})" if len(new_tips)>1 else "" 
+
 		unpaid_tips = [t for t in tips if t.payment_status != 'paid' and t.amount_bch]
 		unpaid_count_display_string = f" ({len(unpaid_tips)})" if len(unpaid_tips)>1 else "" 
 
@@ -346,9 +349,8 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 
 		# create the context menu
 		menu = QMenu()
-		if len(tips) > 0:
-			menu.addAction(_(f"mark read{count_display_string}"), lambda: doMarkRead(tips, False))
-			menu.addAction(_(f"mark read (including claim/returned msgs) {count_display_string}"), lambda: doMarkRead(tips, True))
+		if len(new_tips) > 0:
+			menu.addAction(_(f"mark read{new_count_display_string}"), lambda: doMarkRead(new_tips, True))
 		if len(self.selectedItems()) == 1:
 			menu.addAction(_(f"open browser to tipping comment"), lambda: doOpenBrowser(tips[0]))
 			if hasattr(tips[0], "payment_txid") and tips[0].payment_txid:
