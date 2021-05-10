@@ -2,66 +2,72 @@
 
 		* for any semi-public release
 
-			* clean up the code
 			* readme.md for github (linking to manual.md, build_and_review.md)
 			* rebase and push to github once code is de-cluttered
 			* release (trhough github files?), hashes?
 			* LICENSE
-			* DONT RELEASE PW IN config.py!!!
 
-	* next beta
+	* beta 6
 
-		* do it
+		* test zip
+		* "mark read": only count and act on read_status == 'new'
 
-			* segfault on close (at least on blackbox)
+		* save settings only at dialog close? what other places write config, though?
 
-			* setting to "Stop autotip if the user has already linked a wallet. "
+	* beta 7
 
-			* about box
+		* implement blockchain scanning for payments
+		* enable initial loading of read messages
+		* max_age in settings
+		* move reddit forget button to settings
 
-			* store first activation time and mark tips before that as payment_status='too old'. Invert payment_status logic
+		* segfault on close (at least on blackbox)
 
-		* consider it
+		* about box
 
-			* treeview beauty
-				* use monospaced font like on history tab
-				* align right (or better decimal point) amount columns
-				* amount colums: sort by number, not text
 
-			* save settings only at dialog close? what other places write config, though?
+		* check for update (some json on github?)
 
-			* detect payment status from other wallets (use network, blockchain whatever)
+	* consider it
 
-			* history rate available if "show history rate" unchecked?
+		* treeview beauty
+			* use monospaced font like on history tab
+			* align right (or better decimal point) amount columns
+			* amount colums: sort by number, not text
 
-			* parse chaintip confirmation comment <- no added value?
 
-			* Jon F suggestoin: re-enable "autopay" menu entry for quickly paying tips when autopay is off (currently doesn't work because tips are filtered for autopay-eligible ones only) or "send now" that ignores all autopay constraints
+		* detect payment status from other wallets (use network, blockchain whatever)
 
-			* Jon F: "double clicking in the Chaintipper tab should open the "pay..."/send window"
-	
-			* default tip amount currency: add BCH option
+		* history rate available if "show history rate" unchecked?
 
-			* headless operation
+		* parse chaintip confirmation comment <- no added value?
 
-			* pla-plingggg sound?
+		* Jon F suggestoin: re-enable "autopay" menu entry for quickly paying tips when autopay is off (currently doesn't work because tips are filtered for autopay-eligible ones only) or "send now" that ignores all autopay constraints
 
-			* menu-item "set amount" with a dialog
+		* Jon F: "double clicking in the Chaintipper tab should open the "pay..."/send window"
 
-			* reddit logon: display "waiting for yout to authorize chaintipper to access your reddit account, check your browser"?
+		* default tip amount currency: add BCH option
 
-			* amount_bch sometimes scientific notation "1.0E-7", format it
+		* headless operation
 
-			* reddit.py receive loop: reparse amount on Comment change?
+		* pla-plingggg sound?
 
-			* preferences
-				* amount config (tip amount monikers)
+		* menu-item "set amount" with a dialog
 
-			* currently using first exchange found for the given ccy, maybe improve?
+		* reddit logon: display "waiting for yout to authorize chaintipper to access your reddit account, check your browser"?
 
-			* html preview of tipping message? even parent?
+		* amount_bch sometimes scientific notation "1.0E-7", format it
 
-			* auto-edit tipping message ("EDIT: paid with chaintipper EC plugin")
+		* reddit.py receive loop: reparse amount on Comment change?
+
+		* preferences
+			* amount config (tip amount monikers)
+
+		* currently using first exchange found for the given ccy, maybe improve?
+
+		* html preview of tipping message? even parent?
+
+		* auto-edit tipping message ("EDIT: paid with chaintipper EC plugin")
 
 	* 2.0 / ideas
 

@@ -11,6 +11,7 @@ CHANGES
 	* new column "Acceptance Status" (can be linked, not yet linked, claimed, returned)
 	* allow u/chaintip <currency_symbol><decimal> (exmaple: "u/chaintip $1")
 	* new menu item "mark_read (including claim/return messages)"
+	* setting to "Disallow autopay if the user has already linked a wallet."
 
 1.0-beta5:
 
