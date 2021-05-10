@@ -3,4 +3,5 @@ target_sums
 /praw
 /prawcore
 /websocket
+/iterators
 /patched
