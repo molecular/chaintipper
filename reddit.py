@@ -321,13 +321,15 @@ class Reddit(PrintError, QObject):
 
 		#self.markChaintipMessagesUnread()
 
-		# using 2 ListingGenerators in parallel
-		iter_read = self.reddit.inbox.messages(limit=None)
-		iter_stream = TimeoutIterator(self.reddit.inbox.stream(pause_after=0), timeout=0.5)
-		self.print_error("type", type(iter_stream))
 		max_age_days = -1
+		do_read_from_read = False
+
+
+		# using 2 ListingGenerators in parallel
+		if do_read_from_read:
+			iter_read = self.reddit.inbox.messages(limit=None)
+		iter_stream = self.reddit.inbox.stream(pause_after=0)
 		cutoff_time = time() - 60*60*24 * max_age_days
-		do_read_from_read = True
 		try:
 			while not self.should_quit:
 				# read from inbox.read
@@ -360,8 +362,7 @@ class Reddit(PrintError, QObject):
 
 		return
 
-		# get read messages
-		# max_age_days = 1
+		# # get read messages
 		# cutoff_time = time() - 60*60*24 * max_age_days
 		# try:
 		# 	for item in self.reddit.inbox.messages(limit=None):
