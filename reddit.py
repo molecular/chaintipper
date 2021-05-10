@@ -4,9 +4,10 @@ from electroncash.exchange_rate import *
 from electroncash.wallet import Abstract_Wallet
 from electroncash_gui.qt.util import webopen, MessageBoxMixin
 from electroncash.i18n import _
+from iterators import TimeoutIterator
 
 from decimal import Decimal
-import datetime
+from datetime import datetime
 import traceback
 import re
 import random
@@ -59,6 +60,8 @@ class Reddit(PrintError, QObject):
 		self.should_quit = False
 		self.state = None # used in reddit auth flow
 		self.tips_to_refresh = []
+		self.tip_or_message_by_message = dict()
+		self.unassociated_claim_return_messages = [] # store claim/return messages for later association with a tip
 
 	def receive_connection(self, port):
 		"""Wait for and then return a connected socket..
@@ -199,7 +202,8 @@ class Reddit(PrintError, QObject):
 			write_config(self.wallet_ui.wallet, WalletStorageTokenManager.REFRESH_TOKEN_KEY, refresh_token)
 
 	def triggerRefreshTips(self):
-		self.tips_to_refresh += [tip for tip in self.wallet_ui.tiplist.tips.values()]
+		if hasattr(self.wallet_ui, "tiplist"):
+			self.tips_to_refresh += [tip for tip in self.wallet_ui.tiplist.tips.values()]
 
 	def refreshTips(self):
 		while len(self.tips_to_refresh) > 0:
@@ -215,34 +219,35 @@ class Reddit(PrintError, QObject):
 		"""returns true if message is a "Tip claimed" message, false otherwise"""
 
 		# claimed message
-		if self.p_claimed_subject.match(message.subject) or self.p_returned_subject.match(message.subject):
-			#print_error("detected claimed/returned message, body", message.body)
-			m = self.p_claimed_or_returned_message.match(message.body)
-			if m:
-				confirmation_comment_id = m.group(1)
-				tipping_comment_id = self.reddit.comment(confirmation_comment_id).parent_id[3:] # remove "t1_" prefix
-				amount = m.group(2)
-				claimant = m.group(3)
-				action = m.group(4)
-				# print_error("parsed claimed message", message.id)
-				# print_error("   tipping_comment_id:", tipping_comment_id)
-				# print_error("   amount: ", amount)
-				# print_error("   claimant:", claimant)
-				# print_error("   action:", action)
-
-				# find tip matching claim and set its acceptance_status
-				try:
-					tip = self.wallet_ui.tiplist.tips[tipping_comment_id]
-					self.print_error(f"when parsing claim/returned message {message.id}: found matching tip (for claim)", tip)
-					tip.claim_or_returned_message = message
-					tip.acceptance_status = action
-					self.wallet_ui.tiplist.updateTip(tip)
-				except: 
-					self.print_error(f"when parsing claim/returned message {message.id}: tip with tipping_comment_id {tipping_comment_id} not found. Not registering '{action}' status.")
-
-				return True
-
+		if not self.p_claimed_subject.match(message.subject) and not self.p_returned_subject.match(message.subject):
 			return False
+
+		#print_error("detected claimed/returned message, body", message.body)
+		m = self.p_claimed_or_returned_message.match(message.body)
+		if m:
+			confirmation_comment_id = m.group(1)
+			tipping_comment_id = self.reddit.comment(confirmation_comment_id).parent_id[3:] # remove "t1_" prefix
+			amount = m.group(2)
+			claimant = m.group(3)
+			action = m.group(4)
+			# print_error("parsed claimed message", message.id)
+			# print_error("   tipping_comment_id:", tipping_comment_id)
+			# print_error("   amount: ", amount)
+			# print_error("   claimant:", claimant)
+			# print_error("   action:", action)
+
+			# find tip matching claim and set its acceptance_status
+			try:
+				tip = self.wallet_ui.tiplist.tips[tipping_comment_id]
+				self.print_error(f"when parsing claim/returned message {message.id}: found matching tip (for claim)", tip)
+				tip.claim_or_returned_message = message
+				tip.acceptance_status = action
+				self.wallet_ui.tiplist.updateTip(tip)
+			except: 
+				self.unassociated_claim_return_messages.append(message)
+				#self.print_error(f"when parsing claim/returned message {message.id}: tip with tipping_comment_id {tipping_comment_id} not found. Not registering '{action}' status.")
+
+			return True
 
 	def markChaintipMessagesUnread(self):
 		chaintip_messages = [message for message in self.reddit.inbox.messages(limit=100) if 
@@ -267,6 +272,47 @@ class Reddit(PrintError, QObject):
 		self.dathread.started.connect(self.run)
 		self.dathread.start()
 
+	def digestItem(self, item, item_is_new=False):
+		if item is None:
+			return
+		#self.print_error("incoming item of type", type(item))
+
+		if isinstance(item, praw.models.Message):
+			message = item
+			# if message hasn't been seen before, digest according to its nature
+			if message.id not in self.tip_or_message_by_message: 
+				self.tip_or_message_by_message[message.id] = message
+				claimed_or_returned = self.parseClaimedOrReturnedMessage(message)
+				if not claimed_or_returned:
+					tip = RedditTip(self, message)
+					self.tip_or_message_by_message[message.id] = tip
+					if item_is_new:
+						tip.read_status = 'new'
+					if tip.isValid():
+						if not self.should_quit:
+							self.new_tip.emit(tip)
+			# if we've seen the message before, just mark assocated tip as "new"
+			elif item_is_new:
+				tip = self.tip_or_message_by_message[message.id]
+				if isinstance(tip, RedditTip):
+					tip.read_status = 'new'
+					self.wallet_ui.tiplist.updateTip(tip)
+
+			self.associateClaimReturnMessages()
+
+	def associateClaimReturnMessages(self):
+		# try to associate any leftover claim/return messages
+		if len(self.unassociated_claim_return_messages) > 0:
+			# swap the list to a local one
+			messages = self.unassociated_claim_return_messages;
+			self.unassociated_claim_return_messages = []
+
+			# refilling the real one for the messages still not associated
+			for message in messages:
+				self.parseClaimedOrReturnedMessage(message)
+
+			del messages
+
 	def run(self):
 		self.print_error("Reddit.run() called")
 		tips = []
@@ -275,43 +321,79 @@ class Reddit(PrintError, QObject):
 
 		#self.markChaintipMessagesUnread()
 
+		# using 2 ListingGenerators in parallel
+		iter_read = self.reddit.inbox.messages(limit=None)
+		iter_stream = TimeoutIterator(self.reddit.inbox.stream(pause_after=0), timeout=0.5)
+		self.print_error("type", type(iter_stream))
+		max_age_days = -1
+		cutoff_time = time() - 60*60*24 * max_age_days
+		do_read_from_read = True
 		try:
-			for item in self.reddit.inbox.stream(pause_after=0):
+			while not self.should_quit:
+				# read from inbox.read
+				if do_read_from_read:
+					try:
+						item = next(iter_read)
+						#self.print_error("reading from iter_read:", item)
+						self.digestItem(item)
+						if item.created_utc < cutoff_time:
+							do_read_from_read = False
+					except StopIteration:
+						do_read_from_read = False
 
-				# some "background tasks"
-				self.refreshTips()
-
-				# digest item
-				if self.should_quit:
-					break
-				if item is None:
-					continue
-
-				#self.print_error("incoming item of type", type(item))
-
+				# read from inbox.stream
+				item = None
+				item = next(iter_stream)
+				#self.print_error("reading from iter_stream:", item)
 				if isinstance(item, praw.models.Message):
-					message = item
-					claimed_or_returned = self.parseClaimedOrReturnedMessage(message)
-					if not claimed_or_returned:
-						tip = RedditTip(self, message)
-						if tip.isValid():
-							if not self.should_quit:
-								self.new_tip.emit(tip)
-						# else:
-						# 	twodays_ago = time() - 60*60*24*2
-						# 	self.print_error("not valid, type: ", tip.type, "message id:", tip.chaintip_message.id)
-						# 	if tip.chaintip_message.created_utc < twodays_ago:
-						# 		tip.chaintip_message.mark_read()
+					item.mark_read()
+					item.mark_unread()
+				self.digestItem(item, item_is_new=True)
 
-
-				if isinstance(item, praw.models.Comment):
-					continue
+				# housekeeping
+				self.refreshTips()
 		except prawcore.exceptions.PrawcoreException as e:
 			self.print_error("exception in reddit inbox streaming: ", e)
 
 		self.print_error("exited reddit inbox streaming")
-
 		self.dathread.quit()
+
+		return
+
+		# get read messages
+		# max_age_days = 1
+		# cutoff_time = time() - 60*60*24 * max_age_days
+		# try:
+		# 	for item in self.reddit.inbox.messages(limit=None):
+		# 		if item.created_utc < cutoff_time:
+		# 			self.print_error("max_age of", max_age_days, "days reached. aborting loading of read messages")
+		# 			break
+		# 		self.digestItem(item)
+		# except prawcore.exceptions.PrawcoreException as e:
+		# 	self.print_error("exception in reddit getting messsages: ", e)
+
+		# self.associateClaimReturnMessages()
+
+		# self.print_error("streaming inbox...")
+
+		# try:
+		# 	for item in self.reddit.inbox.stream(pause_after=0):
+
+		# 		# some "background tasks"
+		# 		self.refreshTips()
+
+		# 		# digest item
+		# 		if self.should_quit:
+		# 			break
+
+		# 		self.digestItem(item, item_is_new=True)
+
+		# except prawcore.exceptions.PrawcoreException as e:
+		# 	self.print_error("exception in reddit inbox streaming: ", e)
+
+		# self.print_error("exited reddit inbox streaming")
+
+		# self.dathread.quit()
 
 class RedditTip(PrintError, Tip):
 
@@ -325,6 +407,7 @@ class RedditTip(PrintError, Tip):
 		self.platform = "reddit"
 		self.reddit = reddit
 		self.acceptance_status = ""
+		self.read_status = "read" # will be set to "new" by inbox streamer
 
 		self.chaintip_message = message
 
@@ -422,7 +505,7 @@ class RedditTip(PrintError, Tip):
 				self.evaluateAmount()
 			except Exception as e:
 				self.print_error("Error parsing tip amount <prefix_symbol><decimal>: ", repr(e))
-				traceback.print_exc()
+				#traceback.print_exc()
 
 		# match u/chaintip <amount> <unit>
 		if self.tip_unit == '':
@@ -503,8 +586,17 @@ class RedditTip(PrintError, Tip):
 			#self.print_error("rate", rate)
 		return rate
 
+	def isOld(self):
+		activation_t = read_config(self.reddit.wallet_ui.wallet, "activation_time")
+		return self.chaintip_message.created_utc < activation_t
+
 	def qualifiesForAutopay(self):
 		wallet = self.reddit.wallet_ui.wallet
+
+		# old?
+		# if self.isOld():
+		# 	self.payment_status = 'older than chaintipper'
+		# 	return False
 
 		# not ready to pay?
 		if self.payment_status != 'ready to pay': return False
