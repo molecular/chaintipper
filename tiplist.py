@@ -51,6 +51,7 @@ class TipListItem(QTreeWidgetItem):
 			#tip.id,
 			format_time(tip.chaintip_message.created_utc), 
 			#tip.type,
+			tip.read_status,
 			tip.payment_status,
 			tip.acceptance_status,
 			#str(tip.qualifiesForAutopay()),
@@ -83,6 +84,7 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 			#_('ID'), 
 			_('Date'),
 			#_('Type'),
+			_('Read'),
 			_('Payment'),
 			_('Acceptance'),
 			#_('will autopay'), 
@@ -191,7 +193,7 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 		if hasattr(tip, 'tiplist_item'):
 			tip.tiplist_item.refreshData()
 			self.checkPaymentStatus()
-			self.potentiallyAutoPay([tip])
+			self.pay([tip])
 
 	#
 
