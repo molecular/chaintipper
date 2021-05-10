@@ -31,7 +31,7 @@ from . import fullname
 from .reddit import Reddit
 from .model import TipList
 from .tiplist import TipListWidget
-from .util import read_config, write_config
+from .util import read_config, write_config, commit_config
 from .config import c, amount_config_to_rich_text
 
 icon_chaintip = QtGui.QIcon(":icons/chaintip.svg")
@@ -290,31 +290,6 @@ class WalletSettingsDialog(WindowModalDialog, PrintError, MessageBoxMixin):
 		# header
 		#main_layout.addWidget(QLabel(_('ChainTipper - settings for wallet "{wallet_name}"').format(wallet_name=self.wallet_ui.wallet_name)), 0, 0, Qt.AlignRight)
 
-
-		# # reddit credentials
-		# gbox = QGroupBox(_("Reddit Credentials"))
-		# grid = QGridLayout(gbox)
-		# main_layout.addWidget(gbox)
-
-		# # reddit username
-		# grid.addWidget(QLabel(_('Username')), 0, 0, Qt.AlignRight)
-		# self.reddit_username = QLineEdit()
-		# self.reddit_username.setText(read_config(self.wallet, "reddit_username"))
-		# def on_reddit_username():
-		# 	write_config(self.wallet, "reddit_username", self.reddit_username.text())
-		# self.reddit_username.editingFinished.connect(on_reddit_username)
-		# grid.addWidget(self.reddit_username, 0, 1)
-
-		# # reddit password
-		# grid.addWidget(QLabel(_('Password')), 1, 0, Qt.AlignRight)
-		# self.reddit_password = QLineEdit()
-		# self.reddit_password.setEchoMode(QLineEdit.Password)
-		# self.reddit_password.setText(read_config(self.wallet, "reddit_password"))
-		# def on_reddit_password():
-		# 	write_config(self.wallet, "reddit_password", self.reddit_password.text())
-		# self.reddit_password.editingFinished.connect(on_reddit_password)
-		# grid.addWidget(self.reddit_password, 1, 1)
-
 		# --- group for startup settings
 		gbox = QGroupBox(_("Startup Settings"))
 		grid = QGridLayout(gbox)
@@ -323,9 +298,9 @@ class WalletSettingsDialog(WindowModalDialog, PrintError, MessageBoxMixin):
 
 		# active when wallet opens
 		self.cb_activate_on_open = QCheckBox(_("Activate ChainTipper when wallet '{wallet_name}'' is opened.").format(wallet_name=self.wallet_ui.wallet_name))
-		self.cb_activate_on_open.setChecked(read_config(self.wallet, "activate_on_wallet_open", False))
+		self.cb_activate_on_open.setChecked(read_config(self.wallet, "activate_on_wallet_open", False, commit=False))
 		def on_cb_activate_on_open():
-			write_config(self.wallet, "activate_on_wallet_open", self.cb_activate_on_open.isChecked())
+			write_config(self.wallet, "activate_on_wallet_open", self.cb_activate_on_open.isChecked(), commit=False)
 		self.cb_activate_on_open.stateChanged.connect(on_cb_activate_on_open)
 		grid.addWidget(self.cb_activate_on_open)
 
@@ -337,14 +312,14 @@ class WalletSettingsDialog(WindowModalDialog, PrintError, MessageBoxMixin):
 		# amount
 		grid.addWidget(QLabel(_('Amount')), 0, 0, Qt.AlignRight)
 		self.default_amount = QLineEdit()
-		self.default_amount.setText(read_config(self.wallet, "default_amount", c["default_amount"]))
+		self.default_amount.setText(read_config(self.wallet, "default_amount", c["default_amount"], commit=False))
 		def on_default_amount():
 			try:
 				self.default_amount.setText(str(decimal.Decimal(self.default_amount.text())))
 			except decimal.InvalidOperation as e:
 				self.show_error(_("Cannot parse {string} as decimal number. Please try again.").format(string=self.default_amount.text()))
-				self.default_amount.setText(read_config(self.wallet, "default_amount", c["default_amount"]))
-			write_config(self.wallet, "default_amount", self.default_amount.text())
+				self.default_amount.setText(read_config(self.wallet, "default_amount", c["default_amount"], commit=False))
+			write_config(self.wallet, "default_amount", self.default_amount.text(), commit=False)
 		self.default_amount.editingFinished.connect(on_default_amount)
 		grid.addWidget(self.default_amount, 0, 1)
 
@@ -355,11 +330,11 @@ class WalletSettingsDialog(WindowModalDialog, PrintError, MessageBoxMixin):
 		self.default_amount_currency.addItems(self.currencies)
 		self.default_amount_currency.setCurrentIndex(
 			self.default_amount_currency.findText(
-				read_config(self.wallet, "default_amount_currency", c["default_amount_currency"])
+				read_config(self.wallet, "default_amount_currency", c["default_amount_currency"], commit=False)
 			)
 		)
 		def on_default_amount_currency():
-			write_config(self.wallet, "default_amount_currency", self.currencies[self.default_amount_currency.currentIndex()])
+			write_config(self.wallet, "default_amount_currency", self.currencies[self.default_amount_currency.currentIndex()], commit=False)
 		self.default_amount_currency.currentIndexChanged.connect(on_default_amount_currency)
 		grid.addWidget(self.default_amount_currency, 1, 1)
 
@@ -375,34 +350,34 @@ class WalletSettingsDialog(WindowModalDialog, PrintError, MessageBoxMixin):
 			self.cb_autopay_limit.setEnabled(self.cb_autopay.isChecked())
 			self.cb_autopay_disallow_default.setEnabled(self.cb_autopay.isChecked())
 			self.cb_autopay_disallow_linked.setEnabled(self.cb_autopay.isChecked())
-			write_config(self.wallet, "autopay", self.cb_autopay.isChecked())
+			write_config(self.wallet, "autopay", self.cb_autopay.isChecked(), commit=False)
 			on_cb_autopay_limit()
 		self.cb_autopay.stateChanged.connect(on_cb_autopay)
 		vbox.addWidget(self.cb_autopay)
 
 		# disallow autopay when default amount is used
 		self.cb_autopay_disallow_default = QCheckBox(_("Disallow AutoPay when Default Tip Amount is used"))
-		self.cb_autopay_disallow_default.setChecked(read_config(self.wallet, "autopay_disallow_default", c["default_autopay_disallow_default"]))
+		self.cb_autopay_disallow_default.setChecked(read_config(self.wallet, "autopay_disallow_default", c["default_autopay_disallow_default"], commit=False))
 		def on_cb_autopay_disallow_default():
-			write_config(self.wallet, "autopay_disallow_default", self.cb_autopay_disallow_default.isChecked())
+			write_config(self.wallet, "autopay_disallow_default", self.cb_autopay_disallow_default.isChecked(), commit=False)
 		self.cb_autopay_disallow_default.stateChanged.connect(on_cb_autopay_disallow_default)
 		vbox.addWidget(self.cb_autopay_disallow_default)
 
 		# disallow autopay when tipee has already linked address
 		self.cb_autopay_disallow_linked = QCheckBox(_("Disallow AutoPay when recipient has already linked an address (i.e. autopay only 'fresh' people)"))
-		self.cb_autopay_disallow_linked.setChecked(read_config(self.wallet, "autopay_disallow_linked", c["default_autopay_disallow_linked"]))
+		self.cb_autopay_disallow_linked.setChecked(read_config(self.wallet, "autopay_disallow_linked", c["default_autopay_disallow_linked"], commit=False))
 		def on_cb_autopay_disallow_linked():
-			write_config(self.wallet, "autopay_disallow_linked", self.cb_autopay_disallow_linked.isChecked())
+			write_config(self.wallet, "autopay_disallow_linked", self.cb_autopay_disallow_linked.isChecked(), commit=False)
 		self.cb_autopay_disallow_linked.stateChanged.connect(on_cb_autopay_disallow_linked)
 		vbox.addWidget(self.cb_autopay_disallow_linked)
 
 		# autopay limit checkbox
 		self.cb_autopay_limit = QCheckBox(_("Limit AutoPay Amount"))
-		self.cb_autopay_limit.setChecked(read_config(self.wallet, "autopay_use_limit", c["default_autopay_use_limit"]))
+		self.cb_autopay_limit.setChecked(read_config(self.wallet, "autopay_use_limit", c["default_autopay_use_limit"], commit=False))
 		def on_cb_autopay_limit():
 			self.autopay_limit_bch_label.setEnabled(self.cb_autopay.isChecked() and self.cb_autopay_limit.isChecked())
 			self.autopay_limit_bch.setEnabled(self.cb_autopay.isChecked() and self.cb_autopay_limit.isChecked())
-			write_config(self.wallet, "autopay_use_limit", self.cb_autopay_limit.isChecked())
+			write_config(self.wallet, "autopay_use_limit", self.cb_autopay_limit.isChecked(), commit=False)
 		self.cb_autopay_limit.stateChanged.connect(on_cb_autopay_limit)
 		vbox.addWidget(self.cb_autopay_limit)
 
@@ -412,9 +387,9 @@ class WalletSettingsDialog(WindowModalDialog, PrintError, MessageBoxMixin):
 		self.autopay_limit_bch_label = QLabel(_('AutoPay Limit (BCH)'))
 		hbox.addWidget(self.autopay_limit_bch_label, 10, Qt.AlignRight)
 		self.autopay_limit_bch = QLineEdit()
-		self.autopay_limit_bch.setText(read_config(self.wallet, "autopay_limit_bch", c["default_autopay_limit_bch"]))
+		self.autopay_limit_bch.setText(read_config(self.wallet, "autopay_limit_bch", c["default_autopay_limit_bch"], commit=False))
 		def on_autopay_limit_bch():
-			write_config(self.wallet, "autopay_limit_bch", self.autopay_limit_bch.text())
+			write_config(self.wallet, "autopay_limit_bch", self.autopay_limit_bch.text(), commit=False)
 		self.autopay_limit_bch.editingFinished.connect(on_autopay_limit_bch)
 		hbox.addWidget(self.autopay_limit_bch, 40)
 
@@ -430,6 +405,7 @@ class WalletSettingsDialog(WindowModalDialog, PrintError, MessageBoxMixin):
 
 	def closeEvent(self, event):
 		super().closeEvent(event)
+		commit_config(self.wallet)
 		if event.isAccepted():
 			self.setParent(None)
 			del self.wallet._chaintipper_settings_window
