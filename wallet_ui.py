@@ -10,6 +10,7 @@ from PyQt5.QtCore import Qt
 
 import weakref
 import decimal
+from datetime import datetime
 
 from electroncash.i18n import _
 from electroncash_gui.qt import ElectrumWindow, MessageBoxMixin
@@ -60,6 +61,9 @@ class WalletUI(MessageBoxMixin, PrintError, QWidget):
 		vbox.setContentsMargins(0, 0, 0, 0)
 		self.setLayout(vbox)
 
+		# write initial chaintipper_activation_time
+		activation_t = read_config(self.wallet, "activation_time", datetime.utcnow().timestamp())
+
 		# more setup
 		self.setup_button()
 
@@ -105,7 +109,7 @@ class WalletUI(MessageBoxMixin, PrintError, QWidget):
 		Will be called by the ChaintipperButton on activation.
 		Constructs UI and starts reddit thread
 		"""
-		
+
 		# wait for wallet to sync to help avoid spending spent utxos
 		self.wallet.wait_until_synchronized()
 
@@ -429,7 +433,8 @@ class WalletSettingsDialog(WindowModalDialog, PrintError, MessageBoxMixin):
 		if event.isAccepted():
 			self.setParent(None)
 			del self.wallet._chaintipper_settings_window
-		self.wallet_ui.reddit.triggerRefreshTips();
+		if self.wallet_ui.reddit != None:
+			self.wallet_ui.reddit.triggerRefreshTips();
 
 	def showEvent(self, event):
 		super().showEvent(event)
