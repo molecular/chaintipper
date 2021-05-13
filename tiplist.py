@@ -316,18 +316,7 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 			webopen(tx_URL)
 
 		def doMarkRead(tips: list, include_claim_returned_messages: bool = False):
-			"""call mark_read() on messages associated with the given 'tips' 
-			and remove the tips from tiplist"""
-
-			tips_with_messages = [tip for tip in tips if tip.chaintip_message and isinstance(tip, RedditTip)]
-			messages = [tip.chaintip_message for tip in tips_with_messages]
-			if include_claim_returned_messages:
-				messages += [tip.claim_or_returned_message for tip in tips_with_messages if hasattr(tip, "claim_or_returned_message")]
-			self.print_error(f"will mark_read() {len(messages)} messages (associated from {len(tips_with_messages)} tips).")
-
-			self.reddit.mark_read(messages)
-			# for tip in tips_with_messages:
-			# 	self.tiplist.removeTip(tip)
+			self.reddit.mark_read_tips(tips)
 
 		col = self.currentColumn()
 		column_title = self.headerItem().text(col)

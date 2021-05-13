@@ -11,10 +11,10 @@
 	* beta 6
 
 		* test zip
-		* mark_read doesn't work (maybe because of read_unread-fixing)
 
 	* beta 7
 
+		* parse chaintip confirmation comment (and also mark it read on mark_unread of the associated tip)
 		* implement blockchain scanning for payments
 		* enable initial loading of read messages
 		* max_age in settings

@@ -291,18 +291,26 @@ class WalletSettingsDialog(WindowModalDialog, PrintError, MessageBoxMixin):
 		#main_layout.addWidget(QLabel(_('ChainTipper - settings for wallet "{wallet_name}"').format(wallet_name=self.wallet_ui.wallet_name)), 0, 0, Qt.AlignRight)
 
 		# --- group for startup settings
-		gbox = QGroupBox(_("Startup Settings"))
+		gbox = QGroupBox(_("Behaviour"))
 		grid = QGridLayout(gbox)
 		main_layout.addWidget(gbox)
 
 
 		# active when wallet opens
 		self.cb_activate_on_open = QCheckBox(_("Activate ChainTipper when wallet '{wallet_name}'' is opened.").format(wallet_name=self.wallet_ui.wallet_name))
-		self.cb_activate_on_open.setChecked(read_config(self.wallet, "activate_on_wallet_open", False, commit=False))
+		self.cb_activate_on_open.setChecked(read_config(self.wallet, "activate_on_wallet_open", c["default_activate_on_wallet_open"], commit=False))
 		def on_cb_activate_on_open():
 			write_config(self.wallet, "activate_on_wallet_open", self.cb_activate_on_open.isChecked(), commit=False)
 		self.cb_activate_on_open.stateChanged.connect(on_cb_activate_on_open)
 		grid.addWidget(self.cb_activate_on_open)
+
+		# mark read paid tips
+		self.cb_mark_read_paid_tips = QCheckBox(_("Mark associated messages as read when a Tip is paid."))
+		self.cb_mark_read_paid_tips.setChecked(read_config(self.wallet, "mark_read_paid_tips", c["default_mark_read_paid_tips"], commit=False))
+		def on_cb_mark_read_paid_tips():
+			write_config(self.wallet, "mark_read_paid_tips", self.cb_mark_read_paid_tips.isChecked(), commit=False)
+		self.cb_mark_read_paid_tips.stateChanged.connect(on_cb_mark_read_paid_tips)
+		grid.addWidget(self.cb_mark_read_paid_tips)
 
 		# --- group Default Tip Amount
 		gbox = QGroupBox(_("Default Tip Amount (used when amount parsing doesn\'t yield a result)"))

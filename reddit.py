@@ -258,7 +258,30 @@ class Reddit(PrintError, QObject):
 		self.print_error("found ", len(chaintip_messages), "messages")
 		self.reddit.inbox.mark_unread(chaintip_messages)
 
-	def mark_read(self, messages):
+	def markPaidTipsRead(self):
+		if not read_config(self.wallet_ui.wallet, "mark_read_paid_tips", c["default_mark_read_paid_tips"]):
+			return
+
+		tips = [tip for tip in self.wallet_ui.tiplist.tips.values() \
+			if tip.read_status == 'new' 
+			and tip.payment_status == 'paid'
+		]
+
+		if len(tips) > 0:
+			self.print_error("marking {len(tips)} new paid tips as read")
+			self.mark_read_tips(tips, include_claim_returned_messages=True)
+
+	def mark_read_tips(self, tips, include_claim_returned_messages=True):
+		"""call mark_read() on messages associated with the given 'tips' 
+		and remove the tips from tiplist"""
+		tips_with_messages = [tip for tip in tips if tip.chaintip_message and isinstance(tip, RedditTip)]
+		messages = [tip.chaintip_message for tip in tips_with_messages]
+		if include_claim_returned_messages:
+			messages += [tip.claim_or_returned_message for tip in tips_with_messages if hasattr(tip, "claim_or_returned_message")]
+		self.print_error(f"will mark_read() {len(messages)} messages (associated from {len(tips_with_messages)} tips).")
+		self.mark_read_messages(messages)
+
+	def mark_read_messages(self, messages):
 		self.reddit.inbox.mark_read(messages)
 		for message in messages:
 			tip = self.tip_or_message_by_message[message.id]
@@ -339,6 +362,7 @@ class Reddit(PrintError, QObject):
 			counter = 0
 			for item in self.reddit.inbox.unread():
 				# some "background tasks"
+				self.markPaidTipsRead()
 				self.refreshTips()
 
 				# break early in case of shudown

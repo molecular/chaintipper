@@ -12,8 +12,12 @@ c = {
 			"local_auth_server_port": 18763
 		},
 		"use_categories": False,
+
 		"default_amount": "0.1",
 		"default_amount_currency": "USD",
+
+		"default_activate_on_wallet_open": False,
+		"default_mark_read_paid_tips": False,
 		
 		"default_autopay": False,
 		"default_autopay_use_limit": False,
