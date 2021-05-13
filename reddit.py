@@ -12,7 +12,7 @@ import re
 import random
 import socket
 import sys
-from time import time
+from time import time, sleep
 
 from PyQt5.QtCore import QObject, pyqtSignal, QThread
 from PyQt5.QtWidgets import QApplication, QMessageBox
@@ -249,6 +249,7 @@ class Reddit(PrintError, QObject):
 
 			return True
 
+
 	def markChaintipMessagesUnread(self):
 		chaintip_messages = [message for message in self.reddit.inbox.messages(limit=30) if 
 			message.author == 'chaintip' and
@@ -256,6 +257,14 @@ class Reddit(PrintError, QObject):
 		]
 		self.print_error("found ", len(chaintip_messages), "messages")
 		self.reddit.inbox.mark_unread(chaintip_messages)
+
+	def mark_read(self, messages):
+		self.reddit.inbox.mark_read(messages)
+		for message in messages:
+			tip = self.tip_or_message_by_message[message.id]
+			if isinstance(tip, RedditTip):
+				tip.read_status = 'read'
+				self.wallet_ui.tiplist.updateTip(tip)
 
 	def disconnect(self):
 		write_config(self.wallet_ui.wallet, WalletStorageTokenManager.ACCESS_TOKEN_KEY, None)
@@ -316,7 +325,6 @@ class Reddit(PrintError, QObject):
 	def run(self):
 		self.print_error("Reddit.run() called")
 		tips = []
-		messages_to_read_unread_fix = []
 
 		self.await_reddit_authorization()
 
@@ -324,7 +332,39 @@ class Reddit(PrintError, QObject):
 
 		max_age_days = 3
 		do_read_from_read = False
+		items_by_fullname = {}
 
+		# use inbox.unread(), not inbox.stream
+		while not self.should_quit:
+			counter = 0
+			for item in self.reddit.inbox.unread():
+				# some "background tasks"
+				self.refreshTips()
+
+				# break early in case of shudown
+				if self.should_quit:
+					break
+
+				# break on first already-digested message
+				if item.fullname in items_by_fullname.keys(): 
+					break
+				items_by_fullname[item.fullname] = item
+
+				counter += 1
+
+				# digest item
+				if isinstance(item, praw.models.Comment):
+					if item.author == 'chaintip':
+						self.print_error("+++++ chaintip comment reply received, not doing anything with that")
+
+				if isinstance(item, praw.models.Message):
+					self.digestItem(item, item_is_new=True)
+
+			if counter > 0:
+				self.print_error(f"read {counter} items, sleep()ing...")
+			sleep(3)
+
+		return
 
 		# using 2 ListingGenerators in parallel (maybe just use 2 threads?)
 		if do_read_from_read:
@@ -348,20 +388,13 @@ class Reddit(PrintError, QObject):
 				item = None
 				item = next(iter_stream)
 				# self.print_error("reading from iter_stream:", item)
-				# self.print_error(f"{len(messages_to_read_unread_fix)} messages to read-unread-fix.")
+
+				if isinstance(item, praw.models.Comment):
+					if item.author == 'chaintip':
+						self.print_error("++++++++++++++++ chaintip comment reply detected")
+
 				if isinstance(item, praw.models.Message):
-					messages_to_read_unread_fix.append(item)
-					# item.mark_read()
-					# item.mark_unread()
 					self.digestItem(item, item_is_new=True)
-				# what a convoluted hack to work around the reddit bug regarding unread counter being wrong by our inbox steam access
-				if item == None or (isinstance(item, praw.models.Message) and len(messages_to_read_unread_fix) % 10 == 9): # not sure exactly what this signals, but we assume we have time now
-					if len(messages_to_read_unread_fix) > 0:
-						self.print_error(f"read_unread-fixing {len(messages_to_read_unread_fix)} messages.")
-						self.reddit.inbox.mark_read(messages_to_read_unread_fix)
-						self.reddit.inbox.mark_unread(messages_to_read_unread_fix)
-						if item == None:
-							messages_to_read_unread_fix = []
 
 				# housekeeping
 				self.refreshTips()

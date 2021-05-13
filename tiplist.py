@@ -51,7 +51,7 @@ class TipListItem(QTreeWidgetItem):
 			#tip.id,
 			format_time(tip.chaintip_message.created_utc), 
 			#tip.type,
-			#tip.read_status,
+			tip.read_status,
 			tip.payment_status,
 			tip.acceptance_status,
 			#str(tip.qualifiesForAutopay()),
@@ -85,7 +85,7 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 			#_('ID'), 
 			_('Date'),
 			#_('Type'),
-			#_('Read'),
+			_('Read'),
 			_('Payment'),
 			_('Acceptance'),
 			#_('will autopay'), 
@@ -323,11 +323,11 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 			messages = [tip.chaintip_message for tip in tips_with_messages]
 			if include_claim_returned_messages:
 				messages += [tip.claim_or_returned_message for tip in tips_with_messages if hasattr(tip, "claim_or_returned_message")]
-			self.print_error(f"will mark_read() {len(messages)} messages (associated from {len(tips_with_messages)}) tips.")
+			self.print_error(f"will mark_read() {len(messages)} messages (associated from {len(tips_with_messages)} tips).")
 
-			self.reddit.reddit.inbox.mark_read(messages)
-			for tip in tips_with_messages:
-				self.tiplist.removeTip(tip)
+			self.reddit.mark_read(messages)
+			# for tip in tips_with_messages:
+			# 	self.tiplist.removeTip(tip)
 
 		col = self.currentColumn()
 		column_title = self.headerItem().text(col)

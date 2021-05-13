@@ -8,6 +8,7 @@ __pycache__
 /websocket
 /praw
 /prawcore
+/iterators
 *.zip
 *.mp4
 *.ogv

@@ -105,6 +105,7 @@ class Plugin(BasePlugin):
 			"<br><ul>",
 			"<li><b>", _("ZIP uri"), "</b>: ", metainfo["uri"], "</li>",
 			"<li><b>", _("SHA256(ZIP file)"), "</b>: ", metainfo["sha256"], "</li>",
+			"<li><b>", _("Signature CashAccount"), "</b>: ", metainfo["sig_ca"], "</li>",
 			"<li><b>", _("Signature Address"), "</b>: ", metainfo["sig_addr"], "</li>",
 			"<li><b>", _("Signed Message"), "</b>: ", metainfo["sig_msg"], "</li>",
 			"<li><b>", _("Signature (verified)"), "</b>: ", metainfo["sig"], "</li>",
