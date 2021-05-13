@@ -13,6 +13,8 @@ CHANGES
 	* "mark_read" also marks claim/returned messages
 	* setting to "Disallow autopay if the user has already linked a wallet."
 	* commit settings when dialog closes, not at every read/write (could speed up opening settings dialog)
+	* new menu entry "open browser to tipping comment parent"
+	* check for updates on activation
 
 1.0-beta5:
 

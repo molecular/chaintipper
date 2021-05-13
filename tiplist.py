@@ -64,8 +64,8 @@ class TipListItem(QTreeWidgetItem):
 			"{0:.8f}".format(tip.amount_bch),
 			"{0:.2f}".format(tip.amount_fiat) if tip.amount_fiat else "<no rate>",
 			#tip.recipient_address.to_ui_string() if tip.recipient_address else None,
-			str(tip.tip_quantity),
-			tip.tip_unit,
+			#str(tip.tip_quantity),
+			#tip.tip_unit,
 			#tip.tipping_comment_id,
 			tip.tipping_comment.body.partition('\n')[0],
 		]
@@ -74,6 +74,7 @@ class TipListItem(QTreeWidgetItem):
 		data = self.getDataArray(self.tip)
 		for idx, value in enumerate(data, start=0):
 			self.setData(idx, Qt.DisplayRole, value)
+
 
 class TipListWidget(PrintError, MyTreeWidget, TipListener):
 
@@ -97,8 +98,8 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 			_('Amount (BCH)'),
 			"amount_fiat", 
 			#_('Recipient Address'),
-			_('Tip Quantity'),
-			_('Tip Unit'),
+			#_('Tip Quantity'),
+			#_('Tip Unit'),
 			#_('Tip Comment'), 
 			_('Tip Comment body'),
 		]
@@ -109,7 +110,7 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 		self.update_headers(headers)
 
 	def __init__(self, window: ElectrumWindow, wallet: Abstract_Wallet, tiplist: TipList, reddit: Reddit):
-		MyTreeWidget.__init__(self, window, self.create_menu, [], 8, [],  # headers, stretch_column, editable_columns
+		MyTreeWidget.__init__(self, window, self.create_menu, [], 10, [],  # headers, stretch_column, editable_columns
 							deferred_updates=True, save_sort_settings=True)
 
 		self.window = window
@@ -244,7 +245,7 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 
 				# this is a half-baked workaround for utxo set not being up-to-date on next payment
 				self.wallet.wait_until_synchronized() # should give some time
-				sleep(1) # my god, where have I gone?
+				sleep(2) # my god, where have I gone?
 			else:
 				for tip in tips:
 					tip.payment_status = "autopay error: " + msg
@@ -304,7 +305,10 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 		def doAutoPay(tips: list):
 			self.pay(tips)
 
-		def doOpenBrowser(tip: Tip):
+		def doOpenBrowser(tip: Tip, open_parent: bool):
+			comment = tip.tipping_comment
+			if open_parent:
+				comment = comment.parent
 			webopen(c["reddit"]["url_prefix"] + tip.tipping_comment.permalink)
 
 		def doOpenBlockExplorer(tip: Tip):
@@ -353,6 +357,7 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 			menu.addAction(_(f"mark read{new_count_display_string}"), lambda: doMarkRead(new_tips, True))
 		if len(self.selectedItems()) == 1:
 			menu.addAction(_(f"open browser to tipping comment"), lambda: doOpenBrowser(tips[0]))
+			menu.addAction(_(f"open browser to tipping comment parent"), lambda: doOpenBrowser(tips[0], True))
 			if hasattr(tips[0], "payment_txid") and tips[0].payment_txid:
 				menu.addAction(_(f"open blockexplorer to payment tx"), lambda: doOpenBlockExplorer(tips[0]))
 		if len(unpaid_tips) > 0:

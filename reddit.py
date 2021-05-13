@@ -4,7 +4,6 @@ from electroncash.exchange_rate import *
 from electroncash.wallet import Abstract_Wallet
 from electroncash_gui.qt.util import webopen, MessageBoxMixin
 from electroncash.i18n import _
-from iterators import TimeoutIterator
 
 from decimal import Decimal
 from datetime import datetime
@@ -26,6 +25,7 @@ from .util import read_config, write_config, has_config
 # praw and prawcore are being imported in this "top-level"-way to avoid loading lower modules which will fail as external plugins
 from . import praw
 from . import prawcore
+from . import iterators
 
 class WalletStorageTokenManager(praw.util.token_manager.BaseTokenManager, PrintError):
 	"""praw TokenManager to manage storage of reddit refresh token into wallet file"""
@@ -80,7 +80,7 @@ class Reddit(PrintError, QObject):
 		message = """
 		<html><body>
 			<script type="text/javascript">
-			  window.close() ;
+				window.close() ;
 			</script>
 		""" + message + """
 		<br><br>You can close this tab.
@@ -250,7 +250,7 @@ class Reddit(PrintError, QObject):
 			return True
 
 	def markChaintipMessagesUnread(self):
-		chaintip_messages = [message for message in self.reddit.inbox.messages(limit=100) if 
+		chaintip_messages = [message for message in self.reddit.inbox.messages(limit=30) if 
 			message.author == 'chaintip' and
 			not message.new
 		]
@@ -316,16 +316,17 @@ class Reddit(PrintError, QObject):
 	def run(self):
 		self.print_error("Reddit.run() called")
 		tips = []
+		messages_to_read_unread_fix = []
 
 		self.await_reddit_authorization()
 
 		#self.markChaintipMessagesUnread()
 
-		max_age_days = -1
+		max_age_days = 3
 		do_read_from_read = False
 
 
-		# using 2 ListingGenerators in parallel
+		# using 2 ListingGenerators in parallel (maybe just use 2 threads?)
 		if do_read_from_read:
 			iter_read = self.reddit.inbox.messages(limit=None)
 		iter_stream = self.reddit.inbox.stream(pause_after=0)
@@ -346,11 +347,21 @@ class Reddit(PrintError, QObject):
 				# read from inbox.stream
 				item = None
 				item = next(iter_stream)
-				#self.print_error("reading from iter_stream:", item)
+				# self.print_error("reading from iter_stream:", item)
+				# self.print_error(f"{len(messages_to_read_unread_fix)} messages to read-unread-fix.")
 				if isinstance(item, praw.models.Message):
-					item.mark_read()
-					item.mark_unread()
-				self.digestItem(item, item_is_new=True)
+					messages_to_read_unread_fix.append(item)
+					# item.mark_read()
+					# item.mark_unread()
+					self.digestItem(item, item_is_new=True)
+				# what a convoluted hack to work around the reddit bug regarding unread counter being wrong by our inbox steam access
+				if item == None or (isinstance(item, praw.models.Message) and len(messages_to_read_unread_fix) % 10 == 9): # not sure exactly what this signals, but we assume we have time now
+					if len(messages_to_read_unread_fix) > 0:
+						self.print_error(f"read_unread-fixing {len(messages_to_read_unread_fix)} messages.")
+						self.reddit.inbox.mark_read(messages_to_read_unread_fix)
+						self.reddit.inbox.mark_unread(messages_to_read_unread_fix)
+						if item == None:
+							messages_to_read_unread_fix = []
 
 				# housekeeping
 				self.refreshTips()

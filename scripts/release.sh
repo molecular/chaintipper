@@ -13,7 +13,7 @@ rm -rf release
 mkdir -p release/chaintipper
 cp *.py release/chaintipper
 
-for module in praw prawcore websocket; do
+for module in praw prawcore websocket iterators; do
 	cp -ar bundled_deps/patched/${module} release/chaintipper
 done
 
@@ -21,7 +21,9 @@ cp manifest.json release
 
 # zip release folder
 cd release
-zip -r ../${zipfile} *
+t=$(date +%s)
+find . -exec touch -t ${t} {} +
+zip -X -r ../${zipfile} *
 cd ..
 
 sha256sum ChainTipper*.zip > "SHA256.ChainTipper.txt"

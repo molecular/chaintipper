@@ -7,11 +7,11 @@
 			* release (trhough github files?), hashes?
 			* LICENSE
 
+
 	* beta 6
 
 		* test zip
-
-		* save settings only at dialog close? what other places write config, though?
+		* mark_read doesn't work (maybe because of read_unread-fixing)
 
 	* beta 7
 
