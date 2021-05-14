@@ -316,7 +316,7 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 			webopen(tx_URL)
 
 		def doMarkRead(tips: list, include_claim_returned_messages: bool = False):
-			self.reddit.mark_read_tips(tips)
+			self.reddit.mark_read_tips(tips, include_claim_returned_messages)
 
 		col = self.currentColumn()
 		column_title = self.headerItem().text(col)

@@ -360,33 +360,38 @@ class Reddit(PrintError, QObject):
 		# use inbox.unread(), not inbox.stream
 		while not self.should_quit:
 			counter = 0
-			for item in self.reddit.inbox.unread():
-				# some "background tasks"
-				self.markPaidTipsRead()
-				self.refreshTips()
+			try:
+				for item in self.reddit.inbox.unread():
+					# some "background tasks"
+					self.markPaidTipsRead()
+					self.refreshTips()
 
-				# break early in case of shudown
-				if self.should_quit:
-					break
+					# break early in case of shudown
+					if self.should_quit:
+						break
 
-				# break on first already-digested message
-				if item.fullname in items_by_fullname.keys(): 
-					break
-				items_by_fullname[item.fullname] = item
+					# break on first already-digested message
+					if item.fullname in items_by_fullname.keys(): 
+						break
+					items_by_fullname[item.fullname] = item
 
-				counter += 1
+					counter += 1
 
-				# digest item
-				if isinstance(item, praw.models.Comment):
-					if item.author == 'chaintip':
-						self.print_error("+++++ chaintip comment reply received, not doing anything with that")
+					# digest item
+					if isinstance(item, praw.models.Comment):
+						if item.author == 'chaintip':
+							self.print_error("+++++ chaintip comment reply received, not doing anything with that")
 
-				if isinstance(item, praw.models.Message):
-					self.digestItem(item, item_is_new=True)
+					if isinstance(item, praw.models.Message):
+						self.digestItem(item, item_is_new=True)
 
-			if counter > 0:
-				self.print_error(f"read {counter} items, sleep()ing...")
-			sleep(3)
+				if counter > 0:
+					self.print_error(f"read {counter} items, sleep()ing...")
+
+				sleep(3)
+			except prawcore.exceptions.ServerError as e:
+				self.print_error("Reddit ServerError", e, "retrying later...")
+				sleep(30)
 
 		return
 

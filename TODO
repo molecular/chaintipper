@@ -7,27 +7,23 @@
 			* release (trhough github files?), hashes?
 			* LICENSE
 
+	* beta 8
 
-	* beta 6
+		* updatecheck more often
+		* special moniker value for linked
 
-		* test zip
+	* beta 9
 
-	* beta 7
-
+		* copy recipient (tipee) address
+		* set amount...
 		* parse chaintip confirmation comment (and also mark it read on mark_unread of the associated tip)
 		* implement blockchain scanning for payments
 		* enable initial loading of read messages
-		* max_age in settings
 		* move reddit forget button to settings
-		* "mark read": only count and act on read_status == 'new'
 
 		* segfault on close (at least on blackbox)
 
 		* about box
-		* "mark read" removes tip, which it shouldn't do any more
-
-
-		* check for update (some json on github?)
 
 	* consider it
 

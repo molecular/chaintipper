@@ -1,6 +1,10 @@
 CHANGES
 
-1.0-beta6:
+1.0-beta8:
+	
+	* handle reddit server errors better (don't show error, retry after 30s)
+
+1.0-beta7:
 
 	* translate amount_fiat header even if ec pref "show history rates" unchecked
 	* new menu item: "open blockexplorer to payment tx"
@@ -14,7 +18,8 @@ CHANGES
 	* setting to "Disallow autopay if the user has already linked a wallet."
 	* commit settings when dialog closes, not at every read/write (could speed up opening settings dialog)
 	* new menu entry "open browser to tipping comment parent"
-	* check for updates on activation
+	* check for updates on first activation
+	* option to mark_read paid messages
 
 1.0-beta5:
 
