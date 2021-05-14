@@ -114,6 +114,17 @@ amount_config = {
 			"value": Decimal("0.01"),
 			"value_currency": "GBP"
 		},
+		{ 
+			"names": ["welcome","welcomes"],
+			"value": Decimal("1"),
+			"value_linked": Decimal("0.01"),
+			"value_currency": "USD"
+		},
+		{ 
+			"names": ["cookie", "cookies"],
+			"value": Decimal("1.5"),
+			"value_currency": "USD"
+		},
 	],
 	"quantity_aliases": {
 		"a": Decimal("1"),
