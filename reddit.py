@@ -398,7 +398,7 @@ class Reddit(PrintError, QObject):
 		# using 2 ListingGenerators in parallel (maybe just use 2 threads?)
 		if do_read_from_read:
 			iter_read = self.reddit.inbox.messages(limit=None)
-		iter_stream = self.reddit.inbox.stream(pause_after=0)
+		iter_stream = self.reddit.inbox.stream(exclude_before=True, pause_after=0)
 		cutoff_time = time() - 60*60*24 * max_age_days
 		try:
 			while not self.should_quit:
