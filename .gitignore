@@ -13,5 +13,6 @@ __pycache__
 *.mp4
 *.ogv
 /scripts/local_release.sh
+/scripts/deploy.sh
 /doc/manual/manual.html
 qresources.py
