@@ -14,5 +14,6 @@ __pycache__
 *.ogv
 /scripts/local_release.sh
 /scripts/deploy.sh
+/update_checker/*
 /doc/manual/manual.html
 qresources.py
