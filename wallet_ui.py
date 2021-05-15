@@ -257,7 +257,6 @@ class ChaintipperButton(StatusBarButton, PrintError):
 		self.update_state()
 
 	def set_active(self, active):
-		self.print_error("set_active(", active, "), is_active: ", self.is_active)
 		if self.is_active != active:
 			self.is_active = active
 			self.update_state()

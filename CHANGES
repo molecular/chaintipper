@@ -1,9 +1,14 @@
 CHANGES
 
+1.0-beta9:
+	
+	* fix bug: "linked default amount" used even if user is unlinked
+
 1.0-beta8:
 	
 	* handle reddit server errors better (don't show error, retry after 30s)
 	* new special default amount for "linked" recipients
+	* remove "disallow linked" functionality
 
 1.0-beta7:
 

@@ -7,12 +7,14 @@
 			* release (trhough github files?), hashes?
 			* LICENSE
 
-	* beta 8
+	* beta n+1
 
-		* updatecheck more often
-		* special moniker value for linked
+		* detect stealth payment message like 
+			* https://www.reddit.com/message/messages/11lwr8x (unlinked)
+			* https://www.reddit.com/message/messages/11lwttf (linked)
+		* listen to blockchain
 
-	* beta 9
+	* beta n+2
 
 		* copy recipient (tipee) address
 		* set amount...
