@@ -312,13 +312,16 @@ class WalletSettingsDialog(WindowModalDialog, PrintError, MessageBoxMixin):
 		self.cb_mark_read_paid_tips.stateChanged.connect(on_cb_mark_read_paid_tips)
 		grid.addWidget(self.cb_mark_read_paid_tips)
 
-		# --- group Default Tip Amount
-		gbox = QGroupBox(_("Default Tip Amount (used when amount parsing doesn\'t yield a result)"))
+		# --- group Default Tip Amount ------------------------------------------------------------------------------------------
+
+		main_layout.addStretch(1)
+
+		gbox = QGroupBox(_("Default Tip Amount (used when amount parsing fails)"))
 		grid = QGridLayout(gbox)
 		main_layout.addWidget(gbox)
 
 		# amount
-		grid.addWidget(QLabel(_('Amount')), 0, 0, Qt.AlignRight)
+		grid.addWidget(QLabel(_('Amount')), 0, 1, Qt.AlignRight)
 		self.default_amount = QLineEdit()
 		self.default_amount.setText(read_config(self.wallet, "default_amount", c["default_amount"], commit=False))
 		def on_default_amount():
@@ -329,11 +332,11 @@ class WalletSettingsDialog(WindowModalDialog, PrintError, MessageBoxMixin):
 				self.default_amount.setText(read_config(self.wallet, "default_amount", c["default_amount"], commit=False))
 			write_config(self.wallet, "default_amount", self.default_amount.text(), commit=False)
 		self.default_amount.editingFinished.connect(on_default_amount)
-		grid.addWidget(self.default_amount, 0, 1)
+		grid.addWidget(self.default_amount, 0, 2)
 
 		# currency
 		self.currencies = sorted(self.wallet_ui.window.fx.get_currencies(self.wallet_ui.window.fx.get_history_config()))
-		grid.addWidget(QLabel(_('Currency')), 1, 0, Qt.AlignRight)
+		grid.addWidget(QLabel(_('Currency')), 1, 1, Qt.AlignRight)
 		self.default_amount_currency = QComboBox()
 		self.default_amount_currency.addItems(self.currencies)
 		self.default_amount_currency.setCurrentIndex(
@@ -344,50 +347,91 @@ class WalletSettingsDialog(WindowModalDialog, PrintError, MessageBoxMixin):
 		def on_default_amount_currency():
 			write_config(self.wallet, "default_amount_currency", self.currencies[self.default_amount_currency.currentIndex()], commit=False)
 		self.default_amount_currency.currentIndexChanged.connect(on_default_amount_currency)
-		grid.addWidget(self.default_amount_currency, 1, 1)
+		grid.addWidget(self.default_amount_currency, 1, 2)
 
-		# --- group autopay
-		gbox = QGroupBox(_("AutoPay"))
-		vbox = QVBoxLayout(gbox)
-		main_layout.addWidget(gbox)
 
-		# autopay checkbox
-		self.cb_autopay = QCheckBox(_("AutoPay - Automatically pay unpaid tips as chaintip message comes in"))
-		self.cb_autopay.setChecked(read_config(self.wallet, "autopay", c["default_autopay"]))
-		def on_cb_autopay():
-			self.cb_autopay_limit.setEnabled(self.cb_autopay.isChecked())
-			self.cb_autopay_disallow_default.setEnabled(self.cb_autopay.isChecked())
-			self.cb_autopay_disallow_linked.setEnabled(self.cb_autopay.isChecked())
-			write_config(self.wallet, "autopay", self.cb_autopay.isChecked(), commit=False)
-			on_cb_autopay_limit()
-		self.cb_autopay.stateChanged.connect(on_cb_autopay)
-		vbox.addWidget(self.cb_autopay)
+		# --- group Linked Default Tip Amount ----------------------------------------------------------------------------------
+
+		main_layout.addStretch(1)
+
+		self.gbox_linked_amount = QGroupBox(_("Special Linked Default Tip Amount (used when amount parsing fails and recipient has linked an address)"))
+		self.gbox_linked_amount.setCheckable(True)
+		self.gbox_linked_amount.setChecked(read_config(self.wallet, "use_linked_amount", c["default_use_linked_amount"]))
+		grid = QGridLayout(self.gbox_linked_amount)
+		main_layout.addWidget(self.gbox_linked_amount)
+		def on_gbox_linked_amount():
+			write_config(self.wallet, "use_linked_amount", self.gbox_linked_amount.isChecked(), commit=False)
+		self.gbox_linked_amount.toggled.connect(on_gbox_linked_amount)
+
+		# amount
+		grid.addWidget(QLabel(_('Amount')), 0, 1, Qt.AlignRight)
+		self.default_linked_amount = QLineEdit()
+		self.default_linked_amount.setText(read_config(self.wallet, "default_linked_amount", c["default_linked_amount"], commit=False))
+		def on_default_linked_amount():
+			try:
+				self.default_linked_amount.setText(str(decimal.Decimal(self.default_linked_amount.text())))
+			except decimal.InvalidOperation as e:
+				self.show_error(_("Cannot parse {string} as decimal number. Please try again.").format(string=self.default_linked_amount.text()))
+				self.default_linked_amount.setText(read_config(self.wallet, "default_linked_amount", c["default_linked_amount"], commit=False))
+			write_config(self.wallet, "default_linked_amount", self.default_linked_amount.text(), commit=False)
+		self.default_linked_amount.editingFinished.connect(on_default_linked_amount)
+		grid.addWidget(self.default_linked_amount, 0, 2)
+
+		# currency
+		self.currencies = sorted(self.wallet_ui.window.fx.get_currencies(self.wallet_ui.window.fx.get_history_config()))
+		grid.addWidget(QLabel(_('Currency')), 1, 1, Qt.AlignRight)
+		self.default_linked_amount_currency = QComboBox()
+		self.default_linked_amount_currency.addItems(self.currencies)
+		self.default_linked_amount_currency.setCurrentIndex(
+			self.default_linked_amount_currency.findText(
+				read_config(self.wallet, "default_linked_amount_currency", c["default_linked_amount_currency"], commit=False)
+			)
+		)
+		def on_default_linked_amount_currency():
+			write_config(self.wallet, "default_linked_amount_currency", self.currencies[self.default_linked_amount_currency.currentIndex()], commit=False)
+		self.default_linked_amount_currency.currentIndexChanged.connect(on_default_linked_amount_currency)
+		grid.addWidget(self.default_linked_amount_currency, 1, 2)
+
+
+		# --- group autopay ---------------------------------------------------------------------------------------------------
+
+		main_layout.addStretch(1)
+
+		self.gbox_autopay = QGroupBox(_("AutoPay - Automatically pay unpaid tips"))
+		self.gbox_autopay.setCheckable(True)
+		self.gbox_autopay.setChecked(read_config(self.wallet, "autopay", c["default_autopay"]))
+		vbox = QVBoxLayout(self.gbox_autopay)
+		main_layout.addWidget(self.gbox_autopay)
+		def on_gbox_autopay():
+			write_config(self.wallet, "autopay", self.gbox_autopay.isChecked(), commit=False)
+			#on_cb_autopay_limit()
+		self.gbox_autopay.toggled.connect(on_gbox_autopay)
 
 		# disallow autopay when default amount is used
-		self.cb_autopay_disallow_default = QCheckBox(_("Disallow AutoPay when Default Tip Amount is used"))
-		self.cb_autopay_disallow_default.setChecked(read_config(self.wallet, "autopay_disallow_default", c["default_autopay_disallow_default"], commit=False))
+		self.gbox_autopay_disallow_default = QCheckBox(_("Disallow AutoPay when Default Tip Amount is used"))
+		self.gbox_autopay_disallow_default.setChecked(read_config(self.wallet, "autopay_disallow_default", c["default_autopay_disallow_default"], commit=False))
 		def on_cb_autopay_disallow_default():
-			write_config(self.wallet, "autopay_disallow_default", self.cb_autopay_disallow_default.isChecked(), commit=False)
-		self.cb_autopay_disallow_default.stateChanged.connect(on_cb_autopay_disallow_default)
-		vbox.addWidget(self.cb_autopay_disallow_default)
+			write_config(self.wallet, "autopay_disallow_default", self.gbox_autopay_disallow_default.isChecked(), commit=False)
+		self.gbox_autopay_disallow_default.stateChanged.connect(on_cb_autopay_disallow_default)
+		vbox.addWidget(self.gbox_autopay_disallow_default)
 
 		# disallow autopay when tipee has already linked address
-		self.cb_autopay_disallow_linked = QCheckBox(_("Disallow AutoPay when recipient has already linked an address (i.e. autopay only 'fresh' people)"))
-		self.cb_autopay_disallow_linked.setChecked(read_config(self.wallet, "autopay_disallow_linked", c["default_autopay_disallow_linked"], commit=False))
+		self.gbox_autopay_disallow_linked = QCheckBox(_("Disallow AutoPay when recipient has already linked an address (i.e. autopay only 'fresh' people)"))
+		self.gbox_autopay_disallow_linked.setChecked(read_config(self.wallet, "autopay_disallow_linked", c["default_autopay_disallow_linked"], commit=False))
 		def on_cb_autopay_disallow_linked():
-			write_config(self.wallet, "autopay_disallow_linked", self.cb_autopay_disallow_linked.isChecked(), commit=False)
-		self.cb_autopay_disallow_linked.stateChanged.connect(on_cb_autopay_disallow_linked)
-		vbox.addWidget(self.cb_autopay_disallow_linked)
+			write_config(self.wallet, "autopay_disallow_linked", self.gbox_autopay_disallow_linked.isChecked(), commit=False)
+		self.gbox_autopay_disallow_linked.stateChanged.connect(on_cb_autopay_disallow_linked)
+		vbox.addWidget(self.gbox_autopay_disallow_linked)
 
 		# autopay limit checkbox
-		self.cb_autopay_limit = QCheckBox(_("Limit AutoPay Amount"))
-		self.cb_autopay_limit.setChecked(read_config(self.wallet, "autopay_use_limit", c["default_autopay_use_limit"], commit=False))
+		self.gbox_autopay_limit = QCheckBox(_("Limit AutoPay Amount"))
+		self.gbox_autopay_limit.setChecked(read_config(self.wallet, "autopay_use_limit", c["default_autopay_use_limit"], commit=False))
 		def on_cb_autopay_limit():
-			self.autopay_limit_bch_label.setEnabled(self.cb_autopay.isChecked() and self.cb_autopay_limit.isChecked())
-			self.autopay_limit_bch.setEnabled(self.cb_autopay.isChecked() and self.cb_autopay_limit.isChecked())
-			write_config(self.wallet, "autopay_use_limit", self.cb_autopay_limit.isChecked(), commit=False)
-		self.cb_autopay_limit.stateChanged.connect(on_cb_autopay_limit)
-		vbox.addWidget(self.cb_autopay_limit)
+			self.autopay_limit_bch_label.setEnabled(self.gbox_autopay.isChecked() and self.gbox_autopay_limit.isChecked())
+			self.autopay_limit_bch.setEnabled(self.gbox_autopay.isChecked() and self.gbox_autopay_limit.isChecked())
+			write_config(self.wallet, "autopay_use_limit", self.gbox_autopay_limit.isChecked(), commit=False)
+		self.gbox_autopay_limit.stateChanged.connect(on_cb_autopay_limit)
+		vbox.addWidget(self.gbox_autopay_limit)
 
 		# autopay limit (amount)
 		hbox = QHBoxLayout()
@@ -402,7 +446,7 @@ class WalletSettingsDialog(WindowModalDialog, PrintError, MessageBoxMixin):
 		hbox.addWidget(self.autopay_limit_bch, 40)
 
 		# ensure correct enable state
-		on_cb_autopay()
+		#on_cb_autopay()
 
 
 		# close button

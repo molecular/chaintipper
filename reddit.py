@@ -251,7 +251,7 @@ class Reddit(PrintError, QObject):
 
 
 	def markChaintipMessagesUnread(self):
-		chaintip_messages = [message for message in self.reddit.inbox.messages(limit=30) if 
+		chaintip_messages = [message for message in self.reddit.inbox.messages(limit=130) if 
 			message.author == 'chaintip' and
 			not message.new
 		]
@@ -637,8 +637,11 @@ class RedditTip(PrintError, Tip):
 			
 	def getDefaultAmountBCH(self):
 		wallet = self.reddit.wallet_ui.wallet
-		amount = Decimal(read_config(wallet, "default_amount", c["default_amount"]))
-		currency = read_config(wallet, "default_amount_currency", c["default_amount_currency"])
+		(amount_key, currency_key) = ("default_amount", "default_amount_currency")
+		if read_config(wallet, "use_linked_amount", c["default_use_linked_amount"]):
+			(amount_key, currency_key) = ("default_linked_amount", "default_linked_amount_currency")
+		amount = Decimal(read_config(wallet, amount_key, c[amount_key]))
+		currency = read_config(wallet, currency_key, c[currency_key])
 		rate = self.getRate(currency)
 		amount_bch = round(amount / rate, 8)
 		return amount_bch
