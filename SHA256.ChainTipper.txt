@@ -7,3 +7,4 @@ f353a58d7aba14d1a0f41c20b9fda08c3d89ce45ef89a74c3fb73e3305fabeaa  ChainTipper-1.
 29fcbefdd84cb4e0fdc9c492dab6d07e2c1a68c8fbd7917411371291ea620e44  ChainTipper-1.0-beta6test.zip
 fab16b075b58c4c2b52ba7b2b999393dc45bc1ae38f649674a436906e5c7436f  ChainTipper-1.0-beta6.zip
 2740ac964077cde5bce974d6421ae2ef6e498eadc549067d0f5c0df8f9e27d95  ChainTipper-1.0-beta7.zip
+a3021ffd8f82c0f8783d2c01389d4be8d19ef832d06eee8da2a08a9fe178e41b  ChainTipper-1.0-beta8.zip
