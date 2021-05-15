@@ -408,30 +408,22 @@ class WalletSettingsDialog(WindowModalDialog, PrintError, MessageBoxMixin):
 		self.gbox_autopay.toggled.connect(on_gbox_autopay)
 
 		# disallow autopay when default amount is used
-		self.gbox_autopay_disallow_default = QCheckBox(_("Disallow AutoPay when Default Tip Amount is used"))
-		self.gbox_autopay_disallow_default.setChecked(read_config(self.wallet, "autopay_disallow_default", c["default_autopay_disallow_default"], commit=False))
+		self.cb_autopay_disallow_default = QCheckBox(_("Disallow AutoPay when Default Tip Amount is used"))
+		self.cb_autopay_disallow_default.setChecked(read_config(self.wallet, "autopay_disallow_default", c["default_autopay_disallow_default"], commit=False))
 		def on_cb_autopay_disallow_default():
-			write_config(self.wallet, "autopay_disallow_default", self.gbox_autopay_disallow_default.isChecked(), commit=False)
-		self.gbox_autopay_disallow_default.stateChanged.connect(on_cb_autopay_disallow_default)
-		vbox.addWidget(self.gbox_autopay_disallow_default)
-
-		# disallow autopay when tipee has already linked address
-		self.gbox_autopay_disallow_linked = QCheckBox(_("Disallow AutoPay when recipient has already linked an address (i.e. autopay only 'fresh' people)"))
-		self.gbox_autopay_disallow_linked.setChecked(read_config(self.wallet, "autopay_disallow_linked", c["default_autopay_disallow_linked"], commit=False))
-		def on_cb_autopay_disallow_linked():
-			write_config(self.wallet, "autopay_disallow_linked", self.gbox_autopay_disallow_linked.isChecked(), commit=False)
-		self.gbox_autopay_disallow_linked.stateChanged.connect(on_cb_autopay_disallow_linked)
-		vbox.addWidget(self.gbox_autopay_disallow_linked)
+			write_config(self.wallet, "autopay_disallow_default", self.cb_autopay_disallow_default.isChecked(), commit=False)
+		self.cb_autopay_disallow_default.stateChanged.connect(on_cb_autopay_disallow_default)
+		vbox.addWidget(self.cb_autopay_disallow_default)
 
 		# autopay limit checkbox
-		self.gbox_autopay_limit = QCheckBox(_("Limit AutoPay Amount"))
-		self.gbox_autopay_limit.setChecked(read_config(self.wallet, "autopay_use_limit", c["default_autopay_use_limit"], commit=False))
+		self.cb_autopay_limit = QCheckBox(_("Limit AutoPay Amount"))
+		self.cb_autopay_limit.setChecked(read_config(self.wallet, "autopay_use_limit", c["default_autopay_use_limit"], commit=False))
 		def on_cb_autopay_limit():
-			self.autopay_limit_bch_label.setEnabled(self.gbox_autopay.isChecked() and self.gbox_autopay_limit.isChecked())
-			self.autopay_limit_bch.setEnabled(self.gbox_autopay.isChecked() and self.gbox_autopay_limit.isChecked())
-			write_config(self.wallet, "autopay_use_limit", self.gbox_autopay_limit.isChecked(), commit=False)
-		self.gbox_autopay_limit.stateChanged.connect(on_cb_autopay_limit)
-		vbox.addWidget(self.gbox_autopay_limit)
+			self.autopay_limit_bch_label.setEnabled(self.gbox_autopay.isChecked() and self.cb_autopay_limit.isChecked())
+			self.autopay_limit_bch.setEnabled(self.gbox_autopay.isChecked() and self.cb_autopay_limit.isChecked())
+			write_config(self.wallet, "autopay_use_limit", self.cb_autopay_limit.isChecked(), commit=False)
+		self.cb_autopay_limit.stateChanged.connect(on_cb_autopay_limit)
+		vbox.addWidget(self.cb_autopay_limit)
 
 		# autopay limit (amount)
 		hbox = QHBoxLayout()
