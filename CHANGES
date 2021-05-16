@@ -3,6 +3,7 @@ CHANGES
 1.0-beta9:
 
 	* fix another bug with "linked default amount" (always used)
+	* prefer exchange given in users "fiat" preferences
 
 1.0-beta9:
 	

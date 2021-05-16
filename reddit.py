@@ -653,15 +653,15 @@ class RedditTip(PrintError, Tip):
 			rate = Decimal("1.0")
 		else:
 			exchanges_by_ccy = get_exchanges_by_ccy(False)
-			#self.print_error("exchanges: ", exchanges_by_ccy)
 			exchanges = exchanges_by_ccy[ccy]
-			#self.print_error("exchanges: ", exchanges)
-			exchange_name = exchanges[0]
-			klass = globals()[exchange_name]
-			exchange = klass(None, None)
-			#self.print_error("exchange: ", exchange)
+			fx = self.reddit.wallet_ui.window.fx
+			if type(fx.exchange).__name__ in exchanges:
+				exchange = fx.exchange
+			else:
+				exchange_name = exchanges[0]
+				klass = globals()[exchange_name]
+				exchange = klass(None, None)
 			rate = exchange.get_rates(ccy)[ccy]
-			#self.print_error("rate", rate)
 		return rate
 
 	def isOld(self):
