@@ -1,6 +1,10 @@
 CHANGES
 
 1.0-beta9:
+
+	* fix another bug with "linked default amount" (always used)
+
+1.0-beta9:
 	
 	* fix bug: "linked default amount" used even if user is unlinked
 

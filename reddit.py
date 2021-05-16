@@ -469,6 +469,7 @@ class Reddit(PrintError, QObject):
 
 		# self.dathread.quit()
 
+
 class RedditTip(PrintError, Tip):
 
 	p_subject_outgoing_tip = re.compile('Tip (\S*)')
@@ -638,7 +639,7 @@ class RedditTip(PrintError, Tip):
 	def getDefaultAmountBCH(self):
 		wallet = self.reddit.wallet_ui.wallet
 		(amount_key, currency_key) = ("default_amount", "default_amount_currency")
-		if read_config(wallet, "use_linked_amount", c["default_use_linked_amount"] and (tip.acceptance_status == "linked" or tip.acceptance_status == "claimed")):
+		if read_config(wallet, "use_linked_amount", c["default_use_linked_amount"]) and (self.acceptance_status == "linked" or self.acceptance_status == "claimed"):
 			(amount_key, currency_key) = ("default_linked_amount", "default_linked_amount_currency")
 		amount = Decimal(read_config(wallet, amount_key, c[amount_key]))
 		currency = read_config(wallet, currency_key, c[currency_key])

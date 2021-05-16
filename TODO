@@ -22,6 +22,7 @@
 		* implement blockchain scanning for payments
 		* enable initial loading of read messages
 		* move reddit forget button to settings
+		* discrepancy between recent rate and historical rate (default amount will look bad)
 
 		* segfault on close (at least on blackbox)
 
