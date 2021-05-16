@@ -395,44 +395,44 @@ class Reddit(PrintError, QObject):
 		return
 
 		# using 2 ListingGenerators in parallel (maybe just use 2 threads?)
-		if do_read_from_read:
-			iter_read = self.reddit.inbox.messages(limit=None)
-		iter_stream = self.reddit.inbox.stream(exclude_before=True, pause_after=0)
-		cutoff_time = time() - 60*60*24 * max_age_days
-		try:
-			while not self.should_quit:
-				# read from inbox.read
-				if do_read_from_read:
-					try:
-						item = next(iter_read)
-						#self.print_error("reading from iter_read:", item)
-						self.digestItem(item)
-						if item.created_utc < cutoff_time:
-							do_read_from_read = False
-					except StopIteration:
-						do_read_from_read = False
+		# if do_read_from_read:
+		# 	iter_read = self.reddit.inbox.messages(limit=None)
+		# iter_stream = self.reddit.inbox.stream(exclude_before=True, pause_after=0)
+		# cutoff_time = time() - 60*60*24 * max_age_days
+		# try:
+		# 	while not self.should_quit:
+		# 		# read from inbox.read
+		# 		if do_read_from_read:
+		# 			try:
+		# 				item = next(iter_read)
+		# 				#self.print_error("reading from iter_read:", item)
+		# 				self.digestItem(item)
+		# 				if item.created_utc < cutoff_time:
+		# 					do_read_from_read = False
+		# 			except StopIteration:
+		# 				do_read_from_read = False
 
-				# read from inbox.stream
-				item = None
-				item = next(iter_stream)
-				# self.print_error("reading from iter_stream:", item)
+		# 		# read from inbox.stream
+		# 		item = None
+		# 		item = next(iter_stream)
+		# 		# self.print_error("reading from iter_stream:", item)
 
-				if isinstance(item, praw.models.Comment):
-					if item.author == 'chaintip':
-						self.print_error("++++++++++++++++ chaintip comment reply detected")
+		# 		if isinstance(item, praw.models.Comment):
+		# 			if item.author == 'chaintip':
+		# 				self.print_error("++++++++++++++++ chaintip comment reply detected")
 
-				if isinstance(item, praw.models.Message):
-					self.digestItem(item, item_is_new=True)
+		# 		if isinstance(item, praw.models.Message):
+		# 			self.digestItem(item, item_is_new=True)
 
-				# housekeeping
-				self.refreshTips()
-		except prawcore.exceptions.PrawcoreException as e:
-			self.print_error("exception in reddit inbox streaming: ", e)
+		# 		# housekeeping
+		# 		self.refreshTips()
+		# except prawcore.exceptions.PrawcoreException as e:
+		# 	self.print_error("exception in reddit inbox streaming: ", e)
 
-		self.print_error("exited reddit inbox streaming")
-		self.dathread.quit()
+		# self.print_error("exited reddit inbox streaming")
+		# self.dathread.quit()
 
-		return
+		# return
 
 		# # get read messages
 		# cutoff_time = time() - 60*60*24 * max_age_days
@@ -464,9 +464,11 @@ class Reddit(PrintError, QObject):
 		# except prawcore.exceptions.PrawcoreException as e:
 		# 	self.print_error("exception in reddit inbox streaming: ", e)
 
-		# self.print_error("exited reddit inbox streaming")
+		# --- wind down ----
 
-		# self.dathread.quit()
+		self.print_error("exited reddit inbox streaming")
+
+		self.dathread.quit()
 
 
 class RedditTip(PrintError, Tip):
