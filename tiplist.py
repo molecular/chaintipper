@@ -34,7 +34,7 @@ from .util import read_config, write_config
 
 from .reddit import Reddit, RedditTip
 
-class TipListItem(QTreeWidgetItem):
+class TipListItem(QTreeWidgetItem, PrintError):
 
 	def __init__(self, o):
 		if isinstance(o, list):
@@ -148,12 +148,7 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 		self.tiplist.registerTipListener(self)
 		self.tips_by_address = dict()
 
-	# TipListener implementation
-
-	def tipAdded(self, tip):
-		if tip.recipient_address:
-			self.tips_by_address[tip.recipient_address] = tip 
-
+	def calculateFiatAmount(self, tip):
 		# calc tip.amount_fiat
 		d_t = datetime.utcfromtimestamp(tip.chaintip_message.created_utc)
 		fx_rate = self.window.fx.history_rate(d_t)
@@ -163,6 +158,13 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 		else:
 			tip.amount_fiat = None
 
+	# TipListener implementation
+
+	def tipAdded(self, tip):
+		if tip.recipient_address:
+			self.tips_by_address[tip.recipient_address] = tip 
+
+		self.calculateFiatAmount(tip)
 		TipListItem(tip) 
 
 		if c["use_categories"]:
@@ -192,6 +194,7 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 	def tipUpdated(self, tip):
 		#self.print_error("tip updated: ", tip)
 		if hasattr(tip, 'tiplist_item'):
+			self.calculateFiatAmount(tip)
 			tip.tiplist_item.refreshData()
 			self.checkPaymentStatus()
 			self.pay([tip])
