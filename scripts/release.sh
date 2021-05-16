@@ -3,7 +3,10 @@ version=$(cat manifest.json | jq -r '.version')
 zipfile="ChainTipper-${version}.zip"
 
 # precompile to pyc files
-python -m compileall .
+echo -ne "\n\ncompiling python files..."
+python -m compileall . > /dev/null
+
+echo -ne "\n\npreparing release files..."
 
 # remove old files 
 rm ${zipfile}
@@ -20,20 +23,25 @@ done
 cp manifest.json release
 
 # zip release folder
+echo -ne "\n\ncreating .zip file..."
 cd release
 t=$(date +%s)
-find . -exec touch -t ${t} {} +
-zip -X -r ../${zipfile} *
+#find . -exec touch -t ${t} {} + 
+zip -q -X -r ../${zipfile} *
 cd ..
 
+# sha256sums
+echo -ne "\n\ncreating checksums..."
 sha256sum ChainTipper*.zip > "SHA256.ChainTipper.txt"
 
 # create lastest_release.json
+echo -ne "\n\ncreating latest_version.json...."
 sha256=$(sha256sum ${zipfile} | cut -f 1 -d " ")
 uri='http://criptolayer.net/Pk4p2VyxVtOAkWzq/'${zipfile}
 
-echo -ne "please sign:\n\n$version,$uri,$sha256\n\n"
-read sig
+echo -ne "\n\nwill call ../scripts/sign.sh. open the wallet, then hit <anykey>"
+read
+sig=$(scripts/sign.sh $version,$uri,$sha256)
 
 echo -ne '{
 	"version": "'${version}'",
@@ -46,11 +54,13 @@ echo -ne '{
 ' > update_checker/latest_version.json
 
 # run any post-release copying 
+echo -ne "\n\nrunning scripts/local_release.sh..."
 if [ -e "scripts/local_release.sh" ]; then
 	scripts/local_release.sh ${zipfile}
 fi
 
 # deploy to distribution location
+echo -ne "\n\nrunning scripts/deploy.sh..."
 if [ -e "scripts/deploy.sh" ]; then
 	#echo not running 
 	scripts/deploy.sh ${zipfile}
