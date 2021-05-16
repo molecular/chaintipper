@@ -249,7 +249,6 @@ class Reddit(PrintError, QObject):
 
 			return True
 
-
 	def markChaintipMessagesUnread(self):
 		chaintip_messages = [message for message in self.reddit.inbox.messages(limit=130) if 
 			message.author == 'chaintip' and
@@ -472,11 +471,6 @@ class Reddit(PrintError, QObject):
 
 class RedditTip(PrintError, Tip):
 
-	p_subject_outgoing_tip = re.compile('Tip (\S*)')
-	p_tip_comment = re.compile('.*\[your tip\]\(\S*/_/(\S*)\).*', re.MULTILINE | re.DOTALL)
-	p_recipient = re.compile('^u/(\S*) has (.*linked).*Bitcoin Cash \(BCH\) to: \*\*(bitcoincash:q\w*)\*\*.*', re.MULTILINE | re.DOTALL)
-	p_sender = re.compile('^u/(\S*) has just sent you (\S*) Bitcoin Cash \(about \S* USD\) \[via\]\(\S*/_/(\S*)\) .*', re.MULTILINE | re.DOTALL)
-
 	def __init__(self, reddit: Reddit, message: praw.models.Message):
 		Tip.__init__(self)
 		self.platform = "reddit"
@@ -494,7 +488,7 @@ class RedditTip(PrintError, Tip):
 	# Tip overrides
 
 	def getID(self):
-		return self.tipping_comment_id
+		return self.chaintip_message.id
 
 	def refresh(self):
 		if self.payment_status != 'paid':
@@ -510,10 +504,19 @@ class RedditTip(PrintError, Tip):
 			self.type == 'send' 
 
 
+	p_subject_outgoing_tip = re.compile('Tip (\S*)')
+	p_tip_comment = re.compile('.*\[your tip\]\(\S*/_/(\S*)\).*', re.MULTILINE | re.DOTALL)
+	p_recipient_acceptance = re.compile('^u/(\S*) has (.*linked).*Bitcoin Cash \(BCH\) to: \*\*(bitcoincash:q\w*)\*\*.*', re.MULTILINE | re.DOTALL)
+	p_sender = re.compile('^u/(\S*) has just sent you (\S*) Bitcoin Cash \(about \S* USD\) \[via\]\(\S*/_/(\S*)\) .*', re.MULTILINE | re.DOTALL)
+	p_stealth = re.compile('.*Tip \*\*.*\*\* for their \[(\w*)\]\((/(r/\w*)/\S*/(\w*)/(\w*)/)\).*', re.MULTILINE | re.DOTALL)
+
 	def parseChaintipMessage(self):
 		self.is_chaintip = False
 		self.type = None
 		self.default_amount_used = False
+		self.tippee_comment_id = None
+		self.tippee_post_id = None
+		self.tippee_content_link = None
 
 		message = self.chaintip_message
 		self.id = message.id
@@ -541,12 +544,17 @@ class RedditTip(PrintError, Tip):
 
 			# match outgoing tip
 			if RedditTip.p_subject_outgoing_tip.match(self.chaintip_message.subject):
+				self.print_error("subject matches", self.chaintip_message.subject)
+				self.type = 'send'
+				self.direction = 'outgoing'
+
+				# match "your tip"
 				m = RedditTip.p_tip_comment.match(self.chaintip_message.body)
 				if m:
-					self.type = 'send'
 					self.tipping_comment_id = m.group(1)
-					self.direction = 'outgoing'
-				m = RedditTip.p_recipient.match(self.chaintip_message.body)
+
+				# match ... has (not) linked ... Bitcoin Cash (BCH) to <address>
+				m = RedditTip.p_recipient_acceptance.match(self.chaintip_message.body)
 				if m:
 					self.username = m.group(1)
 					if m.group(2) == "not yet linked":
@@ -555,16 +563,46 @@ class RedditTip(PrintError, Tip):
 						self.acceptance_status = 'linked'
 					self.recipient_address = Address.from_cashaddr_string(m.group(3))
 
+				# stealth: match "for their <post|comment> (...)"
+				m = RedditTip.p_stealth.match(self.chaintip_message.body)
+				if m:
+					self.useDefaultAmount()
+					post_or_comment = m.group(1)
+					self.subreddit_str = m.group(3)
+					self.tippee_content_link = m.group(2)
+					if post_or_comment == 'comment': 	
+						self.tippee_comment_id = m.group(5)
+					if post_or_comment == 'post':
+						self.tippee_post_id = m.group(4)
+
 			# fetch tipping comment
 			if self.tipping_comment_id:
-				comment = self.reddit.reddit.comment(id = self.tipping_comment_id)
-				self.parseTippingComment(comment)
+				self.tipping_comment = self.reddit.reddit.comment(id = self.tipping_comment_id)
+				self.parseTippingComment(self.tipping_comment)
+
+			# fetch tippee comment
+			# if self.tippee_comment_id:
+			# 	self.tippee_comment = self.reddit.reddit.comment(id = self.tippee_comment_id)
+			# 	self.subreddit_str = "r/" + self.tippee_comment.subreddit.display_name
+
+			# fetch tippee post
+			# if self.tippee_post_id:
+			# 	self.tippee_post = self.reddit.reddit.post(id = self.tippee_post_id)
+			# 	self.subreddit_str = "r/" + self.tippee_post.subreddit.display_name
+
+		self.qualifiesForAutopay() # will update payment_status
 
 	p_tip_amount_unit = re.compile('.*u/chaintip ((\S*)\s*(\S*))', re.MULTILINE | re.DOTALL)
 	p_tip_prefix_symbol_decimal = re.compile('.*u/chaintip (.) ?(\d+\.?\d*).*', re.MULTILINE | re.DOTALL)
 	def parseTippingComment(self, comment):
 		#self.print_error("got tipping comment:", comment.body)
 		self.tipping_comment = comment
+
+		# set tippee_coment_id and tippee_content_link
+		if not self.tippee_comment_id:
+			self.tippee_comment_id = self.tipping_comment.parent().id
+		self.tippee_content_link = self.tipping_comment.parent().permalink
+
 		self.subreddit_str = "r/" + self.tipping_comment.subreddit.display_name
 		self.tip_unit = ''
 
@@ -604,20 +642,13 @@ class RedditTip(PrintError, Tip):
 				except Exception as e:
 					self.print_error("Error parsing tip amount <amount> <unit>: ", repr(e))
 					#traceback.print_exc()
-					self.payment_status = 'ready to pay'
-					self.amount_bch = self.getDefaultAmountBCH()
-					self.default_amount_used = True
+					self.useDefaultAmount()
 			else: # use default amount
-				self.payment_status = 'ready to pay'
-				self.amount_bch = self.getDefaultAmountBCH()
-				self.default_amount_used = True
-
-		self.qualifiesForAutopay() # will update payment_status
+					self.useDefaultAmount()
 
 	def evaluateAmount(self):
 		# in case all else fails, use default amount
-		self.amount_bch = self.getDefaultAmountBCH()
-		self.default_amount_used = True
+		self.useDefaultAmount()
 
 		# find unit from amount config
 		matching_units = (unit for unit in amount_config["units"] if self.tip_unit in unit["names"])
@@ -635,6 +666,11 @@ class RedditTip(PrintError, Tip):
 			self.default_amount_used = False
 			#self.print_error("rate for tip_unit", self.tip_unit, ": ", rate)
 			self.payment_status = 'ready to pay'
+
+	def useDefaultAmount(self):
+		self.payment_status = 'ready to pay'
+		self.amount_bch = self.getDefaultAmountBCH()
+		self.default_amount_used = True
 			
 	def getDefaultAmountBCH(self):
 		wallet = self.reddit.wallet_ui.wallet

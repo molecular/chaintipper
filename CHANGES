@@ -1,6 +1,12 @@
 CHANGES
 
-1.0-beta9:
+1.0-beta11:
+
+	* change menu item "open browser with tipping" to "open browser to content that made you tip" (also works for stealth mode tips)
+	* parse stealth mode messages
+	* add menu item "open blockexplorer to recipient address"
+
+1.0-beta10:
 
 	* fix another bug with "linked default amount" (always used)
 	* prefer exchange given in users "fiat" preferences

@@ -57,17 +57,18 @@ class TipListItem(QTreeWidgetItem, PrintError):
 			#str(tip.qualifiesForAutopay()),
 			#tip.chaintip_message.author.name,
 			#tip.chaintip_message.subject,
-			tip.subreddit_str,
+			tip.subreddit_str if hasattr(tip, "subreddit_str") else "",
 			tip.username,
 			#tip.direction,
 			tip.tip_amount_text,
-			"{0:.8f}".format(tip.amount_bch),
+			"{0:.8f}".format(tip.amount_bch) if isinstance(tip.amount_bch, Decimal) else "",
 			"{0:.2f}".format(tip.amount_fiat) if tip.amount_fiat else "<no rate>",
 			#tip.recipient_address.to_ui_string() if tip.recipient_address else None,
 			#str(tip.tip_quantity),
 			#tip.tip_unit,
 			#tip.tipping_comment_id,
-			tip.tipping_comment.body.partition('\n')[0],
+			tip.tipping_comment.body.partition('\n')[0] if hasattr(tip, "tipping_comment") else "",
+			#tip.tippee_content_link
 		]
 
 	def refreshData(self):
@@ -102,6 +103,7 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 			#_('Tip Unit'),
 			#_('Tip Comment'), 
 			_('Tip Comment body'),
+			#_('Tippee Content Link')
 		]
 		fx = self.window.fx
 		
@@ -248,7 +250,7 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 
 				# this is a half-baked workaround for utxo set not being up-to-date on next payment
 				self.wallet.wait_until_synchronized() # should give some time
-				sleep(2) # my god, where have I gone?
+				sleep(3) # my god, where have I gone?
 			else:
 				for tip in tips:
 					tip.payment_status = "autopay error: " + msg
@@ -308,15 +310,20 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 		def doAutoPay(tips: list):
 			self.pay(tips)
 
-		def doOpenBrowser(tip: Tip, open_parent: bool):
+		def doOpenBrowser(tip: Tip):
 			comment = tip.tipping_comment
-			if open_parent:
-				comment = comment.parent
 			webopen(c["reddit"]["url_prefix"] + tip.tipping_comment.permalink)
 
-		def doOpenBlockExplorer(tip: Tip):
-			tx_URL = web.BE_URL(self.config, 'tx', tips[0].payment_txid)
-			webopen(tx_URL)
+		def doOpenBrowserToTipeeContent(tip: Tip):
+			webopen(c["reddit"]["url_prefix"] + tip.tippee_content_link)
+
+		def doOpenBlockExplorerTX(txid: str):
+			URL = web.BE_URL(self.config, 'tx', txid)
+			webopen(URL)
+
+		def doOpenBlockExplorerAddress(address: Address):
+			URL = web.BE_URL(self.config, 'addr', address)
+			webopen(URL)
 
 		def doMarkRead(tips: list, include_claim_returned_messages: bool = False):
 			self.reddit.mark_read_tips(tips, include_claim_returned_messages)
@@ -347,13 +354,20 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 		menu = QMenu()
 		if len(new_tips) > 0:
 			menu.addAction(_(f"mark read{new_count_display_string}"), lambda: doMarkRead(new_tips, True))
-		if len(self.selectedItems()) == 1:
-			menu.addAction(_(f"open browser to tipping comment"), lambda: doOpenBrowser(tips[0]))
-			menu.addAction(_(f"open browser to tipping comment parent"), lambda: doOpenBrowser(tips[0], True))
+		if len(tips) == 1:
+			menu.addSeparator()
+			if tips[0].tippee_content_link:
+				menu.addAction(_(f"open browser to the content that made you tip"), lambda: doOpenBrowserToTipeeContent(tips[0]))
+			if tips[0].tipping_comment_id:
+				menu.addAction(_(f"open browser to tipping comment"), lambda: doOpenBrowser(tips[0]))
+			menu.addSeparator()
 			if hasattr(tips[0], "payment_txid") and tips[0].payment_txid:
-				menu.addAction(_(f"open blockexplorer to payment tx"), lambda: doOpenBlockExplorer(tips[0]))
+				menu.addAction(_(f"open blockexplorer to payment tx"), lambda: doOpenBlockExplorerTX(tips[0].payment_txid))
+			if hasattr(tips[0], "recipient_address") and tips[0].recipient_address:
+				menu.addAction(_(f"open blockexplorer to recipient address"), lambda: doOpenBlockExplorerAddress(tips[0].recipient_address))
+		menu.addSeparator()
 		if len(unpaid_tips) > 0:
-			menu.addAction(_(f"pay...{unpaid_count_display_string}"), lambda: doPay(unpaid_tips))
+			menu.addAction(_(f"pay{unpaid_count_display_string}..."), lambda: doPay(unpaid_tips))
 		if len(autopay_tips) > 0:
 			menu.addAction(_(f"autopay{autopay_count_display_string}"), lambda: doAutoPay(autopay_tips))
 		
