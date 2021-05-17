@@ -1,6 +1,6 @@
 {
     "display_name": "ChainTipper",
-    "version": "1.0-beta11",
+    "version": "1.0-beta12",
     "description": "Parses your Reddit chaintip comments and (semi-)automatically pays them.",
     "project_url": "https://github.com/",
     "minimum_ec_version": "4.0",

@@ -62,6 +62,5 @@ fi
 # deploy to distribution location
 echo -ne "\n\nrunning scripts/deploy.sh..."
 if [ -e "scripts/deploy.sh" ]; then
-	#echo not running 
-	scripts/deploy.sh ${zipfile}
+	echo not running scripts/deploy.sh ${zipfile}
 fi

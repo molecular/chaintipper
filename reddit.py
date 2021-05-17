@@ -250,7 +250,7 @@ class Reddit(PrintError, QObject):
 			return True
 
 	def markChaintipMessagesUnread(self):
-		chaintip_messages = [message for message in self.reddit.inbox.messages(limit=130) if 
+		chaintip_messages = [message for message in self.reddit.inbox.messages(limit=20) if 
 			message.author == 'chaintip' and
 			not message.new
 		]
@@ -315,7 +315,7 @@ class Reddit(PrintError, QObject):
 				self.tip_or_message_by_message[message.id] = message
 				claimed_or_returned = self.parseClaimedOrReturnedMessage(message)
 				if not claimed_or_returned:
-					tip = RedditTip(self, message)
+					tip = RedditTip(self.wallet_ui.tiplist, self, message)
 					self.tip_or_message_by_message[message.id] = tip
 					if item_is_new:
 						tip.read_status = 'new'
@@ -471,10 +471,10 @@ class Reddit(PrintError, QObject):
 		self.dathread.quit()
 
 
-class RedditTip(PrintError, Tip):
+class RedditTip(Tip):
 
-	def __init__(self, reddit: Reddit, message: praw.models.Message):
-		Tip.__init__(self)
+	def __init__(self, tiplist: TipList, reddit: Reddit, message: praw.models.Message):
+		Tip.__init__(self, tiplist)
 		self.platform = "reddit"
 		self.reddit = reddit
 		self.acceptance_status = ""
@@ -546,7 +546,6 @@ class RedditTip(PrintError, Tip):
 
 			# match outgoing tip
 			if RedditTip.p_subject_outgoing_tip.match(self.chaintip_message.subject):
-				self.print_error("subject matches", self.chaintip_message.subject)
 				self.type = 'send'
 				self.direction = 'outgoing'
 
@@ -614,7 +613,7 @@ class RedditTip(PrintError, Tip):
 			try:
 				prefix_symbol = m.group(1)
 				amount = m.group(2)
-				self.print_error("parsed <prefix_symbox><decimal>: ", prefix_symbol, amount)
+				#self.print_error("parsed <prefix_symbox><decimal>: ", prefix_symbol, amount)
 				self.tip_quantity = Decimal(amount)
 				self.tip_unit = amount_config["prefix_symbols"][prefix_symbol]
 				self.evaluateAmount()

@@ -1,7 +1,11 @@
 from electroncash.util import PrintError, print_error
+from decimal import Decimal
+import weakref
 
-class Tip:
-	def __init__(self):
+class Tip(PrintError):
+	def __init__(self, tiplist):
+		self.tiplist_weakref = weakref.ref(tiplist)
+
 		self.platform = 'unknown'
 
 		# defaults
@@ -19,8 +23,26 @@ class Tip:
 		self.tip_op_return = None
 		self.payment_status = None
 
+		self.payments_by_txhash = {}
+		self.amount_received_bch = Decimal(0)
+
 	def getID(self):
 		raise Exception("getID() not implemented by subclass")
+
+	def update(self):
+		if self.tiplist_weakref():
+			self.tiplist_weakref().updateTip(self)
+
+	def registerPayment(self, txhash: str, amount_bch: Decimal, source: str):
+		self.print_error(f"registerPayment({txhash}, {amount_bch})")
+		if not txhash in self.payments_by_txhash.keys():
+			self.payments_by_txhash[txhash] = amount_bch
+			self.amount_received_bch += amount_bch
+			if len(self.payments_by_txhash) == 1:
+				self.payment_status = 'paid'
+			else:
+				self.payment_status = f'paid ({len(self.payments_by_txhash)} tx)'
+			self.update()
 
 class TipList(PrintError):
 	def __init__(self):
@@ -30,7 +52,7 @@ class TipList(PrintError):
 	def registerTipListener(self, tip_listener):
 		self.tip_listeners.append(tip_listener)
 
-	def unregisterTipListnere(self, tip_listener):
+	def unregisterTipListener(self, tip_listener):
 		self.tip_listeners.remove(tip_listener)
 
 	def addTip(self, tip):

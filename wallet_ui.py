@@ -29,13 +29,16 @@ from .qresources import qInitResources
 
 from . import fullname
 from .reddit import Reddit
-from .model import TipList
+from .model import TipList, TipListener
 from .tiplist import TipListWidget
 from .util import read_config, write_config, commit_config
 from .config import c, amount_config_to_rich_text
+from .blockchain_watcher import BlockchainWatcher
 
 icon_chaintip = QtGui.QIcon(":icons/chaintip.svg")
 icon_chaintip_gray = QtGui.QIcon(":icons/chaintip_gray.svg")
+
+
 
 class WalletUI(MessageBoxMixin, PrintError, QWidget):
 	"""
@@ -124,10 +127,10 @@ class WalletUI(MessageBoxMixin, PrintError, QWidget):
 		Will be called by the ChaintipperButton on deactivation.
 		Deconstructs UI and winds down reddit thread
 		"""
-		self.remove_ui()
-		self.show_previous_tab()
 		if self.reddit:
 			self.reddit.quit()
+		self.remove_ui()
+		self.show_previous_tab()
 		# self.close_wallet(wallet) # TODO: this might be misuse
 
 	def show_chaintipper_tab(self):
@@ -146,6 +149,7 @@ class WalletUI(MessageBoxMixin, PrintError, QWidget):
 	def add_ui(self):
 		"""construct tab with tiplist widget and add it to window"""
 		self.tiplist = TipList()
+		self.blockchain_watcher = BlockchainWatcher(self.wallet, self.tiplist)
 		self.tiplist_widget = TipListWidget(self.window, self.wallet, self.tiplist, self.reddit)
 		self.tiplist_widget.checkPaymentStatus()
 		self.vbox.addWidget(self.tiplist_widget)

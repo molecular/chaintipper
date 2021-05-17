@@ -5,6 +5,9 @@ import string
 import tempfile
 import threading
 import time
+import traceback
+import sys
+
 from enum import IntEnum
 from decimal import Decimal
 from time import sleep
@@ -52,8 +55,9 @@ class TipListItem(QTreeWidgetItem, PrintError):
 			format_time(tip.chaintip_message.created_utc), 
 			#tip.type,
 			tip.read_status,
-			tip.payment_status,
 			tip.acceptance_status,
+			tip.payment_status,
+			"{0:.8f}".format(tip.amount_received_bch) if isinstance(tip.amount_received_bch, Decimal) else "",
 			#str(tip.qualifiesForAutopay()),
 			#tip.chaintip_message.author.name,
 			#tip.chaintip_message.subject,
@@ -87,8 +91,9 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 			_('Date'),
 			#_('Type'),
 			_('Read'),
-			_('Payment'),
 			_('Acceptance'),
+			_('Payment'),
+			_('Received (BCH)'),
 			#_('will autopay'), 
 			#_('Author'), 
 			#_('Subject'), 
@@ -141,10 +146,13 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 
 		self.setTiplist(tiplist)
 
+	def __del__(self):
+		if self.tiplist:
+			self.tiplist.unregistertipListener(self)
+
 	def setTiplist(self, tiplist):
 		if self.tiplist:
 			self.tiplist.unregistertipListener(self)
-			del self.tiplist
 
 		self.tiplist = tiplist
 		self.tiplist.registerTipListener(self)
@@ -154,9 +162,13 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 		# calc tip.amount_fiat
 		d_t = datetime.utcfromtimestamp(tip.chaintip_message.created_utc)
 		fx_rate = self.window.fx.history_rate(d_t)
-		if fx_rate != None:
-			#self.print_error("fx_rate", fx_rate, "tip amount", tip.amount_bch)
-			tip.amount_fiat = fx_rate * tip.amount_bch
+
+		if fx_rate and tip.amount_bch:
+			try:
+				self.print_error("fx_rate", fx_rate, "tip amount", tip.amount_bch)
+				tip.amount_fiat = fx_rate * tip.amount_bch
+			except Exception as e:
+				traceback.print_exc(file=sys.stderr)
 		else:
 			tip.amount_fiat = None
 
@@ -310,12 +322,11 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 		def doAutoPay(tips: list):
 			self.pay(tips)
 
-		def doOpenBrowser(tip: Tip):
-			comment = tip.tipping_comment
-			webopen(c["reddit"]["url_prefix"] + tip.tipping_comment.permalink)
+		def doOpenBrowser(path):
+			webopen(c["reddit"]["url_prefix"] + path)
 
 		def doOpenBrowserToTipeeContent(tip: Tip):
-			webopen(c["reddit"]["url_prefix"] + tip.tippee_content_link)
+			webopen(c["reddit"]["url_prefix"] + tip.chaintip_message.permalink)
 
 		def doOpenBlockExplorerTX(txid: str):
 			URL = web.BE_URL(self.config, 'tx', txid)
@@ -355,16 +366,19 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 		if len(new_tips) > 0:
 			menu.addAction(_(f"mark read{new_count_display_string}"), lambda: doMarkRead(new_tips, True))
 		if len(tips) == 1:
+			tip = tips[0]
+			if tip.chaintip_message:
+				menu.addAction(_(f"open browser to chaintip message"), lambda: doOpenBrowser("/message/messages/" + tip.chaintip_message.id))
 			menu.addSeparator()
-			if tips[0].tippee_content_link:
-				menu.addAction(_(f"open browser to the content that made you tip"), lambda: doOpenBrowserToTipeeContent(tips[0]))
-			if tips[0].tipping_comment_id:
-				menu.addAction(_(f"open browser to tipping comment"), lambda: doOpenBrowser(tips[0]))
+			if tip.tippee_content_link:
+				menu.addAction(_(f"open browser to the content that made you tip"), lambda: doOpenBrowser(tip.tippee_content_link))
+			if tip.tipping_comment_id:
+				menu.addAction(_(f"open browser to tipping comment"), lambda: doOpenBrowser(tip.tipping_comment.permalink))
 			menu.addSeparator()
-			if hasattr(tips[0], "payment_txid") and tips[0].payment_txid:
-				menu.addAction(_(f"open blockexplorer to payment tx"), lambda: doOpenBlockExplorerTX(tips[0].payment_txid))
-			if hasattr(tips[0], "recipient_address") and tips[0].recipient_address:
-				menu.addAction(_(f"open blockexplorer to recipient address"), lambda: doOpenBlockExplorerAddress(tips[0].recipient_address))
+			if hasattr(tip, "payment_txid") and tip.payment_txid:
+				menu.addAction(_(f"open blockexplorer to payment tx"), lambda: doOpenBlockExplorerTX(tip.payment_txid))
+			if hasattr(tip, "recipient_address") and tip.recipient_address:
+				menu.addAction(_(f"open blockexplorer to recipient address"), lambda: doOpenBlockExplorerAddress(tip.recipient_address))
 		menu.addSeparator()
 		if len(unpaid_tips) > 0:
 			menu.addAction(_(f"pay{unpaid_count_display_string}..."), lambda: doPay(unpaid_tips))
@@ -390,30 +404,34 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 			self.pay(tips_to_pay)
 
 	def checkPaymentStatus(self):
-		txo = self.wallet.storage.get('txo', {})
-		self.txo = {tx_hash: self.wallet.to_Address_dict(value)
-			for tx_hash, value in txo.items()
-			# skip empty entries to save memory and disk space
-			if value}
-		for txhash in txo:
-			#self.print_error("  txhash", txhash)
-			##tx = Transaction.tx_cache_get(txhash)
-			tx = self.wallet.transactions.get(txhash)
-			#txinfo = self.wallet.get_tx_info(tx)
-			for txout in tx.outputs():
-				#self.print_error("     txout", txout)
-				#self.print_error("     address", txout[1])
-				address = txout[1]
-				try:
-					tip = self.tips_by_address[address]
-					#self.print_error("   ****** TIP", tip, "paid in txhash", txhash)
-					if tip.payment_status != "paid":
-						tip.payment_status = "paid"
-						tip.payment_txid = txhash
-						self.tiplist.updateTip(tip)
-				except KeyError:
-					continue
-					#self.print_error("   cannot find tip for address", address)
+		return 
+		# txo = self.wallet.storage.get('txo', {})
+		# self.txo = {tx_hash: self.wallet.to_Address_dict(value)
+		# 	for tx_hash, value in txo.items()
+		# 	# skip empty entries to save memory and disk space
+		# 	if value}
+		# for txhash in txo:
+		# 	#self.print_error("  txhash", txhash)
+		# 	##tx = Transaction.tx_cache_get(txhash)
+		# 	tx = self.wallet.transactions.get(txhash)
+		# 	#txinfo = self.wallet.get_tx_info(tx)
+		# 	for txout in tx.outputs():
+		# 		#self.print_error("     txout", txout)
+		# 		#self.print_error("     address", txout[1])
+		# 		address = txout[1]
+		# 		satoshis = txout[2]
+
+		# 		try:
+		# 			tip = self.tips_by_address[address]
+		# 			#self.print_error("   ****** TIP", tip, "paid in txhash", txhash)
+		# 			tip.registerPayment(txhash, Decimal("0.00000001") * satoshis, "wallet")
+		# 			# if tip.payment_status[:4] != "paid":
+		# 			# 	tip.payment_status = "paid"
+		# 			# 	tip.payment_txid = txhash
+		# 			# 	self.tiplist.updateTip(tip)
+		# 		except KeyError:
+		# 			continue
+		# 			#self.print_error("   cannot find tip for address", address)
 
 
 

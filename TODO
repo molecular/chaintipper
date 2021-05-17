@@ -12,7 +12,7 @@
 		* detect stealth payment message like 
 			* https://www.reddit.com/message/messages/11lwr8x (unlinked)
 			* https://www.reddit.com/message/messages/11lwttf (linked)
-		* listen to blockchain
+		* parse "Tip funded." https://www.reddit.com/message/messages/11nvtdw
 
 	* beta n+2
 

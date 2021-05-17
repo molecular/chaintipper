@@ -1,5 +1,9 @@
 CHANGES
 
+1.0-beta12:
+
+		* listen to blockchain
+
 1.0-beta11:
 
 	* change menu item "open browser with tipping" to "open browser to content that made you tip" (also works for stealth mode tips)
