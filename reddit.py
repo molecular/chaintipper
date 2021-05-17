@@ -61,7 +61,7 @@ class Reddit(PrintError, QObject):
 		self.state = None # used in reddit auth flow
 		self.tips_to_refresh = []
 		self.tip_or_message_by_message = dict()
-		self.unassociated_claim_return_messages = [] # store claim/return messages for later association with a tip
+		self.unassociated_claim_return_by_tipping_comment_id = {} # store claim/return info (dict with "message" and "action") for later association with a tip
 		self.unassociated_chaintip_comments = [] # store chaintip comments for later association with a tip
 
 	def receive_connection(self, port):
@@ -231,11 +231,11 @@ class Reddit(PrintError, QObject):
 			amount = m.group(2)
 			claimant = m.group(3)
 			action = m.group(4)
-			# print_error("parsed claimed message", message.id)
-			# print_error("   tipping_comment_id:", tipping_comment_id)
-			# print_error("   amount: ", amount)
-			# print_error("   claimant:", claimant)
-			# print_error("   action:", action)
+			print_error("parsed claimed message", message.id)
+			print_error("   tipping_comment_id:", tipping_comment_id)
+			print_error("   amount: ", amount)
+			print_error("   claimant:", claimant)
+			print_error("   action:", action)
 
 			# find tip matching claim and set its acceptance_status
 			try:
@@ -243,12 +243,16 @@ class Reddit(PrintError, QObject):
 				self.print_error(f"when parsing claim/returned message {message.id}: found matching tip (for claim)", tip)
 				tip.claim_or_returned_message = message
 				tip.acceptance_status = action
-#				tip.update()
+				tip.update()
 			except: 
-				self.unassociated_claim_return_messages.append(message)
+				self.unassociated_claim_return_by_tipping_comment_id[tipping_comment_id] = {
+					"message": message,
+					"action": action
+				}
 				#self.print_error(f"when parsing claim/returned message {message.id}: tip with tipping_comment_id {tipping_comment_id} not found. Not registering '{action}' status.")
 
 			return True
+		return False
 
 	def markChaintipMessagesUnread(self, limit):
 		chaintip_items = [item for item in self.reddit.inbox.all(limit=limit) if 
@@ -315,7 +319,8 @@ class Reddit(PrintError, QObject):
 			if message.id not in self.tip_or_message_by_message: 
 				self.tip_or_message_by_message[message.id] = message
 				claimed_or_returned = self.parseClaimedOrReturnedMessage(message)
-				if not claimed_or_returned:
+
+				if not claimed_or_returned: # must be a tip message
 					tip = RedditTip(self.wallet_ui.tiplist, self, message)
 					self.tip_or_message_by_message[message.id] = tip
 					if item_is_new:
@@ -323,26 +328,13 @@ class Reddit(PrintError, QObject):
 					if tip.isValid():
 						if not self.should_quit:
 							self.new_tip.emit(tip)
+
 			# if we've seen the message before, just mark assocated tip as "new"
 			elif item_is_new:
 				tip = self.tip_or_message_by_message[message.id]
 				if isinstance(tip, RedditTip):
 					tip.read_status = 'new'
 					self.wallet_ui.tiplist.updateTip(tip)
-
-	def associateClaimReturnMessages(self):
-		# try to associate any leftover claim/return messages
-		if len(self.unassociated_claim_return_messages) > 0:
-			self.print_error(f"there are {len(self.unassociated_claim_return_messages)} unassociated_claim_return_messages")
-			# swap the list to a local one
-			messages = self.unassociated_claim_return_messages;
-			self.unassociated_claim_return_messages = []
-
-			# refilling the real one for the messages still not associated
-			for message in messages:
-				self.parseClaimedOrReturnedMessage(message)
-
-			del messages
 
 	p_confirmation_comment = re.compile('.*u/(\S*), you\'ve \[been sent\]\(.*/(bitcoincash:\w*)\).*', re.MULTILINE | re.DOTALL)
 	def associateChaintipComments(self):
@@ -378,7 +370,7 @@ class Reddit(PrintError, QObject):
 
 		self.await_reddit_authorization()
 
-		self.markChaintipMessagesUnread(300)
+		#self.markChaintipMessagesUnread(1000)
 
 		max_age_days = 3
 		do_read_from_read = False
@@ -389,9 +381,6 @@ class Reddit(PrintError, QObject):
 			counter = 0
 			try:
 				for item in self.reddit.inbox.unread():
-					# some "background tasks"
-					self.markPaidTipsRead()
-					self.refreshTips()
 
 					# break early in case of shutdown
 					if self.should_quit:
@@ -404,21 +393,28 @@ class Reddit(PrintError, QObject):
 
 					counter += 1
 
-					# digest item
-					if isinstance(item, praw.models.Comment):
-						if item.author == 'chaintip':
-							self.unassociated_chaintip_comments.append(item)
+					# only read chaintip-authored item
+					if item.author != 'chaintip':
+						continue
 
+					# digest message
 					if isinstance(item, praw.models.Message):
 						self.digestItem(item, item_is_new=True)
 
-					# # apply any defered associations
-					self.associateClaimReturnMessages()
-					# self.associateChaintipComments()
+					# digest comment
+					if isinstance(item, praw.models.Comment):
+						self.unassociated_chaintip_comments.append(item)
+
+					# apply any defered associations
+					self.associateChaintipComments()
+
+					# some "background tasks"
+					self.markPaidTipsRead()
+					self.refreshTips()
 
 				if counter > 0:
-					self.print_error(f"read {counter} items, sleep()ing...")
 					counter = 0
+					self.print_error(f"read {counter} items, sleep()ing...")
 
 				sleep(2)
 			except prawcore.exceptions.ServerError as e:
@@ -516,6 +512,7 @@ class RedditTip(Tip):
 		self.chaintip_message = message
 
 		self.parseChaintipMessage()
+		self.qualifiesForAutopay() # will update payment_status
 
 	def __str__(self):
 		return f"RedditTip {self.chaintip_message.id}: {self.amount_bch} to {self.username}"
@@ -562,7 +559,7 @@ class RedditTip(Tip):
 
 		# parse chaintip message
 		if hasattr(self.chaintip_message.author, "name") and self.chaintip_message.author.name == 'chaintip':
-			self.print_error("\n--- parsing chaintip message, subject:", self.subject, "---")
+			self.print_error("--- parsing chaintip message, subject:", self.subject, "---")
 			self.is_chaintip = True
 			#self.print_error(f"parsing chaintip message {message.id}")
 			#self.print_error(self.chaintip_message.body)
@@ -615,22 +612,19 @@ class RedditTip(Tip):
 					if post_or_comment == 'post':
 						self.tippee_post_id = m.group(4)
 
+			# associate possible already-parsed claim/return message
+			claim_return = self.reddit.unassociated_claim_return_by_tipping_comment_id.pop(self.tipping_comment_id, None)
+			if claim_return:
+				#self.print_error("***************** assocated claim_return:", claim_return)
+				self.claim_or_returned_message = claim_return["message"]
+				self.acceptance_status = claim_return["action"]
+
+
 			# fetch tipping comment
-			# if self.tipping_comment_id:
-			# 	self.tipping_comment = self.reddit.reddit.comment(id = self.tipping_comment_id)
-			# 	self.parseTippingComment(self.tipping_comment)
+			if self.tipping_comment_id:
+				self.tipping_comment = self.reddit.reddit.comment(id = self.tipping_comment_id)
+				self.parseTippingComment(self.tipping_comment)
 
-			# fetch tippee comment
-			# if self.tippee_comment_id:
-			# 	self.tippee_comment = self.reddit.reddit.comment(id = self.tippee_comment_id)
-			# 	self.subreddit_str = "r/" + self.tippee_comment.subreddit.display_name
-
-			# fetch tippee post
-			# if self.tippee_post_id:
-			# 	self.tippee_post = self.reddit.reddit.post(id = self.tippee_post_id)
-			# 	self.subreddit_str = "r/" + self.tippee_post.subreddit.display_name
-
-		self.qualifiesForAutopay() # will update payment_status
 
 	p_tip_amount_unit = re.compile('.*u/chaintip ((\S*)\s*(\S*))', re.MULTILINE | re.DOTALL)
 	p_tip_prefix_symbol_decimal = re.compile('.*u/chaintip (.) ?(\d+\.?\d*).*', re.MULTILINE | re.DOTALL)

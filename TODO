@@ -10,7 +10,8 @@
 
 		* parse "Tip funded." https://www.reddit.com/message/messages/11nvtdw
 		* solve autopay triggering (a thread? some grace status and activation by reddit thread?)
-		* open blockexplorer to payment tx (#1, #2, #3), remove old tip.payment_txhash
+		* look at tip_or_message_by_message
+		* use same association scheme for confirmation comments as for claim/return
 
 	* beta n+2
 

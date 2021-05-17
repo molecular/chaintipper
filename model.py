@@ -34,7 +34,7 @@ class Tip(PrintError):
 			self.tiplist_weakref().updateTip(self)
 
 	def registerPayment(self, txhash: str, amount_bch: Decimal, source: str):
-		self.print_error(f"registerPayment({txhash}, {amount_bch})")
+		#self.print_error(f"registerPayment({txhash}, {amount_bch})")
 		if not txhash in self.payments_by_txhash.keys():
 			self.payments_by_txhash[txhash] = amount_bch
 			self.amount_received_bch += amount_bch

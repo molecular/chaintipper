@@ -2,9 +2,10 @@ CHANGES
 
 1.0-beta12:
 
-	* listen to blockchain
+	* listen to blockchain instead of only connected wallet for payments
 	* open blockexplorer to payment tx (#1, #2, #3), remove old tip.payment_txhash
 	* parse chaintip confirmation comment
+	* performance improvement
 
 1.0-beta11:
 
