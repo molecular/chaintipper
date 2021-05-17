@@ -67,11 +67,7 @@ class BlockchainWatcher(TipListener, PrintError):
 	def on_status_change(self, c):
 		scripthash = c["params"][0]
 		#txhash = c["result"]
-		self.print_error("status change", c)
-		self.print_error("  scripthash", scripthash)
 		tip = self.hash2tip[scripthash]
-		self.print_error("  found associated tip:", tip)
-#		self.request_tx(txhash, tip)
 
 		# get scripthash history
 		self.network.request_scripthash_history(scripthash, self.on_address_history)		
@@ -90,7 +86,7 @@ class BlockchainWatcher(TipListener, PrintError):
 			if tx_hash not in self.requested_tx_hashes.keys():
 				self.requested_tx_hashes[tx_hash] = 17
 				requests.append(('blockchain.transaction.get', [tx_hash]))
-		self.print_error("requesting transactions, requests: ", requests)
+		#self.print_error("requesting transactions, requests: ", requests)
 		self.network.send(requests, self.on_tx)
 
 	def on_tx(self, response):

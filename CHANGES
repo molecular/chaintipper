@@ -3,6 +3,7 @@ CHANGES
 1.0-beta12:
 
 		* listen to blockchain
+		* open blockexplorer to payment tx (#1, #2, #3), remove old tip.payment_txhash
 
 1.0-beta11:
 

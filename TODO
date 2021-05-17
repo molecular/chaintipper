@@ -1,34 +1,31 @@
-	* 1.0
 
-		* for any semi-public release
+	* for any semi-public release
 
-			* readme.md for github (linking to manual.md, build_and_review.md)
-			* rebase and push to github once code is de-cluttered
-			* release (trhough github files?), hashes?
-			* LICENSE
+		* readme.md for github (linking to manual.md, build_and_review.md)
+		* rebase and push to github once code is de-cluttered
+		* release (trhough github files?), hashes?
+		* LICENSE
 
 	* beta n+1
 
-		* detect stealth payment message like 
-			* https://www.reddit.com/message/messages/11lwr8x (unlinked)
-			* https://www.reddit.com/message/messages/11lwttf (linked)
 		* parse "Tip funded." https://www.reddit.com/message/messages/11nvtdw
+		* solve autopay triggering (a thread? some grace status and activation by reddit thread?)
+		* open blockexplorer to payment tx (#1, #2, #3), remove old tip.payment_txhash
 
 	* beta n+2
 
 		* copy recipient (tipee) address
 		* set amount...
 		* parse chaintip confirmation comment (and also mark it read on mark_unread of the associated tip)
-		* implement blockchain scanning for payments
-		* enable initial loading of read messages
 		* move reddit forget button to settings
-		* discrepancy between recent rate and historical rate (default amount will look bad)
 
 		* segfault on close (at least on blackbox)
 
 		* about box
 
 	* consider it
+
+		* discrepancy between recent rate and historical rate (default amount will look bad)
 
 		* treeview beauty
 			* use monospaced font like on history tab

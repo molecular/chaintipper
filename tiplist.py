@@ -364,22 +364,36 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 		# create the context menu
 		menu = QMenu()
 		if len(new_tips) > 0:
-			menu.addAction(_(f"mark read{new_count_display_string}"), lambda: doMarkRead(new_tips, True))
+			# mark_read
+			menu.addAction(_("mark read{}").format(new_count_display_string), lambda: doMarkRead(new_tips, True))
+			menu.addSeparator()
+
 		if len(tips) == 1:
 			tip = tips[0]
+
 			if tip.chaintip_message:
-				menu.addAction(_(f"open browser to chaintip message"), lambda: doOpenBrowser("/message/messages/" + tip.chaintip_message.id))
-			menu.addSeparator()
+				menu.addAction(_("open browser to chaintip message"), lambda: doOpenBrowser("/message/messages/" + tip.chaintip_message.id))
+
+			# open browser...			
 			if tip.tippee_content_link:
-				menu.addAction(_(f"open browser to the content that made you tip"), lambda: doOpenBrowser(tip.tippee_content_link))
+				menu.addAction(_("open browser to the content that made you tip"), lambda: doOpenBrowser(tip.tippee_content_link))
 			if tip.tipping_comment_id:
-				menu.addAction(_(f"open browser to tipping comment"), lambda: doOpenBrowser(tip.tipping_comment.permalink))
+				menu.addAction(_("open browser to tipping comment"), lambda: doOpenBrowser(tip.tipping_comment.permalink))
+			
+			# open blockexplorer...
 			menu.addSeparator()
-			if hasattr(tip, "payment_txid") and tip.payment_txid:
-				menu.addAction(_(f"open blockexplorer to payment tx"), lambda: doOpenBlockExplorerTX(tip.payment_txid))
+			payment_count = len(tip.payments_by_txhash)
+			if payment_count == 1:
+				menu.addAction(_("open blockexplorer to payment tx"), lambda: doOpenBlockExplorerTX(list(tip.payments_by_txhash.keys())[0]))
+			elif payment_count > 1:
+				for tx_hash, amount in tip.payments_by_txhash.items():
+					menu.addAction(_("open blockexplorer to payment tx {tx_hash_short} ({amount} BCH)").format(tx_hash_short=tx_hash[:4]+"..."+tx_hash[-4:], amount=amount), lambda: doOpenBlockExplorerTX(tx_hash))
+				menu.addSeparator()
 			if hasattr(tip, "recipient_address") and tip.recipient_address:
 				menu.addAction(_(f"open blockexplorer to recipient address"), lambda: doOpenBlockExplorerAddress(tip.recipient_address))
+
 		menu.addSeparator()
+
 		if len(unpaid_tips) > 0:
 			menu.addAction(_(f"pay{unpaid_count_display_string}..."), lambda: doPay(unpaid_tips))
 		if len(autopay_tips) > 0:
