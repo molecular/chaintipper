@@ -16,7 +16,7 @@
 
 		* copy recipient (tipee) address
 		* set amount...
-		* parse chaintip confirmation comment (and also mark it read on mark_unread of the associated tip)
+		* mark confirmation comments read on mark_unread of the associated tip)
 		* move reddit forget button to settings
 
 		* segfault on close (at least on blackbox)

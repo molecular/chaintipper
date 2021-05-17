@@ -39,7 +39,7 @@ class Tip(PrintError):
 			self.payments_by_txhash[txhash] = amount_bch
 			self.amount_received_bch += amount_bch
 			if len(self.payments_by_txhash) == 1:
-				self.payment_status = 'paid'
+				self.payment_status = "paid"
 			else:
 				self.payment_status = f'paid ({len(self.payments_by_txhash)} tx)'
 			self.update()

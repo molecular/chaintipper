@@ -58,6 +58,7 @@ class TipListItem(QTreeWidgetItem, PrintError):
 			tip.acceptance_status,
 			tip.payment_status,
 			"{0:.8f}".format(tip.amount_received_bch) if isinstance(tip.amount_received_bch, Decimal) else "",
+			tip.chaintip_confirmation_status if hasattr(tip, "chaintip_confirmation_status") else "",
 			#str(tip.qualifiesForAutopay()),
 			#tip.chaintip_message.author.name,
 			#tip.chaintip_message.subject,
@@ -66,7 +67,7 @@ class TipListItem(QTreeWidgetItem, PrintError):
 			#tip.direction,
 			tip.tip_amount_text,
 			"{0:.8f}".format(tip.amount_bch) if isinstance(tip.amount_bch, Decimal) else "",
-			"{0:.2f}".format(tip.amount_fiat) if tip.amount_fiat else "<no rate>",
+			"{0:.2f}".format(tip.amount_fiat) if tip.amount_fiat else "",
 			#tip.recipient_address.to_ui_string() if tip.recipient_address else None,
 			#str(tip.tip_quantity),
 			#tip.tip_unit,
@@ -94,6 +95,7 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 			_('Acceptance'),
 			_('Payment'),
 			_('Received (BCH)'),
+			_('ChainTip'),
 			#_('will autopay'), 
 			#_('Author'), 
 			#_('Subject'), 
@@ -165,9 +167,9 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 
 		if fx_rate and tip.amount_bch:
 			try:
-				self.print_error("fx_rate", fx_rate, "tip amount", tip.amount_bch)
 				tip.amount_fiat = fx_rate * tip.amount_bch
 			except Exception as e:
+				self.print_error("error with fx_rate", fx_rate, "tip amount", tip.amount_bch)
 				traceback.print_exc(file=sys.stderr)
 		else:
 			tip.amount_fiat = None
@@ -354,7 +356,7 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 		new_tips = [t for t in tips if t.read_status == 'new']
 		new_count_display_string = f" ({len(new_tips)})" if len(new_tips)>1 else "" 
 
-		unpaid_tips = [t for t in tips if t.payment_status != 'paid' and t.amount_bch]
+		unpaid_tips = [t for t in tips if t.payment_status[:4] != "paid" and t.amount_bch]
 		unpaid_count_display_string = f" ({len(unpaid_tips)})" if len(unpaid_tips)>1 else "" 
 
 		autopay_tips = [t for t in unpaid_tips if t.qualifiesForAutopay()]
