@@ -6,6 +6,8 @@ CHANGES
 	* open blockexplorer to payment tx (#1, #2, #3), remove old tip.payment_txhash
 	* parse chaintip confirmation comment
 	* performance improvement
+	* fix claim/return registration
+	* use same association scheme for confirmation comments as for claim/return
 
 1.0-beta11:
 

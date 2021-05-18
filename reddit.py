@@ -62,7 +62,7 @@ class Reddit(PrintError, QObject):
 		self.tips_to_refresh = []
 		self.tip_or_message_by_message = dict()
 		self.unassociated_claim_return_by_tipping_comment_id = {} # store claim/return info (dict with "message" and "action") for later association with a tip
-		self.unassociated_chaintip_comments = [] # store chaintip comments for later association with a tip
+		self.unassociated_chaintip_comments_by_tipping_comment_id = {} # store chaintip comments for later association with a tip
 
 	def receive_connection(self, port):
 		"""Wait for and then return a connected socket..
@@ -213,47 +213,6 @@ class Reddit(PrintError, QObject):
 			tip.refresh()
 			tip.update()
 
-	p_claimed_subject = re.compile('Tip claimed.')
-	p_returned_subject = re.compile('Tip returned to you.')
-	p_claimed_or_returned_message = re.compile('Your \[tip\]\(.*_/(\S*)\) of (\d*\.\d*) Bitcoin Cash.*to u/(\S*).* has \[been (\S*)\].*', re.MULTILINE | re.DOTALL)
-	def parseClaimedOrReturnedMessage(self, message: praw.models.Message):
-		"""returns true if message is a "Tip claimed" message, false otherwise"""
-
-		# claimed message
-		if not self.p_claimed_subject.match(message.subject) and not self.p_returned_subject.match(message.subject):
-			return False
-
-		#print_error("detected claimed/returned message, body", message.body)
-		m = self.p_claimed_or_returned_message.match(message.body)
-		if m:
-			confirmation_comment_id = m.group(1)
-			tipping_comment_id = self.reddit.comment(confirmation_comment_id).parent_id[3:] # remove "t1_" prefix
-			amount = m.group(2)
-			claimant = m.group(3)
-			action = m.group(4)
-			print_error("parsed claimed message", message.id)
-			print_error("   tipping_comment_id:", tipping_comment_id)
-			print_error("   amount: ", amount)
-			print_error("   claimant:", claimant)
-			print_error("   action:", action)
-
-			# find tip matching claim and set its acceptance_status
-			try:
-				tip = self.wallet_ui.tiplist.tips[tipping_comment_id]
-				self.print_error(f"when parsing claim/returned message {message.id}: found matching tip (for claim)", tip)
-				tip.claim_or_returned_message = message
-				tip.acceptance_status = action
-				tip.update()
-			except: 
-				self.unassociated_claim_return_by_tipping_comment_id[tipping_comment_id] = {
-					"message": message,
-					"action": action
-				}
-				#self.print_error(f"when parsing claim/returned message {message.id}: tip with tipping_comment_id {tipping_comment_id} not found. Not registering '{action}' status.")
-
-			return True
-		return False
-
 	def markChaintipMessagesUnread(self, limit):
 		chaintip_items = [item for item in self.reddit.inbox.all(limit=limit) if 
 			item.author == 'chaintip' and
@@ -308,6 +267,67 @@ class Reddit(PrintError, QObject):
 		self.dathread.started.connect(self.run)
 		self.dathread.start()
 
+	p_claimed_subject = re.compile('Tip claimed.')
+	p_returned_subject = re.compile('Tip returned to you.')
+	p_claimed_or_returned_message = re.compile('Your \[tip\]\(.*_/(\S*)\) of (\d*\.\d*) Bitcoin Cash.*to u/(\S*).* has \[been (\S*)\].*', re.MULTILINE | re.DOTALL)
+	def parseClaimedOrReturnedMessage(self, message: praw.models.Message):
+		"""returns true if message is a "Tip claimed" message, false otherwise"""
+
+		# claimed message
+		if not self.p_claimed_subject.match(message.subject) and not self.p_returned_subject.match(message.subject):
+			return False
+
+		#print_error("detected claimed/returned message, body", message.body)
+		m = self.p_claimed_or_returned_message.match(message.body)
+		if m:
+			confirmation_comment_id = m.group(1)
+			tipping_comment_id = self.reddit.comment(confirmation_comment_id).parent_id[3:] # remove "t1_" prefix
+			amount = m.group(2)
+			claimant = m.group(3)
+			action = m.group(4)
+			print_error("parsed claimed message", message.id)
+			print_error("   tipping_comment_id:", tipping_comment_id)
+			print_error("   amount: ", amount)
+			print_error("   claimant:", claimant)
+			print_error("   action:", action)
+
+			# find tip matching claim and set its acceptance_status
+			try:
+				tip = self.wallet_ui.tiplist.tips[tipping_comment_id]
+				self.print_error(f"when parsing claim/returned message {message.id}: found matching tip (for claim)", tip)
+				tip.claim_or_returned_message = message
+				tip.acceptance_status = action
+				tip.update()
+			except: 
+				self.unassociated_claim_return_by_tipping_comment_id[tipping_comment_id] = {
+					"message": message,
+					"action": action
+				}
+				#self.print_error(f"when parsing claim/returned message {message.id}: tip with tipping_comment_id {tipping_comment_id} not found. Not registering '{action}' status.")
+
+			return True
+		return False
+
+	p_confirmation_comment = re.compile('.*u/(\S*), you\'ve \[been sent\]\(.*/(bitcoincash:\w*)\).*', re.MULTILINE | re.DOTALL)
+	def parseChaintipComment(self, comment: praw.models.Comment):
+			m = Reddit.p_confirmation_comment.match(comment.body)
+			if m:
+				#self.print_error("   1", m.group(1))
+				#self.print_error("   2", m.group(2))
+
+				#self.print_error("looking up tip by tipping_comment_id: ", comment.parent_id[3:])
+				tipping_comment_id = comment.parent_id[3:]
+				tip = self.wallet_ui.tiplist.tips.get(tipping_comment_id, None)
+				if tip:
+					tip.chaintip_confirmation_status = 'confirmed'
+					tip.chaintip_confirmation_comment = comment
+					tip.update()
+				else:
+					self.unassociated_chaintip_comments_by_tipping_comment_id[tipping_comment_id] = comment
+			else:
+				self.print_error("chaintip comment doesn't match: ", comment.body)
+
+
 	def digestItem(self, item, item_is_new=False):
 		if item is None:
 			return
@@ -336,33 +356,6 @@ class Reddit(PrintError, QObject):
 					tip.read_status = 'new'
 					self.wallet_ui.tiplist.updateTip(tip)
 
-	p_confirmation_comment = re.compile('.*u/(\S*), you\'ve \[been sent\]\(.*/(bitcoincash:\w*)\).*', re.MULTILINE | re.DOTALL)
-	def associateChaintipComments(self):
-		if len(self.unassociated_chaintip_comments) > 0:
-			self.print_error(f"there are {len(self.unassociated_chaintip_comments)} unassociated_chaintip_comments")
-			# swap the list to a local one
-			comments = self.unassociated_chaintip_comments;
-			self.unassociated_chaintip_comments = []
-
-			for comment in comments:
-				#self.print_error("chaintip comment id:", comment.id)
-				m = Reddit.p_confirmation_comment.match(comment.body)
-				if m:
-					#self.print_error("   1", m.group(1))
-					#self.print_error("   2", m.group(2))
-
-					#self.print_error("looking up tip by tipping_comment_id: ", comment.parent_id[3:])
-					tip = self.wallet_ui.tiplist.tips.get(comment.parent_id[3:], None)
-					if tip:
-						tip.chaintip_confirmation_status = 'confirmed'
-						tip.chaintip_confirmation_comment = comment
-						tip.update()
-					else:
-						self.unassociated_chaintip_comments.append(comment)
-				else:
-					self.print_error("chaintip comment doesn't match: ", comment.body)
-
-			del comments
 
 	def run(self):
 		self.print_error("Reddit.run() called")
@@ -403,10 +396,7 @@ class Reddit(PrintError, QObject):
 
 					# digest comment
 					if isinstance(item, praw.models.Comment):
-						self.unassociated_chaintip_comments.append(item)
-
-					# apply any defered associations
-					self.associateChaintipComments()
+						self.parseChaintipComment(item)
 
 					# some "background tasks"
 					self.markPaidTipsRead()
@@ -415,8 +405,9 @@ class Reddit(PrintError, QObject):
 				if counter > 0:
 					counter = 0
 					self.print_error(f"read {counter} items, sleep()ing...")
-
-				sleep(2)
+				else:
+					sleep(2)
+					
 			except prawcore.exceptions.ServerError as e:
 				self.print_error("Reddit ServerError", e, "retrying later...")
 				sleep(30)
@@ -619,6 +610,11 @@ class RedditTip(Tip):
 				self.claim_or_returned_message = claim_return["message"]
 				self.acceptance_status = claim_return["action"]
 
+			# associate possible confirmation comment
+			confirmation_comment = self.reddit.unassociated_chaintip_comments_by_tipping_comment_id.pop(self.tipping_comment_id, None)
+			if confirmation_comment:
+				self.chaintip_confirmation_status = 'confirmed'
+				self.chaintip_confirmation_comment = confirmation_comment
 
 			# fetch tipping comment
 			if self.tipping_comment_id:
