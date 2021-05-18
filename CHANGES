@@ -8,6 +8,7 @@ CHANGES
 	* performance improvement
 	* fix claim/return registration
 	* use same association scheme for confirmation comments as for claim/return
+	* mark confirmation comments read on mark_unread of the associated tip)
 
 1.0-beta11:
 

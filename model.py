@@ -24,7 +24,7 @@ class Tip(PrintError):
 		self.payment_status = None
 
 		self.payments_by_txhash = {}
-		self.amount_received_bch = Decimal(0)
+		self.amount_received_bch = None
 
 	def getID(self):
 		raise Exception("getID() not implemented by subclass")
@@ -37,7 +37,10 @@ class Tip(PrintError):
 		#self.print_error(f"registerPayment({txhash}, {amount_bch})")
 		if not txhash in self.payments_by_txhash.keys():
 			self.payments_by_txhash[txhash] = amount_bch
-			self.amount_received_bch += amount_bch
+			if not self.amount_received_bch:
+				self.amount_received_bch = amount_bch
+			else:
+				self.amount_received_bch += amount_bch
 			if len(self.payments_by_txhash) == 1:
 				self.payment_status = "paid"
 			else:

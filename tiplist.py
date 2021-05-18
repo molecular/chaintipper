@@ -338,8 +338,8 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 			URL = web.BE_URL(self.config, 'addr', address)
 			webopen(URL)
 
-		def doMarkRead(tips: list, include_claim_returned_messages: bool = False):
-			self.reddit.mark_read_tips(tips, include_claim_returned_messages)
+		def doMarkRead(tips: list, include_associated_items: bool = False):
+			self.reddit.mark_read_tips(tips, include_associated_items)
 
 		col = self.currentColumn()
 		column_title = self.headerItem().text(col)
