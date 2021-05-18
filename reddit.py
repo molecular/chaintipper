@@ -285,11 +285,11 @@ class Reddit(PrintError, QObject):
 			amount = m.group(2)
 			claimant = m.group(3)
 			action = m.group(4)
-			print_error("parsed claimed message", message.id)
-			print_error("   tipping_comment_id:", tipping_comment_id)
-			print_error("   amount: ", amount)
-			print_error("   claimant:", claimant)
-			print_error("   action:", action)
+			# print_error("parsed claimed message", message.id)
+			# print_error("   tipping_comment_id:", tipping_comment_id)
+			# print_error("   amount: ", amount)
+			# print_error("   claimant:", claimant)
+			# print_error("   action:", action)
 
 			# find tip matching claim and set its acceptance_status
 			try:
@@ -407,7 +407,7 @@ class Reddit(PrintError, QObject):
 					self.print_error(f"read {counter} items, sleep()ing...")
 				else:
 					sleep(2)
-					
+
 			except prawcore.exceptions.ServerError as e:
 				self.print_error("Reddit ServerError", e, "retrying later...")
 				sleep(30)
@@ -594,7 +594,7 @@ class RedditTip(Tip):
 				# stealth: match "for their <post|comment> (...)"
 				m = RedditTip.p_stealth.match(self.chaintip_message.body)
 				if m:
-					self.useDefaultAmount()
+					self.setAmount()
 					post_or_comment = m.group(1)
 					self.subreddit_str = m.group(3)
 					self.tippee_content_link = m.group(2)
@@ -672,35 +672,38 @@ class RedditTip(Tip):
 				except Exception as e:
 					self.print_error("Error parsing tip amount <amount> <unit>: ", repr(e))
 					#traceback.print_exc()
-					self.useDefaultAmount()
+					self.setAmount()
 			else: # use default amount
-					self.useDefaultAmount()
+					self.setAmount()
+
+	def setAmount(self, amount_bch: Decimal = None): 
+		"""
+			sets amount_bch and payment_status = 'read to pay'
+			if amount_bch==None: use default amount
+		"""
+		if amount_bch:
+			self.default_amount_used = False
+			self.amount_bch = amount_bch
+		else:
+			self.default_amount_used = True
+			self.amount_bch = self.getDefaultAmountBCH()
+		self.payment_status = 'ready to pay'
 
 	def evaluateAmount(self):
-		# in case all else fails, use default amount
-		self.useDefaultAmount()
-
 		# find unit from amount config
 		matching_units = (unit for unit in amount_config["units"] if self.tip_unit in unit["names"])
 		unit = next(matching_units, None)
 		if unit:
 			rate = self.getRate(unit["value_currency"])
-			self.amount_bch = round(self.tip_quantity * unit["value"] / rate, 8)
-			self.default_amount_used = False
+			amount_bch = round(self.tip_quantity * unit["value"] / rate, 8)
+			self.setAmount(amount_bch = amount_bch)
 			#self.print_error("found unit", unit, "value", unit["value"], "quantity", self.tip_quantity, "rate", rate)
-			self.payment_status = 'ready to pay'
 		else:		
 			# try tip_unit as currency 
 			rate = self.getRate(self.tip_unit)
-			self.amount_bch = round(self.tip_quantity / rate, 8)
-			self.default_amount_used = False
+			amount_bch = round(self.tip_quantity / rate, 8)
 			#self.print_error("rate for tip_unit", self.tip_unit, ": ", rate)
-			self.payment_status = 'ready to pay'
-
-	def useDefaultAmount(self):
-		self.payment_status = 'ready to pay'
-		self.amount_bch = self.getDefaultAmountBCH()
-		self.default_amount_used = True
+			self.setAmount(amount_bch = amount_bch)
 			
 	def getDefaultAmountBCH(self):
 		wallet = self.reddit.wallet_ui.wallet
