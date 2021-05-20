@@ -4,6 +4,7 @@ from electroncash.exchange_rate import *
 from electroncash.wallet import Abstract_Wallet
 from electroncash_gui.qt.util import webopen, MessageBoxMixin
 from electroncash.i18n import _
+from electroncash.network import Network
 
 from decimal import Decimal
 from datetime import datetime
@@ -63,6 +64,26 @@ class Reddit(PrintError, QObject):
 		self.tip_or_message_by_message = dict()
 		self.unassociated_claim_return_by_tipping_comment_id = {} # store claim/return info (dict with "message" and "action") for later association with a tip
 		self.unassociated_chaintip_comments_by_tipping_comment_id = {} # store chaintip comments for later association with a tip
+
+	def debug_stats(self):
+		return f"\
+            Reddit: {len(self.unassociated_chaintip_comments_by_tipping_comment_id)} unassociated chaintip comments\n\
+                       {len(self.unassociated_claim_return_by_tipping_comment_id)} unassociated claim/returned messages"
+
+	def disconnect(self):
+		write_config(self.wallet_ui.wallet, WalletStorageTokenManager.ACCESS_TOKEN_KEY, None)
+		write_config(self.wallet_ui.wallet, WalletStorageTokenManager.REFRESH_TOKEN_KEY, None)
+
+	def quit(self):
+		self.should_quit = True
+		if hasattr(self, "dathread"):
+			self.dathread.quit()
+
+	def start_thread(self):
+		self.dathread = QThread()
+		self.moveToThread(self.dathread)
+		self.dathread.started.connect(self.run)
+		self.dathread.start()
 
 	def receive_connection(self, port):
 		"""Wait for and then return a connected socket..
@@ -202,6 +223,16 @@ class Reddit(PrintError, QObject):
 			# store refresh token into wallet storage (wonder why praw doesn't call token manager to do this)
 			write_config(self.wallet_ui.wallet, WalletStorageTokenManager.REFRESH_TOKEN_KEY, refresh_token)
 
+	p_context = re.compile('(/r.*/\w*/.*/)\w*/\?context=3', re.DOTALL)
+	def getCommentLink(self, comment):
+		if hasattr(comment, "permalink") and comment.permalink:
+			return comment.permalink
+		# construct link from context	
+		m = Reddit.p_context.match(comment.context)
+		if m:
+			return m.group(1) + comment.id
+		return None
+
 	def triggerRefreshTips(self):
 		if hasattr(self.wallet_ui, "tiplist"):
 			self.tips_to_refresh += [tip for tip in self.wallet_ui.tiplist.tips.values()]
@@ -210,16 +241,47 @@ class Reddit(PrintError, QObject):
 		while len(self.tips_to_refresh) > 0:
 			tip = self.tips_to_refresh.pop()
 			self.print_error("refreshing", tip)
-			tip.refresh()
-			tip.update()
+			tip.refreshAmount()
 
+	def transition_amount_set_2_ready_to_pay(self):
+		network = Network.get_instance()
+		offline = not network
+		if not hasattr(self.wallet_ui, "tiplist") or self.wallet_ui.tiplist is None:
+			return
+		for tip in self.wallet_ui.tiplist.tips.values():
+			if tip.payment_status and tip.payment_status[:10] == 'amount set':
+				if offline:
+					tip.amount_set_time = time()
+				else:
+					secs = int(time() - tip.amount_set_time)
+					if secs > c["ready_to_pay_grace_secs"]:
+						tip.payment_status = "ready to pay"
+						# reset autopay timer to improve batching (wait for more tips to become ready to pay)
+						if self.wallet_ui.autopay:
+							self.wallet_ui.autopay.resetTimer() 
+					else:
+						tip.payment_status = f'amount set ({secs}s)' 
+					tip.update()
+
+	p_mark_1 = re.compile('u/(\S*) has not yet linked an address\.', re.MULTILINE | re.DOTALL)
+	p_mark_2 = re.compile('Unfortunately, this .* bot is unable to understand your message\..*', re.MULTILINE | re.DOTALL)
 	def markChaintipMessagesUnread(self, limit):
-		chaintip_items = [item for item in self.reddit.inbox.all(limit=limit) if 
-			item.author == 'chaintip' and
-			not item.new
-		]
-		self.print_error("found ", len(chaintip_items), "items")
-		self.reddit.inbox.mark_unread(chaintip_items)
+		items = []
+		for item in self.reddit.inbox.all(limit=limit):
+			if item.new: continue
+			if item.author != 'chaintip': continue
+			if Reddit.p_mark_1.match(item.body): continue
+			if Reddit.p_mark_2.match(item.body): continue
+
+			items.append(item)
+
+		# chaintip_items = [item for item in  if 
+		# 	item.author == 'chaintip' and
+		# 	not item.new
+		# ]
+		self.print_error("found ", len(items), "items")
+		self.reddit.inbox.mark_unread(items)
+		self.items_by_fullname = {} # to enable unread() loop to read everything
 
 	def markPaidTipsRead(self):
 		if not read_config(self.wallet_ui.wallet, "mark_read_paid_tips", c["default_mark_read_paid_tips"]):
@@ -227,7 +289,7 @@ class Reddit(PrintError, QObject):
 
 		tips = [tip for tip in self.wallet_ui.tiplist.tips.values() \
 			if tip.read_status == 'new' 
-			and tip.payment_status[:4] == "paid"
+			and tip.isPaid()
 		]
 
 		if len(tips) > 0:
@@ -254,24 +316,10 @@ class Reddit(PrintError, QObject):
 					tip.read_status = 'read'
 					self.wallet_ui.tiplist.updateTip(tip)
 
-	def disconnect(self):
-		write_config(self.wallet_ui.wallet, WalletStorageTokenManager.ACCESS_TOKEN_KEY, None)
-		write_config(self.wallet_ui.wallet, WalletStorageTokenManager.REFRESH_TOKEN_KEY, None)
-
-	def quit(self):
-		self.should_quit = True
-		if hasattr(self, "dathread"):
-			self.dathread.quit()
-
-	def start_thread(self):
-		self.dathread = QThread()
-		self.moveToThread(self.dathread)
-		self.dathread.started.connect(self.run)
-		self.dathread.start()
-
 	p_claimed_subject = re.compile('Tip claimed.')
 	p_returned_subject = re.compile('Tip returned to you.')
 	p_claimed_or_returned_message = re.compile('Your \[tip\]\(.*_/(\S*)\) of (\d*\.\d*) Bitcoin Cash.*to u/(\S*).* has \[been (\S*)\].*', re.MULTILINE | re.DOTALL)
+	p_claim_received_message = re.compile('Your tip to u/(\S*) for their \[comment\]\(.*/(\w*)/\).*of (\d*\.\d*) Bitcoin Cash.*has \[been (\S*)\].*', re.MULTILINE | re.DOTALL)
 	def parseClaimedOrReturnedMessage(self, message: praw.models.Message):
 		"""returns true if message is a "Tip claimed" message, false otherwise"""
 
@@ -279,6 +327,7 @@ class Reddit(PrintError, QObject):
 		if not self.p_claimed_subject.match(message.subject) and not self.p_returned_subject.match(message.subject):
 			return False
 
+		parsed_ok = False
 		#print_error("detected claimed/returned message, body", message.body)
 		m = self.p_claimed_or_returned_message.match(message.body)
 		if m:
@@ -287,12 +336,28 @@ class Reddit(PrintError, QObject):
 			amount = m.group(2)
 			claimant = m.group(3)
 			action = m.group(4)
+			parsed_ok = True
 			# print_error("parsed claimed message", message.id)
 			# print_error("   tipping_comment_id:", tipping_comment_id)
 			# print_error("   amount: ", amount)
 			# print_error("   claimant:", claimant)
 			# print_error("   action:", action)
+		else:
+			m = self.p_claim_received_message.match(message.body)
+			if m:
+				self.print_error("body: ", message.body)
+				print_error("   group 1", m.group(1))
+				print_error("   group 2", m.group(2))
+				print_error("   group 3", m.group(3))
+				print_error("   group 4", m.group(4))
+				confirmation_comment_id = m.group(2)
+				tipping_comment_id = self.reddit.comment(confirmation_comment_id).parent_id[3:] # remove "t1_" prefix
+				amount = m.group(3)
+				claimant = m.group(1)
+				action = m.group(4)
+				parsed_ok = True
 
+		if parsed_ok:
 			# find tip matching claim and set its acceptance_status
 			try:
 				tip = self.wallet_ui.tiplist.tips[tipping_comment_id]
@@ -308,26 +373,43 @@ class Reddit(PrintError, QObject):
 				#self.print_error(f"when parsing claim/returned message {message.id}: tip with tipping_comment_id {tipping_comment_id} not found. Not registering '{action}' status.")
 
 			return True
+		else:
+			self.print_error("message", message.id, ": body not claim return: ", message.body)
+
 		return False
 
+#	p_confirmation_comment = re.compile('.*u/(\S*).*\[.*\]\(.*/(bitcoincash:\w*)\).*', re.MULTILINE | re.DOTALL)
 	p_confirmation_comment = re.compile('.*u/(\S*), you\'ve \[been sent\]\(.*/(bitcoincash:\w*)\).*', re.MULTILINE | re.DOTALL)
+	p_confirmation_comment_claimed = re.compile('.*u/(\S*).*has \[claimed\].*', re.MULTILINE | re.DOTALL)
+	p_confirmation_comment_returned = re.compile('.*\[chaintip\].* has \[returned\]\(.*/(bitcoincash:\w*)\).*', re.MULTILINE | re.DOTALL)
 	def parseChaintipComment(self, comment: praw.models.Comment):
-			m = Reddit.p_confirmation_comment.match(comment.body)
-			if m:
-				#self.print_error("   1", m.group(1))
-				#self.print_error("   2", m.group(2))
+			tipping_comment_id = comment.parent_id[3:]
+			tip = self.wallet_ui.tiplist.tips.get(tipping_comment_id, None)
 
-				#self.print_error("looking up tip by tipping_comment_id: ", comment.parent_id[3:])
-				tipping_comment_id = comment.parent_id[3:]
-				tip = self.wallet_ui.tiplist.tips.get(tipping_comment_id, None)
+			status = None
+
+			if Reddit.p_confirmation_comment.match(comment.body):
+				status = 'confirmed'
+
+			if Reddit.p_confirmation_comment_claimed.match(comment.body):
+				status = 'claimed'
+
+			if Reddit.p_confirmation_comment_returned.match(comment.body):
+				status = 'returned'
+
+			# set data on tip (or defer)
+			if status:
 				if tip:
-					tip.chaintip_confirmation_status = 'confirmed'
+					tip.chaintip_confirmation_status = status
 					tip.chaintip_confirmation_comment = comment
 					tip.update()
 				else:
-					self.unassociated_chaintip_comments_by_tipping_comment_id[tipping_comment_id] = comment
+					self.unassociated_chaintip_comments_by_tipping_comment_id[tipping_comment_id] = {
+						"comment": comment,
+						"status": status
+					}
 			else:
-				self.print_error("chaintip comment doesn't match: ", comment.body)
+				self.print_error("chaintip comment doesn't parse: ", comment.body)
 
 
 	def digestItem(self, item, item_is_new=False):
@@ -358,6 +440,13 @@ class Reddit(PrintError, QObject):
 					tip.read_status = 'new'
 					self.wallet_ui.tiplist.updateTip(tip)
 
+	def fetchTippingComments(self):
+		if hasattr(self.wallet_ui, "tiplist"):
+			tips = self.wallet_ui.tiplist.tips.values()
+			unpaid_tips = [tip for tip in tips if not tip.isPaid()]
+			for tip in unpaid_tips:
+				tip.fetchTippingComment()
+
 
 	def run(self):
 		self.print_error("Reddit.run() called")
@@ -372,10 +461,11 @@ class Reddit(PrintError, QObject):
 		items_by_fullname = {}
 
 		# use inbox.unread(), not inbox.stream
+		cycle = 0
 		while not self.should_quit:
 			counter = 0
 			try:
-				for item in self.reddit.inbox.unread():
+				for item in self.reddit.inbox.unread(limit=None):
 
 					# break early in case of shutdown
 					if self.should_quit:
@@ -383,14 +473,15 @@ class Reddit(PrintError, QObject):
 
 					# break on first already-digested message
 					if item.fullname in items_by_fullname.keys():
+						self.print_error("aborting loading items at already-loaded item", item.fullname)
 						break
 					items_by_fullname[item.fullname] = item
-
-					counter += 1
 
 					# only read chaintip-authored item
 					if item.author != 'chaintip':
 						continue
+
+					counter += 1
 
 					# digest message
 					if isinstance(item, praw.models.Message):
@@ -400,16 +491,38 @@ class Reddit(PrintError, QObject):
 					if isinstance(item, praw.models.Comment):
 						self.parseChaintipComment(item)
 
-					# some "background tasks"
-					self.markPaidTipsRead()
-					self.refreshTips()
-
 				if counter > 0:
+					self.print_error(f"loaded {counter} items, sleeping...")
 					counter = 0
-					self.print_error(f"read {counter} items, sleep()ing...")
 				else:
-					sleep(2)
+					#self.print_error("no more unread messages to load, sleeping")
+					cnt = 20
+					while not self.should_quit and cnt > 0:
+						sleep(0.1)
+						cnt -= 1
 
+				# some "background tasks"
+				self.markPaidTipsRead()
+				self.refreshTips()
+				self.transition_amount_set_2_ready_to_pay()
+				self.fetchTippingComments()
+				if (self.wallet_ui.autopay):
+					self.wallet_ui.autopay.do_work()
+
+				self.wallet_ui.print_debug_stats()
+
+				# after first cycle, assumption is that unassociated items are for old tips that will never load
+				if cycle == 0:
+					# mark_read all unassociated items
+					items = \
+						[o["comment"] for o in self.unassociated_chaintip_comments_by_tipping_comment_id.values()] + \
+						[o["message"] for o in self.unassociated_claim_return_by_tipping_comment_id.values()]
+					self.print_error("unassocated items: ", items)
+					self.mark_read_items(items)
+					self.unassociated_claim_return_by_tipping_comment_id = {}
+					self.unassociated_chaintip_comments_by_tipping_comment_id = {}
+
+				cycle += 1
 			except prawcore.exceptions.ServerError as e:
 				self.print_error("Reddit ServerError", e, "retrying later...")
 				sleep(30)
@@ -505,7 +618,6 @@ class RedditTip(Tip):
 		self.chaintip_message = message
 
 		self.parseChaintipMessage()
-		self.qualifiesForAutopay() # will update payment_status
 
 	def __str__(self):
 		return f"RedditTip {self.chaintip_message.id}: {self.amount_bch} to {self.username}"
@@ -517,9 +629,21 @@ class RedditTip(Tip):
 			return self.tipping_comment_id
 		return self.chaintip_message.id
 
-	def refresh(self):
-		if self.payment_status[:4] != "paid":
-			self.parseChaintipMessage()
+	#def isPaid(self):
+
+
+	def refreshAmount(self):
+		if not self.isPaid():
+			self.print_error("refresh being called and activates on tip: ", self)
+			#self.parseChaintipMessage()
+			# re-parse tipping comment to re-set amount
+			if hasattr(self, "tipping_comment") and self.tipping_comment:
+				self.parseTippingComment(self.tipping_comment)
+			else:
+				if hasattr(self, "tipping_comment_id") and self.tipping_comment_id:
+					self.fetchTippingComment()
+				else:
+					self.setAmount()
 
 	#
 
@@ -531,9 +655,14 @@ class RedditTip(Tip):
 			self.type == 'send' 
 
 
+	def isPaid(self):
+		if not self.payment_status: return False
+		return self.payment_status[:4] == "paid"
+
+
 	p_subject_outgoing_tip = re.compile('Tip (\S*)')
 	p_tip_comment = re.compile('.*\[your tip\]\(\S*/_/(\S*)\).*', re.MULTILINE | re.DOTALL)
-	p_recipient_acceptance = re.compile('^u/(\S*) has (.*linked).*Bitcoin Cash \(BCH\) to: \*\*(bitcoincash:q\w*)\*\*.*', re.MULTILINE | re.DOTALL)
+	p_recipient_acceptance = re.compile('^u/(\S*) has (.*linked).*Bitcoin Cash \(BCH\) to: \*\*(bitcoincash:qrelay\w*)\*\*.*', re.MULTILINE | re.DOTALL)
 	p_sender = re.compile('^u/(\S*) has just sent you (\S*) Bitcoin Cash \(about \S* USD\) \[via\]\(\S*/_/(\S*)\) .*', re.MULTILINE | re.DOTALL)
 	p_stealth = re.compile('.*Tip \*\*.*\*\* for their \[(\w*)\]\((/(r/\w*)/\S*/(\w*)/(\w*)/)\).*', re.MULTILINE | re.DOTALL)
 
@@ -560,6 +689,11 @@ class RedditTip(Tip):
 			# "Tip funded."
 			if self.chaintip_message.subject == "Tip funded.":
 				self.print_error("IMPLEMENT digesting 'Tip funded.' message, example message at hand:", self.chaintip_message.id)
+				return
+
+			# "Tip claimed." <- we need to ignore this here, p_tip_comment will catch it as tip otherwise
+			if self.chaintip_message.subject == "Tip claimed.":
+				return
 
 			# "You've been tipped!"
 			elif self.chaintip_message.subject == "You've been tipped!":
@@ -613,15 +747,17 @@ class RedditTip(Tip):
 				self.acceptance_status = claim_return["action"]
 
 			# associate possible confirmation comment
-			confirmation_comment = self.reddit.unassociated_chaintip_comments_by_tipping_comment_id.pop(self.tipping_comment_id, None)
-			if confirmation_comment:
-				self.chaintip_confirmation_status = 'confirmed'
-				self.chaintip_confirmation_comment = confirmation_comment
+			confirmation = self.reddit.unassociated_chaintip_comments_by_tipping_comment_id.pop(self.tipping_comment_id, None)
+			if confirmation:
+				self.chaintip_confirmation_status = confirmation["status"]
+				self.chaintip_confirmation_comment = confirmation["comment"]
 
-			# fetch tipping comment
-			if self.tipping_comment_id:
-				self.tipping_comment = self.reddit.reddit.comment(id = self.tipping_comment_id)
-				self.parseTippingComment(self.tipping_comment)
+	def fetchTippingComment(self):
+		# fetch tipping comment
+		if self.tipping_comment_id and (not hasattr(self, "tipping_comment") or not self.tipping_comment):
+			self.tipping_comment = self.reddit.reddit.comment(id = self.tipping_comment_id)
+			self.parseTippingComment(self.tipping_comment)
+			self.update()
 
 
 	p_tip_amount_unit = re.compile('.*u/chaintip ((\S*)\s*(\S*))', re.MULTILINE | re.DOTALL)
@@ -680,7 +816,7 @@ class RedditTip(Tip):
 
 	def setAmount(self, amount_bch: Decimal = None): 
 		"""
-			sets amount_bch and payment_status = 'read to pay'
+			sets amount_bch and payment_status = 'amount set'
 			if amount_bch==None: use default amount
 		"""
 		if amount_bch:
@@ -689,7 +825,9 @@ class RedditTip(Tip):
 		else:
 			self.default_amount_used = True
 			self.amount_bch = self.getDefaultAmountBCH()
-		self.payment_status = 'ready to pay'
+		self.payment_status = 'amount set'
+		self.amount_set_time = time()
+		self.update()
 
 	def evaluateAmount(self):
 		# find unit from amount config
@@ -739,46 +877,3 @@ class RedditTip(Tip):
 		activation_t = read_config(self.reddit.wallet_ui.wallet, "activation_time")
 		return self.chaintip_message.created_utc < activation_t
 
-	def qualifiesForAutopay(self):
-		wallet = self.reddit.wallet_ui.wallet
-
-		# old?
-		# if self.isOld():
-		# 	self.payment_status = 'older than chaintipper'
-		# 	return False
-
-		# not ready to pay?
-		if self.payment_status != 'ready to pay': return False
-
-		# recipient_address set?
-		if \
-			self.recipient_address == None or \
-			not isinstance(self.recipient_address, Address) \
-		:
-			self.payment_status = 'invalid recipient address'
-			return False
-
-		# autopay deactivated?
-		if not read_config(wallet, "autopay", c["default_autopay"]): 
-			self.payment_status = 'autopay disabled'
-			return False		
-
-		# alread received something? (status should be 'paid' anyway, but to be sure...)
-		if self.amount_received_bch and self.amount_received_bch > Decimal(0):
-			return False
-
-		# default amount disallowed?
-		if read_config(wallet, "autopay_disallow_default", c["default_autopay_disallow_default"]) \
-			and self.default_amount_used \
-		: 
-			self.payment_status = 'autopay disallowed (default amount)'
-			return False
-
-		# amount limit exceeded?
-		autopay_use_limit = read_config(wallet, "autopay_use_limit", c["default_autopay_use_limit"])
-		autopay_limit_bch = Decimal(read_config(wallet, "autopay_limit_bch", c["default_autopay_limit_bch"]))
-		if autopay_use_limit and self.amount_bch > autopay_limit_bch: 
-			self.payment_status = "autopay amount-limited"
-			return False
-
-		return True

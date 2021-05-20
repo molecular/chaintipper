@@ -34,6 +34,7 @@ from .tiplist import TipListWidget
 from .util import read_config, write_config, commit_config
 from .config import c, amount_config_to_rich_text
 from .blockchain_watcher import BlockchainWatcher
+from .autopay import AutoPay
 
 icon_chaintip = QtGui.QIcon(":icons/chaintip.svg")
 icon_chaintip_gray = QtGui.QIcon(":icons/chaintip_gray.svg")
@@ -59,6 +60,8 @@ class WalletUI(MessageBoxMixin, PrintError, QWidget):
 		self.reddit_thread = None
 		self.tiplist = None
 
+		self.old_debug_stats = ""
+
 		# layout
 		self.vbox = vbox = QVBoxLayout()
 		vbox.setContentsMargins(0, 0, 0, 0)
@@ -69,6 +72,24 @@ class WalletUI(MessageBoxMixin, PrintError, QWidget):
 
 		# more setup
 		self.setup_button()
+
+	def debug_stats(self):
+		return "              WalletUI: "
+
+	def print_debug_stats(self):
+		s = "\n" + self.debug_stats() + "\n"
+		if hasattr(self, "tiplist") and self.tiplist: 
+			s += "   " + self.tiplist.debug_stats() + "\n"
+		if hasattr(self, "blockchain_watcher") and self.blockchain_watcher:
+			s += "   " + self.blockchain_watcher.debug_stats() + "\n"
+		if hasattr(self, "autopay") and self.autopay:
+			s += "   " + self.autopay.debug_stats() + "\n"
+		if hasattr(self, "reddit") and self.reddit:
+			s += "   " + self.reddit.debug_stats() + "\n"
+
+		if s != self.old_debug_stats:
+			self.old_debug_stats = s
+			self.print_error(s)
 
 	def kill_join(self):
 		self.print_error("kill_join()")
@@ -100,8 +121,8 @@ class WalletUI(MessageBoxMixin, PrintError, QWidget):
 			self.reddit.dathread.finished.connect(self.reddit_thread_finished)
 
 			# So that we get told about when new coins come in, and the UI updates itself
-			if hasattr(self.window, 'history_updated_signal'):
-				self.window.history_updated_signal.connect(self.tiplist_widget.checkPaymentStatus)
+			# if hasattr(self.window, 'history_updated_signal'):
+			# 	self.window.history_updated_signal.connect(self.tiplist_widget.checkPaymentStatus)
 
 	def reddit_thread_finished(self):
 		self.print_error("reddit thread finished")
@@ -149,9 +170,10 @@ class WalletUI(MessageBoxMixin, PrintError, QWidget):
 	def add_ui(self):
 		"""construct tab with tiplist widget and add it to window"""
 		self.tiplist = TipList()
+		self.autopay = AutoPay(self.wallet, self.tiplist)
 		self.blockchain_watcher = BlockchainWatcher(self.wallet, self.tiplist)
-		self.tiplist_widget = TipListWidget(self.window, self.wallet, self.tiplist, self.reddit)
-		self.tiplist_widget.checkPaymentStatus()
+		self.tiplist_widget = TipListWidget(self, self.window, self.wallet, self.tiplist, self.reddit)
+		#self.tiplist_widget.checkPaymentStatus()
 		self.vbox.addWidget(self.tiplist_widget)
 
 		self.tab = self.window.create_list_tab(self)
@@ -159,6 +181,10 @@ class WalletUI(MessageBoxMixin, PrintError, QWidget):
 
 	def remove_ui(self):
 		"""deconstruct the UI created in add_ui(), leaving self.vbox"""
+		if hasattr(self, "autopay") and self.autopay:
+			del self.autopay
+		if hasattr(self, "blockchain_watcher") and self.blockchain_watcher:
+			del self.blockchain_watcher
 		if self.vbox:
 			self.vbox.removeWidget(self.tiplist_widget)
 		if self.tiplist:
@@ -210,6 +236,10 @@ class ChaintipperButton(StatusBarButton, PrintError):
 
 		action_settings = QAction(_("Forget Reddit Authorization (e.g. to switch reddit account)"), self)
 		action_settings.triggered.connect(self.disconnect_reddit)
+
+		action_settings2 = QAction(_("(TEMPORARY) Mark unread some chaintip messages/comments"), self)
+		action_settings2.triggered.connect(self.unread_messages)
+
 		# action_settings = QAction(_("Global Settings..."), self)
 		# action_settings.triggered.connect(self.wallet_ui.plugin.show_settings_dialog)
 
@@ -223,6 +253,7 @@ class ChaintipperButton(StatusBarButton, PrintError):
 			action_separator1,
 			action_wsettings,
 			action_settings,
+			action_settings2,
 			action_separator2, 
 			show_monikers
 		])
@@ -269,7 +300,9 @@ class ChaintipperButton(StatusBarButton, PrintError):
 		self.wallet_ui.reddit.disconnect()
 		self.set_active(False)
 
-
+	def unread_messages(self):
+		if self.wallet_ui.reddit:
+			self.wallet_ui.reddit.markChaintipMessagesUnread(100)
 
 class WalletSettingsDialog(WindowModalDialog, PrintError, MessageBoxMixin):
 	"""Dialog for wallet-specific settings"""
@@ -457,7 +490,7 @@ class WalletSettingsDialog(WindowModalDialog, PrintError, MessageBoxMixin):
 			self.setParent(None)
 			del self.wallet._chaintipper_settings_window
 		if self.wallet_ui.reddit != None:
-			self.wallet_ui.reddit.triggerRefreshTips();
+			self.wallet_ui.reddit.triggerRefreshTips() # TODO why?!? <- to re-trigger autopay, for example
 
 	def showEvent(self, event):
 		super().showEvent(event)

@@ -9,6 +9,12 @@ CHANGES
 	* fix claim/return registration
 	* use same association scheme for confirmation comments as for claim/return
 	* mark confirmation comments read on mark_unread of the associated tip)
+	* new "open browser to claim/return message"
+	* new "open browser to chaintip confirmation comment"
+	* fix "Tip claimed." falsely interpreted as tip message: https://www.reddit.com/message/messages/11p4fo7
+	* performance: deferred tipping comment loading 
+	* only load tipping comments for unpaid tips currently
+	* solve autopay triggering (a thread? some grace status and activation by reddit thread?)
 
 1.0-beta11:
 

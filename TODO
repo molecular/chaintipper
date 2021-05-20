@@ -9,10 +9,6 @@
 	* beta n+1
 
 		* parse "Tip funded." https://www.reddit.com/message/messages/11nvtdw
-		* solve autopay triggering (a thread? some grace status and activation by reddit thread?)
-		* deferred tipping comment loading?
-		* open browser to claim/return message
-		* open browser to confirmation comment
 
 	* beta n+2
 

@@ -52,6 +52,9 @@ class TipList(PrintError):
 		self.tip_listeners = []
 		self.tips = {} # tip instances by tipping_comment id
 
+	def debug_stats(self):
+		return f"           Tiplist: {len(self.tips)} tips"
+
 	def registerTipListener(self, tip_listener):
 		self.tip_listeners.append(tip_listener)
 
