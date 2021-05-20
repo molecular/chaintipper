@@ -23,4 +23,4 @@ def write_config(wallet, key: str, value, commit=True):
 		wallet.storage._write() # commit to hd
 
 def commit_config(wallet):
-	wallet.storage._write() # commit to hd
+	wallet.storage.write() # commit to hd
