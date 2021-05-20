@@ -12,8 +12,8 @@ c = {
 			"local_auth_server_port": 18763
 		},
 		"use_categories": False,
-		"autopay_min_wait_secs": 30,
-		"ready_to_pay_grace_secs": 5,
+		"autopay_min_wait_secs": 3,
+		"ready_to_pay_grace_secs": 3,
 
 		"default_amount": "0.1",
 		"default_amount_currency": "USD",

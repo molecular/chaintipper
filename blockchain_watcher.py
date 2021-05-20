@@ -70,7 +70,7 @@ class BlockchainWatcher(TipListener, PrintError):
 				if not self.network:
 					self.print_error("no network, unable to check for tip payments")
 				else:
-					self.print_error("subscribing to ", tip.recipient_address)
+					#self.print_error("subscribing to ", tip.recipient_address)
 					self.network.subscribe_to_scripthashes([scripthash], self.on_status_change)
 
 				# get scripthash history

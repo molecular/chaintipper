@@ -83,6 +83,7 @@ class TipListItem(QTreeWidgetItem, PrintError):
 		data = self.getDataArray(self.tip)
 		for idx, value in enumerate(data, start=0):
 			self.setData(idx, Qt.DisplayRole, value)
+			self.setForeground(idx, Qt.gray if self.tip.read_status == 'read' else Qt.black)			
 
 
 class TipListWidget(PrintError, MyTreeWidget, TipListener):
@@ -255,6 +256,11 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 		def doOpenBrowserToMessage(message: praw.models.Message):
 			webopen(c["reddit"]["url_prefix"] + "/message/messages/" + message.id)
 
+		def doOpenBrowserToTippingComment(tip):
+			if not hasattr(tip, "tipping_comment"):
+				tip.fetchTippingComment()
+			doOpenBrowser(tip.tipping_comment.permalink)
+
 		def doOpenBlockExplorerTX(txid: str):
 			URL = web.BE_URL(self.config, 'tx', txid)
 			webopen(URL)
@@ -301,7 +307,7 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 			if tip.tippee_content_link:
 				menu.addAction(_("open browser to the content that made you tip"), lambda: doOpenBrowser(tip.tippee_content_link))
 			if tip.tipping_comment_id:
-				menu.addAction(_("open browser to tipping comment"), lambda: doOpenBrowser(tip.tipping_comment.permalink))
+				menu.addAction(_("open browser to tipping comment"), lambda: doOpenBrowserToTippingComment(tip))
 			if hasattr(tip, "chaintip_confirmation_comment") and tip.chaintip_confirmation_comment:
 				menu.addAction(_("open browser to chaintip confirmation comment"), lambda: doOpenBrowser(self.reddit.getCommentLink(tip.chaintip_confirmation_comment)))
 			if hasattr(tip, "claim_or_returned_message") and tip.claim_or_returned_message:

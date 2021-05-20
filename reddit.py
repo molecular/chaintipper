@@ -272,8 +272,12 @@ class Reddit(PrintError, QObject):
 		for item in self.reddit.inbox.all(limit=1000):
 			if item.new: continue
 			if item.author != 'chaintip': continue
-			if Reddit.p_mark_1.match(item.body): continue
-			if Reddit.p_mark_2.match(item.body): continue
+			if isinstance(item, praw.models.Message) and item.subject == 'Trying to tip yourself?': 
+				continue
+			if Reddit.p_mark_1.match(item.body): 
+				continue
+			if Reddit.p_mark_2.match(item.body): 
+				continue
 
 			if item.author == 'chaintip' and item.fullname not in self.items_by_fullname:
 				limit -= 1
@@ -309,6 +313,17 @@ class Reddit(PrintError, QObject):
 			items += [tip.chaintip_confirmation_comment for tip in tips_with_messages if hasattr(tip, "chaintip_confirmation_comment")]
 		self.print_error(f"will mark_read() {len(items)} items (associated from {len(tips_with_messages)} tips).")
 		self.mark_read_items(items)
+
+	def mark_read_unassociated_items(self):
+		# mark_read all unassociated items
+		items = \
+			[o["comment"] for o in self.unassociated_chaintip_comments_by_tipping_comment_id.values()] + \
+			[o["message"] for o in self.unassociated_claim_return_by_tipping_comment_id.values()]
+		self.print_error("unassocated items: ", items)
+		self.mark_read_items(items)
+		self.unassociated_claim_return_by_tipping_comment_id = {}
+		self.unassociated_chaintip_comments_by_tipping_comment_id = {}
+
 
 	def mark_read_items(self, items: list):
 		self.reddit.inbox.mark_read(items)
@@ -475,7 +490,7 @@ class Reddit(PrintError, QObject):
 
 					# break on first already-digested message
 					if item.fullname in self.items_by_fullname.keys():
-						self.print_error("aborting loading items at already-loaded item", item.fullname)
+						#self.print_error("aborting loading items at already-loaded item", item.fullname)
 						break
 					self.items_by_fullname[item.fullname] = item
 
@@ -508,28 +523,19 @@ class Reddit(PrintError, QObject):
 				self.refreshTips()
 				self.transition_amount_set_2_ready_to_pay()
 				self.fetchTippingComments()
-				if (self.wallet_ui.autopay):
+				if hasattr(self.wallet_ui, "autopay") and self.wallet_ui.autopay:
 					self.wallet_ui.autopay.do_work()
 
 				self.wallet_ui.print_debug_stats()
 
 				# after first cycle, assumption is that unassociated items are for old tips that will never load
-				if cycle == 0:
-					# mark_read all unassociated items
-					items = \
-						[o["comment"] for o in self.unassociated_chaintip_comments_by_tipping_comment_id.values()] + \
-						[o["message"] for o in self.unassociated_claim_return_by_tipping_comment_id.values()]
-					self.print_error("unassocated items: ", items)
-					self.mark_read_items(items)
-					self.unassociated_claim_return_by_tipping_comment_id = {}
-					self.unassociated_chaintip_comments_by_tipping_comment_id = {}
-
+				# note: this assumption is false with the "TEMPORARY load more items" feature
+				if False and cycle == 0:
+					self.mark_read_unassociated_items()
 				cycle += 1
 			except prawcore.exceptions.ServerError as e:
 				self.print_error("Reddit ServerError", e, "retrying later...")
 				sleep(30)
-
-		return
 
 		# using 2 ListingGenerators in parallel (maybe just use 2 threads?)
 		# if do_read_from_read:
@@ -603,6 +609,8 @@ class Reddit(PrintError, QObject):
 
 		# --- wind down ----
 
+		self.mark_read_unassociated_items()
+
 		self.print_error("exited reddit inbox streaming")
 
 		self.dathread.quit()
@@ -664,7 +672,7 @@ class RedditTip(Tip):
 
 	p_subject_outgoing_tip = re.compile('Tip (\S*)')
 	p_tip_comment = re.compile('.*\[your tip\]\(\S*/_/(\S*)\).*', re.MULTILINE | re.DOTALL)
-	p_recipient_acceptance = re.compile('^u/(\S*) has (.*linked).*Bitcoin Cash \(BCH\) to: \*\*(bitcoincash:qrelay\w*)\*\*.*', re.MULTILINE | re.DOTALL)
+	p_recipient_acceptance = re.compile('^u/(\S*) has (.*linked).*Bitcoin Cash \(BCH\) to: \*\*(bitcoincash:q\w*)\*\*.*', re.MULTILINE | re.DOTALL)
 	p_sender = re.compile('^u/(\S*) has just sent you (\S*) Bitcoin Cash \(about \S* USD\) \[via\]\(\S*/_/(\S*)\) .*', re.MULTILINE | re.DOTALL)
 	p_stealth = re.compile('.*Tip \*\*.*\*\* for their \[(\w*)\]\((/(r/\w*)/\S*/(\w*)/(\w*)/)\).*', re.MULTILINE | re.DOTALL)
 
@@ -827,8 +835,9 @@ class RedditTip(Tip):
 		else:
 			self.default_amount_used = True
 			self.amount_bch = self.getDefaultAmountBCH()
-		self.payment_status = 'amount set'
-		self.amount_set_time = time()
+		if not self.isPaid():
+			self.payment_status = 'amount set'
+			self.amount_set_time = time()
 		self.update()
 
 	def evaluateAmount(self):

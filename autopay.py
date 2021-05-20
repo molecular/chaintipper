@@ -37,7 +37,7 @@ class AutoPay(TipListener, PrintError):
 	def debug_stats(self):
 
 		return f"           AutoPay: {len(self.tips)} tips qualify for autopay\n\
-                       last payment (or startup): {int(time() - self.last_payment_time)}s ago"
+                       {int(time() - self.last_payment_time)}s since last payment (or startup)"
 
 	# TipListener overrides
 
