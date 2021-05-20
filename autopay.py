@@ -59,8 +59,6 @@ class AutoPay(TipListener, PrintError):
 	def qualifiesForAutopay(self, tip):
 		wallet = tip.reddit.wallet_ui.wallet
 
-		self.print_error("qualifiesForAutopay()")
-
 		# old?
 		# if tip.isOld():
 		# 	tip.payment_status = 'older than chaintipper'

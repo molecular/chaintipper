@@ -64,11 +64,13 @@ class Reddit(PrintError, QObject):
 		self.tip_or_message_by_message = dict()
 		self.unassociated_claim_return_by_tipping_comment_id = {} # store claim/return info (dict with "message" and "action") for later association with a tip
 		self.unassociated_chaintip_comments_by_tipping_comment_id = {} # store chaintip comments for later association with a tip
+		self.items_by_fullname = {}
 
 	def debug_stats(self):
 		return f"\
             Reddit: {len(self.unassociated_chaintip_comments_by_tipping_comment_id)} unassociated chaintip comments\n\
-                       {len(self.unassociated_claim_return_by_tipping_comment_id)} unassociated claim/returned messages"
+                       {len(self.unassociated_claim_return_by_tipping_comment_id)} unassociated claim/returned messages\n\
+                       {len(self.items_by_fullname)} items registered"
 
 	def disconnect(self):
 		write_config(self.wallet_ui.wallet, WalletStorageTokenManager.ACCESS_TOKEN_KEY, None)
@@ -267,19 +269,20 @@ class Reddit(PrintError, QObject):
 	p_mark_2 = re.compile('Unfortunately, this .* bot is unable to understand your message\..*', re.MULTILINE | re.DOTALL)
 	def markChaintipMessagesUnread(self, limit):
 		items = []
-		for item in self.reddit.inbox.all(limit=limit):
+		for item in self.reddit.inbox.all(limit=1000):
 			if item.new: continue
 			if item.author != 'chaintip': continue
 			if Reddit.p_mark_1.match(item.body): continue
 			if Reddit.p_mark_2.match(item.body): continue
 
-			items.append(item)
+			if item.author == 'chaintip' and item.fullname not in self.items_by_fullname:
+				limit -= 1
+				items.append(item)
 
-		# chaintip_items = [item for item in  if 
-		# 	item.author == 'chaintip' and
-		# 	not item.new
-		# ]
-		self.print_error("found ", len(items), "items")
+			if limit <= 0:
+				break
+
+		self.print_error("found ", len(items), "new items")
 		self.reddit.inbox.mark_unread(items)
 		self.items_by_fullname = {} # to enable unread() loop to read everything
 
@@ -458,7 +461,6 @@ class Reddit(PrintError, QObject):
 
 		max_age_days = 3
 		do_read_from_read = False
-		items_by_fullname = {}
 
 		# use inbox.unread(), not inbox.stream
 		cycle = 0
@@ -472,10 +474,10 @@ class Reddit(PrintError, QObject):
 						break
 
 					# break on first already-digested message
-					if item.fullname in items_by_fullname.keys():
+					if item.fullname in self.items_by_fullname.keys():
 						self.print_error("aborting loading items at already-loaded item", item.fullname)
 						break
-					items_by_fullname[item.fullname] = item
+					self.items_by_fullname[item.fullname] = item
 
 					# only read chaintip-authored item
 					if item.author != 'chaintip':
