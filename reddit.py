@@ -83,6 +83,7 @@ class Reddit(PrintError, QObject):
 
 	def start_thread(self):
 		self.dathread = QThread()
+		self.dathread.setObjectName("reddit_thread")
 		self.moveToThread(self.dathread)
 		self.dathread.started.connect(self.run)
 		self.dathread.start()
@@ -301,6 +302,20 @@ class Reddit(PrintError, QObject):
 			]
 			if len(tips) > 0:
 				self.print_error("marking {len(tips)} new paid tips as read")
+				self.mark_read_tips(tips, include_associated_items=True)
+
+	def markReadConfirmedTips(self):
+		if not read_config(self.wallet_ui.wallet, "mark_read_confirmed_tips"):
+			return
+
+		if hasattr(self.wallet_ui, "tiplist"):
+			tips = [tip for tip in self.wallet_ui.tiplist.tips.values() \
+				if tip.read_status == 'new' 
+				and tip.isPaid()
+				and hasattr(tip, "chaintip_confirmation_status") and len(tip.chaintip_confirmation_status) > 0
+			]
+			if len(tips) > 0:
+				self.print_error("marking {len(tips)} confirmed tips as read")
 				self.mark_read_tips(tips, include_associated_items=True)
 
 
@@ -550,7 +565,8 @@ class Reddit(PrintError, QObject):
 						cnt -= 1
 
 				# some "background tasks"
-				self.markPaidTipsRead()
+				#self.markPaidTipsRead()
+				self.markReadConfirmedTips()
 				self.refreshTips()
 				self.transition_amount_set_2_ready_to_pay()
 				self.fetchTippingComments()
@@ -738,9 +754,10 @@ class RedditTip(Tip):
 					self.chaintip_confirmation_comment = confirmation["comment"]
 
 	def setAcceptanceOrConfirmationStatus(self, action):
-		if action == "funded": # funded goes in different column (this is with stealth mode)
-			self.chaintip_confirmation_status = action
-		else:
+		# if action == "funded": # funded goes in different column (this is with stealth mode)
+		# 	self.chaintip_confirmation_status = action
+		# else:
+		# 	self.acceptance_status = action
 			self.acceptance_status = action
 
 

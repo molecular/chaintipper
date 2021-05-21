@@ -22,7 +22,7 @@ c = {
 		"default_default_linked_amount_currency": "USD",
 
 		"default_activate_on_wallet_open": False,
-		"default_mark_read_paid_tips": False,
+		"default_mark_read_confirmed_tips": True,
 		
 		"default_autopay": False,
 		"default_autopay_use_limit": False,

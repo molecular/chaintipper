@@ -340,12 +340,12 @@ class WalletSettingsDialog(WindowModalDialog, PrintError, MessageBoxMixin):
 		grid.addWidget(self.cb_activate_on_open)
 
 		# mark read paid tips
-		self.cb_mark_read_paid_tips = QCheckBox(_("Mark associated messages as read when a Tip is paid."))
-		self.cb_mark_read_paid_tips.setChecked(read_config(self.wallet, "mark_read_paid_tips"))
-		def on_cb_mark_read_paid_tips():
-			write_config(self.wallet, "mark_read_paid_tips", self.cb_mark_read_paid_tips.isChecked())
-		self.cb_mark_read_paid_tips.stateChanged.connect(on_cb_mark_read_paid_tips)
-		grid.addWidget(self.cb_mark_read_paid_tips)
+		self.cb_mark_read_confirmed_tips = QCheckBox(_("Mark Tips as read when they are confirmed, returned or claimed"))
+		self.cb_mark_read_confirmed_tips.setChecked(read_config(self.wallet, "mark_read_confirmed_tips"))
+		def on_cb_mark_read_confirmed_tips():
+			write_config(self.wallet, "mark_read_confirmed_tips", self.cb_mark_read_confirmed_tips.isChecked())
+		self.cb_mark_read_confirmed_tips.stateChanged.connect(on_cb_mark_read_confirmed_tips)
+		grid.addWidget(self.cb_mark_read_confirmed_tips)
 
 		# --- group Default Tip Amount ------------------------------------------------------------------------------------------
 

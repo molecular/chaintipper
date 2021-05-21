@@ -312,11 +312,10 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 			menu.addAction(_("mark read{}").format(new_count_display_string), lambda: doMarkRead(new_tips, True))
 			menu.addSeparator()
 
-		# mark_unread (only makes sense if tips are not automatically marked read again right away)
-		if not read_config(self.wallet, "activate_on_wallet_open"):
-			if len(read_tips) > 0:
-				menu.addAction(_("mark unread{}").format(read_count_display_string), lambda: doMarkRead(read_tips, include_associated_items=True, unread=True))
-				menu.addSeparator()
+		# mark_unread 
+		if len(read_tips) > 0:
+			menu.addAction(_("mark unread{}").format(read_count_display_string), lambda: doMarkRead(read_tips, include_associated_items=True, unread=True))
+			menu.addSeparator()
 
 		if len(tips) == 1:
 			tip = tips[0]
