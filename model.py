@@ -1,6 +1,7 @@
 from electroncash.util import PrintError, print_error
 from decimal import Decimal
 import weakref
+from PyQt5.QtCore import QObject, pyqtSignal
 
 class Tip(PrintError):
 	def __init__(self, tiplist):
@@ -47,8 +48,11 @@ class Tip(PrintError):
 				self.payment_status = f'paid ({len(self.payments_by_txhash)} tx)'
 			self.update()
 
-class TipList(PrintError):
+class TipList(PrintError, QObject):
+	update_signal = pyqtSignal()
+
 	def __init__(self):
+		super(TipList, self).__init__()
 		self.tip_listeners = []
 		self.tips = {} # tip instances by tipping_comment id
 
@@ -74,6 +78,7 @@ class TipList(PrintError):
 	def updateTip(self, tip):
 		for tip_listener in self.tip_listeners:
 			tip_listener.tipUpdated(tip)
+		self.update_signal.emit()
 
 class TipListener():
 	def tipAdded(self, tip):

@@ -81,6 +81,7 @@ class TipListItem(QTreeWidgetItem, PrintError):
 		]
 
 	def refreshData(self):
+		self.print_error("refreshData() called from", threading.current_thread())
 		data = self.getDataArray(self.tip)
 		for idx, value in enumerate(data, start=0):
 			self.setData(idx, Qt.DisplayRole, value)
@@ -134,6 +135,8 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 		self.tiplist = None # will be set at end of __init__
 		self.reddit = reddit
 
+		self.updated_tips = []
+
 		self.refresh_headers()
 
 		if self.reddit == None:
@@ -164,6 +167,9 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 			self.tiplist.unregistertipListener(self)
 
 		self.tiplist = tiplist
+
+		self.tiplist.update_signal.connect(self.digestTipUpdates)
+
 		self.tiplist.registerTipListener(self)
 		self.tips_by_address = dict()
 
@@ -214,9 +220,15 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 			self.print_error("no tiplist_item")
 
 	def tipUpdated(self, tip):
-		if hasattr(tip, 'tiplist_item'):
-			self.calculateFiatAmount(tip)
-			tip.tiplist_item.refreshData()
+		self.updated_tips.append(tip)
+
+	def digestTipUpdates(self):
+		updated_tips = self.updated_tips
+		self.updated_tips = []
+		for tip in updated_tips:
+			if hasattr(tip, 'tiplist_item'):
+				self.calculateFiatAmount(tip)
+				tip.tiplist_item.refreshData()
 
 	#
 
