@@ -279,11 +279,8 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 
 		# put tips into array (single or multiple if selection)
 		count_display_string = ""
-		item = self.itemAt(position)
-		if len(self.selectedItems()) == 1:
-			tips = [item.tip]
-		else:
-			tips = [s.tip for s in self.selectedItems()]
+		tips = [s.tip for s in self.selectedItems()]
+		if len(self.selectedItems()) > 1:
 			count_display_string = f" ({len(tips)})"
 
 		new_tips = [t for t in tips if t.read_status == 'new']
