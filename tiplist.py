@@ -301,7 +301,7 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 			menu.addSeparator()
 
 		# mark_unread (only makes sense if tips are not automatically marked read again right away)
-		if not read_config(self.wallet, "activate_on_wallet_open", c["default_activate_on_wallet_open"], commit=False):
+		if not read_config(self.wallet, "activate_on_wallet_open"):
 			if len(read_tips) > 0:
 				menu.addAction(_("mark unread{}").format(read_count_display_string), lambda: doMarkRead(read_tips, include_associated_items=True, unread=True))
 				menu.addSeparator()
@@ -355,7 +355,7 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 		return i
 
 	# def potentiallyAutoPay(self, tips: list):
-	# 	if read_config(self.wallet, "autopay", False):
+	# 	if read_config(self.wallet, "autopay"):
 	# 		tips_to_pay = [tip for tip in tips if tip.payment_status == 'ready to pay']
 	# 		self.pay(tips_to_pay)
 

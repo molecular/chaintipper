@@ -291,7 +291,7 @@ class Reddit(PrintError, QObject):
 		self.items_by_fullname = {} # to enable unread() loop to read everything
 
 	def markPaidTipsRead(self):
-		if not read_config(self.wallet_ui.wallet, "mark_read_paid_tips", c["default_mark_read_paid_tips"]):
+		if not read_config(self.wallet_ui.wallet, "mark_read_paid_tips"):
 			return
 
 		if hasattr(self.wallet_ui, "tiplist"):
@@ -829,10 +829,10 @@ class RedditTip(Tip):
 	def getDefaultAmountBCH(self):
 		wallet = self.reddit.wallet_ui.wallet
 		(amount_key, currency_key) = ("default_amount", "default_amount_currency")
-		if read_config(wallet, "use_linked_amount", c["default_use_linked_amount"]) and (self.acceptance_status == "linked" or self.acceptance_status == "claimed"):
+		if read_config(wallet, "use_linked_amount") and (self.acceptance_status == "linked" or self.acceptance_status == "claimed"):
 			(amount_key, currency_key) = ("default_linked_amount", "default_linked_amount_currency")
-		amount = Decimal(read_config(wallet, amount_key, c[amount_key]))
-		currency = read_config(wallet, currency_key, c[currency_key])
+		amount = Decimal(read_config(wallet, amount_key))
+		currency = read_config(wallet, currency_key)
 		rate = self.getRate(currency)
 		amount_bch = round(amount / rate, 8)
 		return amount_bch
@@ -854,7 +854,4 @@ class RedditTip(Tip):
 			rate = exchange.get_rates(ccy)[ccy]
 		return rate
 
-	def isOld(self):
-		activation_t = read_config(self.reddit.wallet_ui.wallet, "activation_time")
-		return self.chaintip_message.created_utc < activation_t
 

@@ -77,8 +77,8 @@ class AutoPay(TipListener, PrintError):
 			return False
 
 		# autopay deactivated?
-		if not read_config(wallet, "autopay", c["default_autopay"]): 
-			tip.print_error("autopay: ", read_config(wallet, "autopay", c["default_autopay"]))
+		if not read_config(wallet, "autopay"): 
+			tip.print_error("autopay: ", read_config(wallet, "autopay"))
 			tip.payment_status = 'autopay disabled'
 			tip.update()
 			return False		
@@ -88,7 +88,7 @@ class AutoPay(TipListener, PrintError):
 			return False
 
 		# default amount disallowed?
-		if read_config(wallet, "autopay_disallow_default", c["default_autopay_disallow_default"]) \
+		if read_config(wallet, "autopay_disallow_default") \
 			and tip.default_amount_used \
 		: 
 			tip.payment_status = 'autopay disallowed (default amount)'
@@ -96,8 +96,8 @@ class AutoPay(TipListener, PrintError):
 			return False
 
 		# amount limit exceeded?
-		autopay_use_limit = read_config(wallet, "autopay_use_limit", c["default_autopay_use_limit"])
-		autopay_limit_bch = Decimal(read_config(wallet, "autopay_limit_bch", c["default_autopay_limit_bch"]))
+		autopay_use_limit = read_config(wallet, "autopay_use_limit")
+		autopay_limit_bch = Decimal(read_config(wallet, "autopay_limit_bch"))
 		if autopay_use_limit and tip.amount_bch > autopay_limit_bch: 
 			tip.payment_status = "autopay amount-limited"
 			tip.update()

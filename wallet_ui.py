@@ -334,17 +334,17 @@ class WalletSettingsDialog(WindowModalDialog, PrintError, MessageBoxMixin):
 
 		# active when wallet opens
 		self.cb_activate_on_open = QCheckBox(_("Activate ChainTipper when wallet '{wallet_name}'' is opened.").format(wallet_name=self.wallet_ui.wallet_name))
-		self.cb_activate_on_open.setChecked(read_config(self.wallet, "activate_on_wallet_open", c["default_activate_on_wallet_open"], commit=False))
+		self.cb_activate_on_open.setChecked(read_config(self.wallet, "activate_on_wallet_open"))
 		def on_cb_activate_on_open():
-			write_config(self.wallet, "activate_on_wallet_open", self.cb_activate_on_open.isChecked(), commit=False)
+			write_config(self.wallet, "activate_on_wallet_open", self.cb_activate_on_open.isChecked())
 		self.cb_activate_on_open.stateChanged.connect(on_cb_activate_on_open)
 		grid.addWidget(self.cb_activate_on_open)
 
 		# mark read paid tips
 		self.cb_mark_read_paid_tips = QCheckBox(_("Mark associated messages as read when a Tip is paid."))
-		self.cb_mark_read_paid_tips.setChecked(read_config(self.wallet, "mark_read_paid_tips", c["default_mark_read_paid_tips"], commit=False))
+		self.cb_mark_read_paid_tips.setChecked(read_config(self.wallet, "mark_read_paid_tips"))
 		def on_cb_mark_read_paid_tips():
-			write_config(self.wallet, "mark_read_paid_tips", self.cb_mark_read_paid_tips.isChecked(), commit=False)
+			write_config(self.wallet, "mark_read_paid_tips", self.cb_mark_read_paid_tips.isChecked())
 		self.cb_mark_read_paid_tips.stateChanged.connect(on_cb_mark_read_paid_tips)
 		grid.addWidget(self.cb_mark_read_paid_tips)
 
@@ -359,14 +359,14 @@ class WalletSettingsDialog(WindowModalDialog, PrintError, MessageBoxMixin):
 		# amount
 		grid.addWidget(QLabel(_('Amount')), 0, 1, Qt.AlignRight)
 		self.default_amount = QLineEdit()
-		self.default_amount.setText(read_config(self.wallet, "default_amount", c["default_amount"], commit=False))
+		self.default_amount.setText(read_config(self.wallet, "default_amount"))
 		def on_default_amount():
 			try:
 				self.default_amount.setText(str(decimal.Decimal(self.default_amount.text())))
 			except decimal.InvalidOperation as e:
 				self.show_error(_("Cannot parse {string} as decimal number. Please try again.").format(string=self.default_amount.text()))
-				self.default_amount.setText(read_config(self.wallet, "default_amount", c["default_amount"], commit=False))
-			write_config(self.wallet, "default_amount", self.default_amount.text(), commit=False)
+				self.default_amount.setText(read_config(self.wallet, "default_amount"))
+			write_config(self.wallet, "default_amount", self.default_amount.text())
 		self.default_amount.editingFinished.connect(on_default_amount)
 		grid.addWidget(self.default_amount, 0, 2)
 
@@ -377,11 +377,11 @@ class WalletSettingsDialog(WindowModalDialog, PrintError, MessageBoxMixin):
 		self.default_amount_currency.addItems(self.currencies)
 		self.default_amount_currency.setCurrentIndex(
 			self.default_amount_currency.findText(
-				read_config(self.wallet, "default_amount_currency", c["default_amount_currency"], commit=False)
+				read_config(self.wallet, "default_amount_currency")
 			)
 		)
 		def on_default_amount_currency():
-			write_config(self.wallet, "default_amount_currency", self.currencies[self.default_amount_currency.currentIndex()], commit=False)
+			write_config(self.wallet, "default_amount_currency", self.currencies[self.default_amount_currency.currentIndex()])
 		self.default_amount_currency.currentIndexChanged.connect(on_default_amount_currency)
 		grid.addWidget(self.default_amount_currency, 1, 2)
 
@@ -392,24 +392,24 @@ class WalletSettingsDialog(WindowModalDialog, PrintError, MessageBoxMixin):
 
 		self.gbox_linked_amount = QGroupBox(_("Special Linked Default Tip Amount (used when amount parsing fails and recipient has linked an address)"))
 		self.gbox_linked_amount.setCheckable(True)
-		self.gbox_linked_amount.setChecked(read_config(self.wallet, "use_linked_amount", c["default_use_linked_amount"]))
+		self.gbox_linked_amount.setChecked(read_config(self.wallet, "use_linked_amount"))
 		grid = QGridLayout(self.gbox_linked_amount)
 		main_layout.addWidget(self.gbox_linked_amount)
 		def on_gbox_linked_amount():
-			write_config(self.wallet, "use_linked_amount", self.gbox_linked_amount.isChecked(), commit=False)
+			write_config(self.wallet, "use_linked_amount", self.gbox_linked_amount.isChecked())
 		self.gbox_linked_amount.toggled.connect(on_gbox_linked_amount)
 
 		# amount
 		grid.addWidget(QLabel(_('Amount')), 0, 1, Qt.AlignRight)
 		self.default_linked_amount = QLineEdit()
-		self.default_linked_amount.setText(read_config(self.wallet, "default_linked_amount", c["default_linked_amount"], commit=False))
+		self.default_linked_amount.setText(read_config(self.wallet, "default_linked_amount"))
 		def on_default_linked_amount():
 			try:
 				self.default_linked_amount.setText(str(decimal.Decimal(self.default_linked_amount.text())))
 			except decimal.InvalidOperation as e:
 				self.show_error(_("Cannot parse {string} as decimal number. Please try again.").format(string=self.default_linked_amount.text()))
-				self.default_linked_amount.setText(read_config(self.wallet, "default_linked_amount", c["default_linked_amount"], commit=False))
-			write_config(self.wallet, "default_linked_amount", self.default_linked_amount.text(), commit=False)
+				self.default_linked_amount.setText(read_config(self.wallet, "default_linked_amount"))
+			write_config(self.wallet, "default_linked_amount", self.default_linked_amount.text())
 		self.default_linked_amount.editingFinished.connect(on_default_linked_amount)
 		grid.addWidget(self.default_linked_amount, 0, 2)
 
@@ -420,11 +420,11 @@ class WalletSettingsDialog(WindowModalDialog, PrintError, MessageBoxMixin):
 		self.default_linked_amount_currency.addItems(self.currencies)
 		self.default_linked_amount_currency.setCurrentIndex(
 			self.default_linked_amount_currency.findText(
-				read_config(self.wallet, "default_linked_amount_currency", c["default_linked_amount_currency"], commit=False)
+				read_config(self.wallet, "default_linked_amount_currency")
 			)
 		)
 		def on_default_linked_amount_currency():
-			write_config(self.wallet, "default_linked_amount_currency", self.currencies[self.default_linked_amount_currency.currentIndex()], commit=False)
+			write_config(self.wallet, "default_linked_amount_currency", self.currencies[self.default_linked_amount_currency.currentIndex()])
 		self.default_linked_amount_currency.currentIndexChanged.connect(on_default_linked_amount_currency)
 		grid.addWidget(self.default_linked_amount_currency, 1, 2)
 
@@ -435,29 +435,29 @@ class WalletSettingsDialog(WindowModalDialog, PrintError, MessageBoxMixin):
 
 		self.gbox_autopay = QGroupBox(_("AutoPay - Automatically pay unpaid tips"))
 		self.gbox_autopay.setCheckable(True)
-		self.gbox_autopay.setChecked(read_config(self.wallet, "autopay", c["default_autopay"]))
+		self.gbox_autopay.setChecked(read_config(self.wallet, "autopay"))
 		vbox = QVBoxLayout(self.gbox_autopay)
 		main_layout.addWidget(self.gbox_autopay)
 		def on_gbox_autopay():
-			write_config(self.wallet, "autopay", self.gbox_autopay.isChecked(), commit=False)
+			write_config(self.wallet, "autopay", self.gbox_autopay.isChecked())
 			#on_cb_autopay_limit()
 		self.gbox_autopay.toggled.connect(on_gbox_autopay)
 
 		# disallow autopay when default amount is used
 		self.cb_autopay_disallow_default = QCheckBox(_("Disallow AutoPay when Default Tip Amount is used"))
-		self.cb_autopay_disallow_default.setChecked(read_config(self.wallet, "autopay_disallow_default", c["default_autopay_disallow_default"], commit=False))
+		self.cb_autopay_disallow_default.setChecked(read_config(self.wallet, "autopay_disallow_default"))
 		def on_cb_autopay_disallow_default():
-			write_config(self.wallet, "autopay_disallow_default", self.cb_autopay_disallow_default.isChecked(), commit=False)
+			write_config(self.wallet, "autopay_disallow_default", self.cb_autopay_disallow_default.isChecked())
 		self.cb_autopay_disallow_default.stateChanged.connect(on_cb_autopay_disallow_default)
 		vbox.addWidget(self.cb_autopay_disallow_default)
 
 		# autopay limit checkbox
 		self.cb_autopay_limit = QCheckBox(_("Limit AutoPay Amount"))
-		self.cb_autopay_limit.setChecked(read_config(self.wallet, "autopay_use_limit", c["default_autopay_use_limit"], commit=False))
+		self.cb_autopay_limit.setChecked(read_config(self.wallet, "autopay_use_limit"))
 		def on_cb_autopay_limit():
 			self.autopay_limit_bch_label.setEnabled(self.gbox_autopay.isChecked() and self.cb_autopay_limit.isChecked())
 			self.autopay_limit_bch.setEnabled(self.gbox_autopay.isChecked() and self.cb_autopay_limit.isChecked())
-			write_config(self.wallet, "autopay_use_limit", self.cb_autopay_limit.isChecked(), commit=False)
+			write_config(self.wallet, "autopay_use_limit", self.cb_autopay_limit.isChecked())
 		self.cb_autopay_limit.stateChanged.connect(on_cb_autopay_limit)
 		vbox.addWidget(self.cb_autopay_limit)
 
@@ -467,9 +467,9 @@ class WalletSettingsDialog(WindowModalDialog, PrintError, MessageBoxMixin):
 		self.autopay_limit_bch_label = QLabel(_('AutoPay Limit (BCH)'))
 		hbox.addWidget(self.autopay_limit_bch_label, 10, Qt.AlignRight)
 		self.autopay_limit_bch = QLineEdit()
-		self.autopay_limit_bch.setText(read_config(self.wallet, "autopay_limit_bch", c["default_autopay_limit_bch"], commit=False))
+		self.autopay_limit_bch.setText(read_config(self.wallet, "autopay_limit_bch"))
 		def on_autopay_limit_bch():
-			write_config(self.wallet, "autopay_limit_bch", self.autopay_limit_bch.text(), commit=False)
+			write_config(self.wallet, "autopay_limit_bch", self.autopay_limit_bch.text())
 		self.autopay_limit_bch.editingFinished.connect(on_autopay_limit_bch)
 		hbox.addWidget(self.autopay_limit_bch, 40)
 
