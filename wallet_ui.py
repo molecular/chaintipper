@@ -57,7 +57,6 @@ class WalletUI(MessageBoxMixin, PrintError, QWidget):
 		self.tab = None
 		self.previous_tab_index = None
 		self.reddit = None
-		self.reddit_thread = None
 		self.tiplist = None
 
 		self.old_debug_stats = ""
