@@ -76,7 +76,8 @@ class TipListItem(QTreeWidgetItem, PrintError):
 			#tip.tip_unit,
 			#tip.tipping_comment_id,
 			tip.tipping_comment.body.partition('\n')[0] if hasattr(tip, "tipping_comment") else "",
-			#tip.tippee_content_link
+			#tip.tippee_content_link,
+			#tip.tippee_post_id
 		]
 
 	def refreshData(self):
@@ -114,7 +115,8 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 			#_('Tip Unit'),
 			#_('Tip Comment'), 
 			_('Tip Comment body'),
-			#_('Tippee Content Link')
+			#_('Tippee Content Link'),
+			#_('Tipee post id')
 		]
 		fx = self.window.fx
 		
@@ -269,8 +271,8 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 			URL = web.BE_URL(self.config, 'addr', address)
 			webopen(URL)
 
-		def doMarkRead(tips: list, include_associated_items: bool = False):
-			self.reddit.mark_read_tips(tips, include_associated_items)
+		def doMarkRead(tips: list, include_associated_items: bool = False, unread: bool = False):
+			self.reddit.mark_read_tips(tips, include_associated_items, unread)
 
 		col = self.currentColumn()
 		column_title = self.headerItem().text(col)
@@ -287,15 +289,25 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 		new_tips = [t for t in tips if t.read_status == 'new']
 		new_count_display_string = f" ({len(new_tips)})" if len(new_tips)>1 else "" 
 
+		read_tips = [t for t in tips if t.read_status == 'read']
+		read_count_display_string = f" ({len(read_tips)})" if len(read_tips)>1 else "" 
+
 		unpaid_tips = [t for t in tips if (t.payment_status != None and t.payment_status[:4] != "paid") and t.amount_bch]
 		unpaid_count_display_string = f" ({len(unpaid_tips)})" if len(unpaid_tips)>1 else "" 
 
 		# create the context menu
 		menu = QMenu()
+
+		# mark_read
 		if len(new_tips) > 0:
-			# mark_read
 			menu.addAction(_("mark read{}").format(new_count_display_string), lambda: doMarkRead(new_tips, True))
 			menu.addSeparator()
+
+		# mark_unread (only makes sense if tips are not automatically marked read again right away)
+		if not read_config(self.wallet, "activate_on_wallet_open", c["default_activate_on_wallet_open"], commit=False):
+			if len(read_tips) > 0:
+				menu.addAction(_("mark unread{}").format(read_count_display_string), lambda: doMarkRead(read_tips, include_associated_items=True, unread=True))
+				menu.addSeparator()
 
 		if len(tips) == 1:
 			tip = tips[0]
@@ -311,7 +323,7 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 			if hasattr(tip, "chaintip_confirmation_comment") and tip.chaintip_confirmation_comment:
 				menu.addAction(_("open browser to chaintip confirmation comment"), lambda: doOpenBrowser(self.reddit.getCommentLink(tip.chaintip_confirmation_comment)))
 			if hasattr(tip, "claim_or_returned_message") and tip.claim_or_returned_message:
-				menu.addAction(_("open browser to {type} message").format(type=tip.acceptance_status), lambda: doOpenBrowserToMessage(tip.claim_or_returned_message))
+				menu.addAction(_('open browser to "{type}" message').format(type="funded" if tip.chaintip_confirmation_status == "funded" else tip.acceptance_status), lambda: doOpenBrowserToMessage(tip.claim_or_returned_message))
 			
 			# open blockexplorer...
 			menu.addSeparator()

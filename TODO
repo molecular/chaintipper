@@ -9,6 +9,8 @@
 	* beta n+1
 
 		* parse "Tip funded." https://www.reddit.com/message/messages/11nvtdw
+		* remove commit=False stuff from config? (never commit)
+		* automate writing default_xxx on read_config(xxx)
 
 	* beta n+2
 
@@ -19,6 +21,8 @@
 		* segfault on close (at least on blackbox)
 
 		* about box
+
+		* try bulk-loading tipping comments
 
 	* consider it
 

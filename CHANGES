@@ -15,6 +15,8 @@ CHANGES
 	* performance: deferred tipping comment loading 
 	* only load tipping comments for unpaid tips currently
 	* solve autopay triggering (a thread? some grace status and activation by reddit thread?)
+	* handle stealth mode "Tip funded." message (sent when stealth-tipping a post)
+	* new "mark unread" menu item (only visible if setting "automatically mark paid tips read" is unchecked)
 
 1.0-beta11:
 
