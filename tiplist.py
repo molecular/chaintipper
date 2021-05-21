@@ -81,7 +81,7 @@ class TipListItem(QTreeWidgetItem, PrintError):
 		]
 
 	def refreshData(self):
-		self.print_error("refreshData() called from", threading.current_thread())
+		#self.print_error("refreshData() called from", threading.current_thread())
 		data = self.getDataArray(self.tip)
 		for idx, value in enumerate(data, start=0):
 			self.setData(idx, Qt.DisplayRole, value)

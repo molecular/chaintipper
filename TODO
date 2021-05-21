@@ -8,6 +8,9 @@
 
 	* beta n+1
 
+		* "mark read when tip is confirmed/claimed/returned"
+		* 100% cpu sometimes when loading many tips (maybe doing thread-unsafe stuff or stuff in wrong thread)
+
 	* beta n+2
 
 		* copy recipient (tipee) address

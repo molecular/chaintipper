@@ -167,7 +167,7 @@ class WalletUI(MessageBoxMixin, PrintError, QWidget):
 			self.previous_tab_index = None
 
 	def add_ui(self):
-		"""construct tab with tiplist widget and add it to window"""
+		"""construct TipList, and a tab with tiplist widget and add it to window"""
 		self.tiplist = TipList()
 		self.autopay = AutoPay(self.wallet, self.tiplist)
 		self.blockchain_watcher = BlockchainWatcher(self.wallet, self.tiplist)

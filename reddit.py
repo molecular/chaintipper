@@ -363,7 +363,7 @@ class Reddit(PrintError, QObject):
 		m = self.p_claimed_or_returned_message.match(message.body)
 		if m:
 			confirmation_comment_id = m.group(1)
-			tipping_comment_id = self.reddit.comment(confirmation_comment_id).parent_id[3:] # remove "t1_" prefix
+			tipping_comment_id = self.reddit.comment(confirmation_comment_id).parent_id 
 			reference = tipping_comment_id
 			amount = m.group(2)
 			claimant = m.group(3)
@@ -387,7 +387,7 @@ class Reddit(PrintError, QObject):
 					reference = m.group(2)
 				else:
 					confirmation_comment_id = m.group(3)
-					tipping_comment_id = self.reddit.comment(confirmation_comment_id).parent_id[3:] # remove "t1_" prefix
+					tipping_comment_id = self.reddit.comment(confirmation_comment_id).parent_id
 					reference = tipping_comment_id
 				amount = m.group(4)
 				claimant = m.group(1)
@@ -420,7 +420,7 @@ class Reddit(PrintError, QObject):
 	p_confirmation_comment_claimed = re.compile('.*u/(\S*).*has \[claimed\].*', re.MULTILINE | re.DOTALL)
 	p_confirmation_comment_returned = re.compile('.*\[chaintip\].* has \[returned\]\(.*/(bitcoincash:\w*)\).*', re.MULTILINE | re.DOTALL)
 	def parseChaintipComment(self, comment: praw.models.Comment):
-			tipping_comment_id = comment.parent_id[3:]
+			tipping_comment_id = comment.parent_id
 			tip = self.wallet_ui.tiplist.tips.get(tipping_comment_id, None)
 
 			status = None
@@ -480,9 +480,21 @@ class Reddit(PrintError, QObject):
 	def fetchTippingComments(self):
 		if hasattr(self.wallet_ui, "tiplist"):
 			tips = self.wallet_ui.tiplist.tips.values()
-			unpaid_tips = [tip for tip in tips if not tip.isPaid()]
-			for tip in unpaid_tips:
-				tip.fetchTippingComment()
+
+			# construct list of tips to work on
+			tips_without_tipping_comments = list([tip for tip in tips if hasattr(tip, "tipping_comment_id") and tip.tipping_comment_id is not None and (not hasattr(tip, "tipping_comment") or tip.tipping_comment is None)])
+			# prefer unpaid tips which we NEED to get the tipping coments for
+			tips_without_tipping_comments.sort(key=lambda t: t.isPaid()) 
+
+			# get a batch of comments
+			tipping_comment_ids = [tip.tipping_comment_id for tip in tips_without_tipping_comments[:11]]
+			if len(tipping_comment_ids) > 0:
+				self.print_error(f"fetchTippingComments(): reddit.info({tipping_comment_ids})")
+				for info in self.reddit.info(fullnames = tipping_comment_ids):
+					self.print_error("info", info)
+					tip = self.wallet_ui.tiplist.tips[info.fullname]
+					tip.parseTippingComment(info)
+
 
 
 	def run(self):
@@ -677,7 +689,7 @@ class RedditTip(Tip):
 				# match "your tip"
 				m = RedditTip.p_tip_comment.match(self.chaintip_message.body)
 				if m:
-					self.tipping_comment_id = m.group(1)
+					self.tipping_comment_id = "t1_" + m.group(1)
 					reference = self.tipping_comment_id
 
 				# match ... has (not) linked ... Bitcoin Cash (BCH) to <address>
