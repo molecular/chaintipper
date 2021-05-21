@@ -364,6 +364,7 @@ class Reddit(PrintError, QObject):
 		if m:
 			confirmation_comment_id = m.group(1)
 			tipping_comment_id = self.reddit.comment(confirmation_comment_id).parent_id[3:] # remove "t1_" prefix
+			reference = tipping_comment_id
 			amount = m.group(2)
 			claimant = m.group(3)
 			action = m.group(4)
