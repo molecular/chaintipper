@@ -30,8 +30,8 @@ class UpdateChecker(QWidget, PrintError):
 	_req_finished = pyqtSignal(object) # internal use by _Req thread
 	_dl_prog = pyqtSignal(object, int) # [0 -> 100] range
 
-	url = "http://criptolayer.net/Pk4p2VyxVtOAkWzq/update_checker/latest_version.json"
-	download_url = "http://criptolayer.net/Pk4p2VyxVtOAkWzq/"
+	#url = "http://criptolayer.net/Pk4p2VyxVtOAkWzq/update_checker/latest_version.json"
+	url = "https://raw.githubusercontent.com/molecular/chaintipper/release/update_checker/latest_version.json"
 
 	VERSION_ANNOUNCEMENT_SIGNING_ADDRESSES = (
 		address.Address.from_string("bitcoincash:qzz3zl6sl7zahh00dnzw0vrs0f3rxral9uedywqlfw", net=MainNet), # molecular#123
@@ -72,16 +72,24 @@ class UpdateChecker(QWidget, PrintError):
 		# get stuff from metainfo
 		adr = address.Address.from_string(metainfo["sig_addr"], net=MainNet) # may raise
 		sig = metainfo["sig"]
+		sig_of_sha256 = metainfo["sig_of_sha256"]
 
 		# check adr is in list of announcement signers
 		if adr not in self.VERSION_ANNOUNCEMENT_SIGNING_ADDRESSES:
 			raise Exception(f"signig address {adr} not in list of signing addresses")
 
-		# check signature
+		# check signature <version>,<uri>,<sha256>
 		msg = metainfo["version"] + "," + metainfo["uri"] + "," + metainfo["sha256"]
 		metainfo["sig_msg"] = msg # for display to user
 		is_verified = bitcoin.verify_message(adr, base64.b64decode(sig), msg.encode('utf-8'), net=MainNet)
 		self.print_error("signature verified: ", is_verified)
+
+		# migrate to check signature <sha256>
+		if sig_of_sha256 and not is_verified:
+			msg = metainfo["sha256"]
+			metainfo["sig_msg"] = msg # for display to user
+			is_verified = bitcoin.verify_message(adr, base64.b64decode(sig), msg.encode('utf-8'), net=MainNet)
+			self.print_error("signature verified: ", is_verified)
 
 		if is_verified:
 			self.got_new_version.emit(metainfo)

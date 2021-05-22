@@ -10,6 +10,7 @@
 
 		* "mark read when tip is confirmed/claimed/returned"
 		* really parse mount on old tips? maybe just subreddit?
+		* release.sh -> release.sh + package.sh
 
 	* beta n+2
 

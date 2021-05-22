@@ -2,10 +2,9 @@ cd $(dirname $0)/..
 version=$(cat manifest.json | jq -r '.version')
 zipfile="ChainTipper-${version}.zip"
 
-# prepare git
+# prepare git (should be on develop branch)
 git push 
 git push github
-git checkout release || die
 
 # precompile to pyc files
 echo -ne "\n\ncompiling python files..."
@@ -47,6 +46,7 @@ uri='http://criptolayer.net/Pk4p2VyxVtOAkWzq/'${zipfile}
 echo -ne "\n\nwill call ../scripts/sign.sh. open the wallet, then hit <anykey>"
 read
 sig=$(scripts/sign.sh $version,$uri,$sha256)
+sig_of_sha256=$(scripts/sign.sh $sha256)
 
 echo -ne '{
 	"version": "'${version}'",
@@ -55,11 +55,14 @@ echo -ne '{
 	"sig_ca": "molecular#123",
 	"sig_addr": "bitcoincash:qzz3zl6sl7zahh00dnzw0vrs0f3rxral9uedywqlfw",
 	"sig": "'${sig}'"
+	"sig_of_sha256": "'${sig_of_sha256}'"
 }
 ' > update_checker/latest_version.json
 
-# tag 
+# update version tag 
 git tag -d ${version}
+git push --delete origin ${version}
+git push --delete github ${version}
 git tag ${version}
 git push origin --tags
 git push github --tags
@@ -75,3 +78,5 @@ if [ -e "scripts/deploy.sh" ]; then
 	echo -ne "\n\nrunning scripts/deploy.sh..."
 	#scripts/deploy.sh ${zipfile}
 fi
+
+echo "as a last step, to activate update_checker, merge develop -> release"
