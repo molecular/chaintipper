@@ -41,6 +41,21 @@ icon_chaintip_gray = QtGui.QIcon(":icons/chaintip_gray.svg")
 
 
 
+
+###################################################################################
+#                                                                                 #
+#    I8,        8        ,8I          88 88                    88        88 88    #
+#    `8b       d8b       d8'          88 88              ,d    88        88 88    #
+#     "8,     ,8"8,     ,8"           88 88              88    88        88 88    #
+#      Y8     8P Y8     8P ,adPPYYba, 88 88  ,adPPYba, MM88MMM 88        88 88    #
+#      `8b   d8' `8b   d8' ""     `Y8 88 88 a8P_____88   88    88        88 88    #
+#       `8a a8'   `8a a8'  ,adPPPPP88 88 88 8PP"""""""   88    88        88 88    #
+#        `8a8'     `8a8'   88,    ,88 88 88 "8b,   ,aa   88,   Y8a.    .a8P 88    #
+#         `8'       `8'    `"8bbdP"Y8 88 88  `"Ybbd8"'   "Y888  `"Y8888Y"'  88    #
+#                                                                                 #
+#                                                                                 #
+###################################################################################
+
 class WalletUI(MessageBoxMixin, PrintError, QWidget):
 	"""
 	Encapsulates UI for a wallet and associated window.
@@ -148,10 +163,16 @@ class WalletUI(MessageBoxMixin, PrintError, QWidget):
 		Deconstructs UI and winds down reddit thread
 		"""
 		if self.reddit:
+			self.reddit.dathread.finished.connect(self.reddit_thread_finished)
 			self.reddit.quit()
+		else:
+			self.reddit_thread_finished()
+
+	def reddit_thread_finished(self):
 		self.remove_ui()
 		self.show_previous_tab()
-		# self.close_wallet(wallet) # TODO: this might be misuse
+		if self.reddit:
+			self.reddit.dathread.finished.disconnect(self.reddit_thread_finished)
 
 	def show_chaintipper_tab(self):
 		"""switch main window to ChainTipper tab"""
@@ -302,6 +323,24 @@ class ChaintipperButton(StatusBarButton, PrintError):
 	def unread_messages(self):
 		if self.wallet_ui.reddit:
 			self.wallet_ui.reddit.markChaintipMessagesUnread(100)
+
+
+
+
+
+#####################################################################################
+#                                                                                   #
+#     ad88888ba                             88                                      #
+#    d8"     "8b              ,d      ,d    ""                                      #
+#    Y8,                      88      88                                            #
+#    `Y8aaaaa,    ,adPPYba, MM88MMM MM88MMM 88 8b,dPPYba,   ,adPPYb,d8 ,adPPYba,    #
+#      `"""""8b, a8P_____88   88      88    88 88P'   `"8a a8"    `Y88 I8[    ""    #
+#            `8b 8PP"""""""   88      88    88 88       88 8b       88  `"Y8ba,     #
+#    Y8a     a8P "8b,   ,aa   88,     88,   88 88       88 "8a,   ,d88 aa    ]8I    #
+#     "Y88888P"   `"Ybbd8"'   "Y888   "Y888 88 88       88  `"YbbdP"Y8 `"YbbdP"'    #
+#                                                           aa,    ,88              #
+#                                                            "Y8bbdP"               #
+#####################################################################################
 
 class WalletSettingsDialog(WindowModalDialog, PrintError, MessageBoxMixin):
 	"""Dialog for wallet-specific settings"""

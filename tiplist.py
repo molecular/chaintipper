@@ -40,6 +40,22 @@ from .reddit import Reddit, RedditTip
 from . import praw
 from . import prawcore
 
+
+
+#################################################
+#                                               #
+#    88                                         #
+#    88   ,d                                    #
+#    88   88                                    #
+#    88 MM88MMM ,adPPYba, 88,dPYba,,adPYba,     #
+#    88   88   a8P_____88 88P'   "88"    "8a    #
+#    88   88   8PP""""""" 88      88      88    #
+#    88   88,  "8b,   ,aa 88      88      88    #
+#    88   "Y888 `"Ybbd8"' 88      88      88    #
+#                                               #
+#                                               #
+#################################################
+
 class TipListItem(QTreeWidgetItem, PrintError):
 
 	def __init__(self, o):
@@ -87,6 +103,22 @@ class TipListItem(QTreeWidgetItem, PrintError):
 			self.setData(idx, Qt.DisplayRole, value)
 			self.setForeground(idx, Qt.gray if self.tip.read_status == 'read' else Qt.black)			
 
+
+
+
+###############################################################################
+#                                                                             #
+#    I8,        8        ,8I 88          88                                   #
+#    `8b       d8b       d8' ""          88                          ,d       #
+#     "8,     ,8"8,     ,8"              88                          88       #
+#      Y8     8P Y8     8P   88  ,adPPYb,88  ,adPPYb,d8  ,adPPYba, MM88MMM    #
+#      `8b   d8' `8b   d8'   88 a8"    `Y88 a8"    `Y88 a8P_____88   88       #
+#       `8a a8'   `8a a8'    88 8b       88 8b       88 8PP"""""""   88       #
+#        `8a8'     `8a8'     88 "8a,   ,d88 "8a,   ,d88 "8b,   ,aa   88,      #
+#         `8'       `8'      88  `"8bbdP"Y8  `"YbbdP"Y8  `"Ybbd8"'   "Y888    #
+#                                            aa,    ,88                       #
+#                                             "Y8bbdP"                        #
+###############################################################################
 
 class TipListWidget(PrintError, MyTreeWidget, TipListener):
 
@@ -331,7 +363,7 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 			if hasattr(tip, "chaintip_confirmation_comment") and tip.chaintip_confirmation_comment:
 				menu.addAction(_("open browser to chaintip confirmation comment"), lambda: doOpenBrowser(self.reddit.getCommentLink(tip.chaintip_confirmation_comment)))
 			if hasattr(tip, "claim_or_returned_message") and tip.claim_or_returned_message:
-				menu.addAction(_('open browser to "{type}" message').format(type="funded" if tip.chaintip_confirmation_status == "funded" else tip.acceptance_status), lambda: doOpenBrowserToMessage(tip.claim_or_returned_message))
+				menu.addAction(_('open browser to "{type}" message').format(type="funded" if hasattr(tip, "chaintip_confirmation_status") and tip.chaintip_confirmation_status == "funded" else tip.acceptance_status), lambda: doOpenBrowserToMessage(tip.claim_or_returned_message))
 			
 			# open blockexplorer...
 			menu.addSeparator()

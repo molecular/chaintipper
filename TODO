@@ -15,6 +15,7 @@
 
 		* copy recipient (tipee) address
 		* set amount...
+		* top up, double down
 		* move reddit forget button to settings
 
 		* segfault on close (at least on blackbox)

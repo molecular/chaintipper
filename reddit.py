@@ -28,6 +28,21 @@ from . import praw
 from . import prawcore
 from . import iterators
 
+
+############################################################################################################################
+#                                                                                                                          #
+#     ad88888ba                                                                88b           d88                           #
+#    d8"     "8b ,d                                                            888b         d888                           #
+#    Y8,         88                                                            88`8b       d8'88                           #
+#    `Y8aaaaa, MM88MMM ,adPPYba,  8b,dPPYba, ,adPPYYba,  ,adPPYb,d8  ,adPPYba, 88 `8b     d8' 88 ,adPPYYba, 8b,dPPYba,     #
+#      `"""""8b, 88   a8"     "8a 88P'   "Y8 ""     `Y8 a8"    `Y88 a8P_____88 88  `8b   d8'  88 ""     `Y8 88P'   `"8a    #
+#            `8b 88   8b       d8 88         ,adPPPPP88 8b       88 8PP""""""" 88   `8b d8'   88 ,adPPPPP88 88       88    #
+#    Y8a     a8P 88,  "8a,   ,a8" 88         88,    ,88 "8a,   ,d88 "8b,   ,aa 88    `888'    88 88,    ,88 88       88    #
+#     "Y88888P"  "Y888 `"YbbdP"'  88         `"8bbdP"Y8  `"YbbdP"Y8  `"Ybbd8"' 88     `8'     88 `"8bbdP"Y8 88       88    #
+#                                                        aa,    ,88                                                        #
+#                                                         "Y8bbdP"                                                         #
+############################################################################################################################
+
 class WalletStorageTokenManager(praw.util.token_manager.BaseTokenManager, PrintError):
 	"""praw TokenManager to manage storage of reddit refresh token into wallet file"""
 	ACCESS_TOKEN_KEY = "reddit_access_token"
@@ -48,6 +63,23 @@ class WalletStorageTokenManager(praw.util.token_manager.BaseTokenManager, PrintE
 
 	def has_refresh_token(self):
 		return has_config(self.wallet, WalletStorageTokenManager.REFRESH_TOKEN_KEY)
+
+
+
+
+##################################################################
+#                                                                #
+#    88888888ba                     88          88 88            #
+#    88      "8b                    88          88 ""   ,d       #
+#    88      ,8P                    88          88      88       #
+#    88aaaaaa8P' ,adPPYba,  ,adPPYb,88  ,adPPYb,88 88 MM88MMM    #
+#    88""""88'  a8P_____88 a8"    `Y88 a8"    `Y88 88   88       #
+#    88    `8b  8PP""""""" 8b       88 8b       88 88   88       #
+#    88     `8b "8b,   ,aa "8a,   ,d88 "8a,   ,d88 88   88,      #
+#    88      `8b `"Ybbd8"'  `"8bbdP"Y8  `"8bbdP"Y8 88   "Y888    #
+#                                                                #
+#                                                                #
+##################################################################
 
 class Reddit(PrintError, QObject):
 	"""implement reddit client to read new inbox messages, parse tip comments and so on
@@ -304,7 +336,7 @@ class Reddit(PrintError, QObject):
 				self.print_error("marking {len(tips)} new paid tips as read")
 				self.mark_read_tips(tips, include_associated_items=True)
 
-	def markReadConfirmedTips(self):
+	def markReadFinishedTips(self):
 		if not read_config(self.wallet_ui.wallet, "mark_read_confirmed_tips"):
 			return
 
@@ -312,7 +344,12 @@ class Reddit(PrintError, QObject):
 			tips = [tip for tip in self.wallet_ui.tiplist.tips.values() \
 				if tip.read_status == 'new' 
 				and tip.isPaid()
-				and hasattr(tip, "chaintip_confirmation_status") and len(tip.chaintip_confirmation_status) > 0
+				and hasattr(tip, "acceptance_status") and (
+					(tip.acceptance_status == "claimed") or 
+					(tip.acceptance_status == "returned") or 
+					(tip.acceptance_status == "linked" and hasattr(tip, "chaintip_confirmation_status") and tip.chaintip_confirmation_status == "confirmed")
+				)
+				
 			]
 			if len(tips) > 0:
 				self.print_error("marking {len(tips)} confirmed tips as read")
@@ -360,7 +397,6 @@ class Reddit(PrintError, QObject):
 	p_claimed_or_returned_message = re.compile('Your \[tip\]\(.*_/(\S*)\) of (\d*\.\d*) Bitcoin Cash.*to u/(\S*).* has \[been (\S*)\].*', re.MULTILINE | re.DOTALL)
 	p_various_messages = re.compile('Your tip to u/(\S*) for their \[.*\]\(.*/(\w*)/(\w*)/\).*of (\d*\.\d*) Bitcoin Cash.*has \[been (\S*)\].*', re.MULTILINE | re.DOTALL)
 	def parseClaimedOrReturnedMessage(self, message: praw.models.Message):
-		"""returns true if message is a "Tip claimed" message, false otherwise"""
 		#print_error("checking if message is claim/returned, subject", message.subject)
 
 		# claimed message
@@ -398,7 +434,7 @@ class Reddit(PrintError, QObject):
 				# print_error("   group 3", m.group(3))
 				# print_error("   group 4", m.group(4))
 				# print_error("   group 5", m.group(4))
-				if m.group(5) == "funded": # this is for stealth tips to posts, I think
+				if m.group(5) == "funded": # this is for stealth tips to posts
 					reference = m.group(2)
 				else:
 					confirmation_comment_id = m.group(3)
@@ -431,6 +467,7 @@ class Reddit(PrintError, QObject):
 		return False
 
 #	p_confirmation_comment = re.compile('.*u/(\S*).*\[.*\]\(.*/(bitcoincash:\w*)\).*', re.MULTILINE | re.DOTALL)
+	p_confirmation_comment_please_claim = re.compile('.*u/(\S*), you\'ve \[been sent\]\(.*/(bitcoincash:\w*)\).*Please \[claim it!\].*', re.MULTILINE | re.DOTALL)
 	p_confirmation_comment = re.compile('.*u/(\S*), you\'ve \[been sent\]\(.*/(bitcoincash:\w*)\).*', re.MULTILINE | re.DOTALL)
 	p_confirmation_comment_claimed = re.compile('.*u/(\S*).*has \[claimed\].*', re.MULTILINE | re.DOTALL)
 	p_confirmation_comment_returned = re.compile('.*\[chaintip\].* has \[returned\]\(.*/(bitcoincash:\w*)\).*', re.MULTILINE | re.DOTALL)
@@ -443,11 +480,18 @@ class Reddit(PrintError, QObject):
 			if Reddit.p_confirmation_comment.match(comment.body):
 				status = 'confirmed'
 
+			if Reddit.p_confirmation_comment_please_claim.match(comment.body):
+				status = 'unclaimed'
+
 			if Reddit.p_confirmation_comment_claimed.match(comment.body):
 				status = 'claimed'
 
 			if Reddit.p_confirmation_comment_returned.match(comment.body):
 				status = 'returned'
+
+			# if comment.id == "gyb1ayx":
+			# 	self.print_error("gyb1ayx body", comment.body)
+			# 	self.print_error("gyb1ayx parsed as", status)
 
 			# set data on tip (or defer)
 			if status:
@@ -566,7 +610,7 @@ class Reddit(PrintError, QObject):
 
 				# some "background tasks"
 				#self.markPaidTipsRead()
-				self.markReadConfirmedTips()
+				self.markReadFinishedTips()
 				self.refreshTips()
 				self.transition_amount_set_2_ready_to_pay()
 				self.fetchTippingComments()
@@ -586,11 +630,30 @@ class Reddit(PrintError, QObject):
 
 		# --- wind down ----
 
-		#self.mark_read_unassociated_items()
+		self.mark_read_unassociated_items()
 
 		self.print_error("exited reddit inbox streaming")
 
 		self.dathread.quit()
+
+
+
+
+
+
+#########################################################################################
+#                                                                                       #
+#    88888888ba                     88          88 88    888888888888 88                #
+#    88      "8b                    88          88 ""   ,d    88      ""                #
+#    88      ,8P                    88          88      88    88                        #
+#    88aaaaaa8P' ,adPPYba,  ,adPPYb,88  ,adPPYb,88 88 MM88MMM 88      88 8b,dPPYba,     #
+#    88""""88'  a8P_____88 a8"    `Y88 a8"    `Y88 88   88    88      88 88P'    "8a    #
+#    88    `8b  8PP""""""" 8b       88 8b       88 88   88    88      88 88       d8    #
+#    88     `8b "8b,   ,aa "8a,   ,d88 "8a,   ,d88 88   88,   88      88 88b,   ,a8"    #
+#    88      `8b `"Ybbd8"'  `"8bbdP"Y8  `"8bbdP"Y8 88   "Y888 88      88 88`YbbdP"'     #
+#                                                                        88             #
+#                                                                        88             #
+#########################################################################################
 
 
 class RedditTip(Tip):
@@ -722,6 +785,7 @@ class RedditTip(Tip):
 				m = RedditTip.p_stealth.match(self.chaintip_message.body)
 				if m:
 					self.setAmount()
+					self.chaintip_confirmation_status = '<stealth>'
 					post_or_comment = m.group(1)
 					self.subreddit_str = m.group(3)
 					self.tippee_content_link = m.group(2)
