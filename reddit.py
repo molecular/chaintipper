@@ -395,7 +395,7 @@ class Reddit(PrintError, QObject):
 	p_returned_subject = re.compile('Tip returned to you.')
 	p_funded_subject = re.compile('Tip funded.')
 	p_claimed_or_returned_message = re.compile('Your \[tip\]\(.*_/(\S*)\) of (\d*\.\d*) Bitcoin Cash.*to u/(\S*).* has \[been (\S*)\].*', re.MULTILINE | re.DOTALL)
-	p_various_messages = re.compile('Your tip to u/(\S*) for their \[.*\]\(.*/(\w*)/(\w*)/\).*of (\d*\.\d*) Bitcoin Cash.*has \[been (\S*)\].*', re.MULTILINE | re.DOTALL)
+	p_various_messages = re.compile('Your tip to u/(\S*) for their \[(.*)\]\(.*/(\w*)/(\w*)/\).*of (\d*\.\d*) Bitcoin Cash.*has \[been (\S*)\].*', re.MULTILINE | re.DOTALL)
 	def parseClaimedOrReturnedMessage(self, message: praw.models.Message):
 		#print_error("checking if message is claim/returned, subject", message.subject)
 
@@ -433,16 +433,21 @@ class Reddit(PrintError, QObject):
 				# print_error("   group 2", m.group(2))
 				# print_error("   group 3", m.group(3))
 				# print_error("   group 4", m.group(4))
-				# print_error("   group 5", m.group(4))
+				# print_error("   group 5", m.group(5))
+				# print_error("   group 6", m.group(6))
+				post_or_comment = m.group(2)
 				if m.group(5) == "funded": # this is for stealth tips to posts
-					reference = m.group(2)
+					reference = m.group(3)
 				else:
-					confirmation_comment_id = m.group(3)
-					tipping_comment_id = self.reddit.comment(confirmation_comment_id).parent_id
-					reference = tipping_comment_id
-				amount = m.group(4)
+					if post_or_comment == 'post':
+						reference = m.group(2)
+					else:
+						confirmation_comment_id = m.group(4)
+						tipping_comment_id = self.reddit.comment(confirmation_comment_id).parent_id
+						reference = tipping_comment_id
+				amount = m.group(5)
 				claimant = m.group(1)
-				action = m.group(5)
+				action = m.group(6)
 				parsed_ok = True
 
 		if parsed_ok and reference:
