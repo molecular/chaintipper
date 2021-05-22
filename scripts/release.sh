@@ -2,10 +2,9 @@ cd $(dirname $0)/..
 version=$(cat manifest.json | jq -r '.version')
 zipfile="ChainTipper-${version}.zip"
 
-# prepare git
+# prepare git (should be on develop branch)
 git push 
 git push github
-git checkout release || die
 
 # precompile to pyc files
 echo -ne "\n\ncompiling python files..."
@@ -60,8 +59,10 @@ echo -ne '{
 }
 ' > update_checker/latest_version.json
 
-# tag 
+# update version tag 
 git tag -d ${version}
+git push --delete origin ${version}
+git push --delete github ${version}
 git tag ${version}
 git push origin --tags
 git push github --tags
@@ -77,3 +78,5 @@ if [ -e "scripts/deploy.sh" ]; then
 	echo -ne "\n\nrunning scripts/deploy.sh..."
 	#scripts/deploy.sh ${zipfile}
 fi
+
+echo "as a last step, to activate update_checker, merge develop -> release"
