@@ -47,6 +47,7 @@ uri='http://criptolayer.net/Pk4p2VyxVtOAkWzq/'${zipfile}
 echo -ne "\n\nwill call ../scripts/sign.sh. open the wallet, then hit <anykey>"
 read
 sig=$(scripts/sign.sh $version,$uri,$sha256)
+sig_of_sha256=$(scripts/sign.sh $sha256)
 
 echo -ne '{
 	"version": "'${version}'",
@@ -55,6 +56,7 @@ echo -ne '{
 	"sig_ca": "molecular#123",
 	"sig_addr": "bitcoincash:qzz3zl6sl7zahh00dnzw0vrs0f3rxral9uedywqlfw",
 	"sig": "'${sig}'"
+	"sig_of_sha256": "'${sig_of_sha256}'"
 }
 ' > update_checker/latest_version.json
 
