@@ -61,8 +61,6 @@ echo -ne '{
 
 # update version tag 
 git tag -d ${version}
-git push --delete origin ${version}
-git push --delete github ${version}
 git tag ${version}
 for repo in origin github; do
 	git push ${repo}
