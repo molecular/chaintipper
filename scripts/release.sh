@@ -2,6 +2,11 @@ cd $(dirname $0)/..
 version=$(cat manifest.json | jq -r '.version')
 zipfile="ChainTipper-${version}.zip"
 
+# prepare git
+git push 
+git push github
+git checkout release || die
+
 # precompile to pyc files
 echo -ne "\n\ncompiling python files..."
 python -m compileall . > /dev/null
@@ -53,14 +58,20 @@ echo -ne '{
 }
 ' > update_checker/latest_version.json
 
+# tag 
+git tag -d ${version}
+git tag ${version}
+git push origin --tags
+git push github --tags
+
 # run any post-release copying 
-echo -ne "\n\nrunning scripts/local_release.sh..."
 if [ -e "scripts/local_release.sh" ]; then
+	echo -ne "\n\nrunning scripts/local_release.sh..."
 	scripts/local_release.sh ${zipfile}
 fi
 
 # deploy to distribution location
-echo -ne "\n\nrunning scripts/deploy.sh..."
 if [ -e "scripts/deploy.sh" ]; then
-	echo not running scripts/deploy.sh ${zipfile}
+	echo -ne "\n\nrunning scripts/deploy.sh..."
+	#scripts/deploy.sh ${zipfile}
 fi

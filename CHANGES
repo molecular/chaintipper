@@ -2,81 +2,81 @@ CHANGES
 
 1.0-beta12:
 
-	* listen to blockchain instead of only connected wallet for payments
-	* open blockexplorer to payment tx (#1, #2, #3), remove old tip.payment_txhash
-	* parse chaintip confirmation comment
-	* performance improvement
-	* fix claim/return registration
-	* use same association scheme for confirmation comments as for claim/return
-	* mark confirmation comments read on mark_unread of the associated tip)
-	* new "open browser to claim/return message"
-	* new "open browser to chaintip confirmation comment"
-	* fix "Tip claimed." falsely interpreted as tip message: https://www.reddit.com/message/messages/11p4fo7
-	* performance: deferred tipping comment loading 
-	* only load tipping comments for unpaid tips currently
-	* solve autopay triggering (a thread? some grace status and activation by reddit thread?)
-	* handle stealth mode "Tip funded." message (sent when stealth-tipping a post)
-	* new "mark unread" menu item (only visible if setting "automatically mark paid tips read" is unchecked)
+  * listen to blockchain instead of only connected wallet for payments
+  * open blockexplorer to payment tx (#1, #2, #3), remove old tip.payment_txhash
+  * parse chaintip confirmation comment
+  * performance improvement
+  * fix claim/return registration
+  * use same association scheme for confirmation comments as for claim/return
+  * mark confirmation comments read on mark_unread of the associated tip)
+  * new "open browser to claim/return message"
+  * new "open browser to chaintip confirmation comment"
+  * fix "Tip claimed." falsely interpreted as tip message: msg id 11p4fo7
+  * performance: deferred tipping comment loading 
+  * only load tipping comments for unpaid tips currently
+  * solve autopay triggering (a thread? some grace status and activation by reddit thread?)
+  * handle stealth mode "Tip funded." message (sent when stealth-tipping a post)
+  * new "mark unread" menu item (only visible if setting "automatically mark paid tips read" is unchecked)
 
 1.0-beta11:
 
-	* change menu item "open browser with tipping" to "open browser to content that made you tip" (also works for stealth mode tips)
-	* parse stealth mode messages
-	* add menu item "open blockexplorer to recipient address"
+  * change menu item "open browser with tipping" to "open browser to content that made you tip" (also works for stealth mode tips)
+  * parse stealth mode messages
+  * add menu item "open blockexplorer to recipient address"
 
 1.0-beta10:
 
-	* fix another bug with "linked default amount" (always used)
-	* prefer exchange given in users "fiat" preferences
+  * fix another bug with "linked default amount" (always used)
+  * prefer exchange given in users "fiat" preferences
 
 1.0-beta9:
-	
-	* fix bug: "linked default amount" used even if user is unlinked
+  
+  * fix bug: "linked default amount" used even if user is unlinked
 
 1.0-beta8:
-	
-	* handle reddit server errors better (don't show error, retry after 30s)
-	* new special default amount for "linked" recipients
-	* remove "disallow linked" functionality
+  
+  * handle reddit server errors better (don't show error, retry after 30s)
+  * new special default amount for "linked" recipients
+  * remove "disallow linked" functionality
 
 1.0-beta7:
 
-	* translate amount_fiat header even if ec pref "show history rates" unchecked
-	* new menu item: "open blockexplorer to payment tx"
-	* batch "mark_read" actions through reddit api
-	* don't use send to many when "pay..."ing only 1 tip (so amount can then be edited on send tab)
-	* better tipUpdated implementation (less flickering und sort-screwing)
-	* parse claimed/returned messages
-	* new column "Acceptance Status" (can be linked, not yet linked, claimed, returned)
-	* allow u/chaintip <currency_symbol><decimal> (exmaple: "u/chaintip $1")
-	* "mark_read" also marks claim/returned messages
-	* setting to "Disallow autopay if the user has already linked a wallet."
-	* commit settings when dialog closes, not at every read/write (could speed up opening settings dialog)
-	* new menu entry "open browser to tipping comment parent"
-	* check for updates on first activation
-	* option to mark_read paid messages
+  * translate amount_fiat header even if ec pref "show history rates" unchecked
+  * new menu item: "open blockexplorer to payment tx"
+  * batch "mark_read" actions through reddit api
+  * don't use send to many when "pay..."ing only 1 tip (so amount can then be edited on send tab)
+  * better tipUpdated implementation (less flickering und sort-screwing)
+  * parse claimed/returned messages
+  * new column "Acceptance Status" (can be linked, not yet linked, claimed, returned)
+  * allow u/chaintip <currency_symbol><decimal> (exmaple: "u/chaintip $1")
+  * "mark_read" also marks claim/returned messages
+  * setting to "Disallow autopay if the user has already linked a wallet."
+  * commit settings when dialog closes, not at every read/write (could speed up opening settings dialog)
+  * new menu entry "open browser to tipping comment parent"
+  * check for updates on first activation
+  * option to mark_read paid messages
 
 1.0-beta5:
 
-	* fix parser again 
+  * fix parser again 
 
 1.0-beta4:
 
-	* TipList: new column "amount (fiat)"
-	* remove all <quantity_alias>es except "a" and "an"
-	* fix parser to catch correct relay address in case of unlinked recipients
+  * TipList: new column "amount (fiat)"
+  * remove all <quantity_alias>es except "a" and "an"
+  * fix parser to catch correct relay address in case of unlinked recipients
 
 1.0-beta3:
 
-	* remove "qrelay" prefix requirement when parsing chaintip messages
+  * remove "qrelay" prefix requirement when parsing chaintip messages
 
 1.0-beta2:
 
-	* gui: improve "show amount monikers"
-	* tip comment parser: don't require leading "/" before "u/chaintip" 
-	* wait for wallet to sync on activation
-	* fix bug with "disallow autopay when default amount used" always disallowing
-	* refresh tips on settings change
-	* add new column "subreddit" showing subreddit of tipping comment
-	* whacky hackjob using sleep() to lessen the double-spend problem
-	* fixed: mark read takes forever and locks the gui
+  * gui: improve "show amount monikers"
+  * tip comment parser: don't require leading "/" before "u/chaintip" 
+  * wait for wallet to sync on activation
+  * fix bug with "disallow autopay when default amount used" always disallowing
+  * refresh tips on settings change
+  * add new column "subreddit" showing subreddit of tipping comment
+  * whacky hackjob using sleep() to lessen the double-spend problem
+  * fixed: mark read takes forever and locks the gui
