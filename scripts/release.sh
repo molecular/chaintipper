@@ -54,18 +54,23 @@ echo -ne '{
 	"sha256": "'${sha256}'",
 	"sig_ca": "molecular#123",
 	"sig_addr": "bitcoincash:qzz3zl6sl7zahh00dnzw0vrs0f3rxral9uedywqlfw",
-	"sig": "'${sig}'"
+	"sig": "'${sig}'",
 	"sig_of_sha256": "'${sig_of_sha256}'"
 }
 ' > update_checker/latest_version.json
 
+git add update_checker/latest_version.json
+git add SHA256.ChainTipper.txt
+git commit -m "release.sh: updating latest_version.json"
+
 # update version tag 
 git tag -d ${version}
-git push --delete origin ${version}
-git push --delete github ${version}
 git tag ${version}
-git push origin --tags
-git push github --tags
+for repo in origin github; do
+	git push ${repo}
+	git push --delete ${repo} ${version}
+	git push ${repo} ${version}
+done
 
 # run any post-release copying 
 if [ -e "scripts/local_release.sh" ]; then
