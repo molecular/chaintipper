@@ -59,12 +59,17 @@ echo -ne '{
 }
 ' > update_checker/latest_version.json
 
+<<<<<<< HEAD
 git add update_checker/latest_version.json
 git add SHA256.ChainTipper.txt
 git commit -m "release.sh: updating latest_version.json"
 
+=======
+>>>>>>> 0f181cd6d044a1fc0977239726c9e555a73586b6
 # update version tag 
 git tag -d ${version}
+git push --delete origin ${version}
+git push --delete github ${version}
 git tag ${version}
 for repo in origin github; do
 	git push ${repo}
