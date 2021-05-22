@@ -1,9 +1,9 @@
 {
 	"version": "1.0-beta12",
 	"uri": "http://criptolayer.net/Pk4p2VyxVtOAkWzq/ChainTipper-1.0-beta12.zip",
-	"sha256": "bb2f5548d38b067c3616f54a9fbdef287ba387da9e3f67dabb40be0b6ca853b9",
+	"sha256": "bd04b5408e74ae2b27a901a31ee9a3a142b28abe85a47859d629cb3a8e8fa75c",
 	"sig_ca": "molecular#123",
 	"sig_addr": "bitcoincash:qzz3zl6sl7zahh00dnzw0vrs0f3rxral9uedywqlfw",
-	"sig": "H3ZS6kRumuspwCpFQq5mB3gmCJNzUEXrIUfYTqP+rLTZMwTRnevfZ6IxiFYG5SHpCDC84pqPFh8zLk1lsiAIJlY=",
-	"sig_of_sha256": "ILQKKgSarzK5PDD8G0MnkgrldWCdp+ikbcslthJz7EwrbZq/b3zu10XTKfAbBZKdxhPiS1ie5xzsgqU0yKnNi0I="
+	"sig": "IKOr27l3HhZzi95KQjZmxVr867VRizRTKGnanCjp0r2WMPvbpvYDHsoo7YOlZUUeKndz0Z/mlM+AEWU9osPEj3M=",
+	"sig_of_sha256": "H6n7KVJK/q5UW9kOPaIn+B2RAcaVofgHSbDpL0DGZpJ7ZU3KoQ9O2iVIUclhhDjvT+C6IM12vQufRZqLocgItJQ="
 }
