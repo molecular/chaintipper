@@ -236,6 +236,20 @@ class WalletUI(MessageBoxMixin, PrintError, QWidget):
 
 
 
+########################################################################
+#                                                                      #
+#    88888888ba                                                        #
+#    88      "8b               ,d      ,d                              #
+#    88      ,8P               88      88                              #
+#    88aaaaaa8P' 88       88 MM88MMM MM88MMM ,adPPYba,  8b,dPPYba,     #
+#    88""""""8b, 88       88   88      88   a8"     "8a 88P'   `"8a    #
+#    88      `8b 88       88   88      88   8b       d8 88       88    #
+#    88      a8P "8a,   ,a88   88,     88,  "8a,   ,a8" 88       88    #
+#    88888888P"   `"YbbdP'Y8   "Y888   "Y888 `"YbbdP"'  88       88    #
+#                                                                      #
+#                                                                      #
+########################################################################
+
 class ChaintipperButton(StatusBarButton, PrintError):
 
 	def __init__(self, wallet_ui):
@@ -257,7 +271,7 @@ class ChaintipperButton(StatusBarButton, PrintError):
 		action_settings = QAction(_("Forget Reddit Authorization (e.g. to switch reddit account)"), self)
 		action_settings.triggered.connect(self.disconnect_reddit)
 
-		action_settings2 = QAction(_("(TEMPORARY) Mark unread some chaintip messages/comments"), self)
+		action_settings2 = QAction(_("Import more messages/comments from Reddit"), self)
 		action_settings2.triggered.connect(self.unread_messages)
 
 		# action_settings = QAction(_("Global Settings..."), self)
@@ -378,7 +392,7 @@ class WalletSettingsDialog(WindowModalDialog, PrintError, MessageBoxMixin):
 		self.cb_activate_on_open.stateChanged.connect(on_cb_activate_on_open)
 		grid.addWidget(self.cb_activate_on_open)
 
-		# mark read paid tips
+		# mark read finished
 		self.cb_mark_read_confirmed_tips = QCheckBox(_("Mark Tips as read when they are confirmed, returned or claimed"))
 		self.cb_mark_read_confirmed_tips.setChecked(read_config(self.wallet, "mark_read_confirmed_tips"))
 		def on_cb_mark_read_confirmed_tips():

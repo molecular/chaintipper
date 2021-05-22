@@ -9,7 +9,7 @@
 	* beta n+1
 
 		* "mark read when tip is confirmed/claimed/returned"
-		* 100% cpu sometimes when loading many tips (maybe doing thread-unsafe stuff or stuff in wrong thread)
+		* really parse mount on old tips? maybe just subreddit?
 
 	* beta n+2
 
@@ -23,6 +23,8 @@
 		* about box
 
 		* try bulk-loading tipping comments
+
+		* initiate stealth tip (send message to chaintip)
 
 	* consider it
 
