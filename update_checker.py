@@ -30,7 +30,6 @@ class UpdateChecker(QWidget, PrintError):
 	_req_finished = pyqtSignal(object) # internal use by _Req thread
 	_dl_prog = pyqtSignal(object, int) # [0 -> 100] range
 
-	#url = "http://criptolayer.net/Pk4p2VyxVtOAkWzq/update_checker/latest_version.json"
 	url = "https://raw.githubusercontent.com/molecular/chaintipper/release/update_checker/latest_version.json"
 
 	VERSION_ANNOUNCEMENT_SIGNING_ADDRESSES = (

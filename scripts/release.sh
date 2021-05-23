@@ -3,11 +3,15 @@ source scripts/vars.sh
 
 echo "make sure you're on develop branch, everything commited and hit key"
 read
+git checkout develop || die
 
 # push to git (should be on develop branch)
 for repo in ${repos}; do
 	git push ${repo} || die
 done
+
+# package
+scripts/package.sh
 
 # create lastest_release.json
 echo -ne "\n\ncreating latest_version.json...."
@@ -30,7 +34,10 @@ echo -ne '{
 }
 ' > update_checker/latest_version.json
 
+# add and commit latest_version and sha sums
 git add update_checker/latest_version.json
+git add SHA256.ChainTipper.txt
+git commit -m ""
 
 # update version tag and push everything
 git tag -d ${version}
@@ -41,9 +48,6 @@ for repo in ${repos}; do
 	git push ${repo} ${version}
 done
 
-# package
-scripts/package.sh
-
 # deploy to distribution location
 sh="deploy.sh"
 if [ -e "scripts/${sh}" ]; then
@@ -51,4 +55,4 @@ if [ -e "scripts/${sh}" ]; then
 	scripts/${sh}
 fi
 
-echo "as a last step, to activate update_checker, merge develop -> release"
+echo "as a last step, to activate update_checker, merge develop -> release, then push"
