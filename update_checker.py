@@ -56,8 +56,8 @@ class UpdateChecker(QWidget, PrintError):
 		# 	"sha256": "6336f94972585435c07d6c79105622320370783b719d57863d45b1638a909d37",
 		# 	"sig_ca": "molecular#123",
 		# 	"sig_addr": "bitcoincash:qzz3zl6sl7zahh00dnzw0vrs0f3rxral9uedywqlfw",
-		# 	// message to sign: "<version>,<uri>,<sha256>"
-		# 	"sig": "ICU5+tNqcqvJ3gsIZdchfWoIadrri/edcYU1o9UUBuPGbueD+OS9bE0yhH7C6cjmfV3oJHTz8t6s4bgzTjZbEiI="
+		# 	// message to sign: "<sha256>"
+		# 	"sig_of_sha256": "ICU5+tNqcqvJ3gsIZdchfWoIadrri/edcYU1o9UUBuPGbueD+OS9bE0yhH7C6cjmfV3oJHTz8t6s4bgzTjZbEiI="
 		# }
 
 		# for k, v in metainfo.items():
@@ -71,25 +71,17 @@ class UpdateChecker(QWidget, PrintError):
 
 		# get stuff from metainfo
 		adr = address.Address.from_string(metainfo["sig_addr"], net=MainNet) # may raise
-		sig = metainfo["sig"]
 		sig_of_sha256 = metainfo["sig_of_sha256"]
 
 		# check adr is in list of announcement signers
 		if adr not in self.VERSION_ANNOUNCEMENT_SIGNING_ADDRESSES:
 			raise Exception(f"signig address {adr} not in list of signing addresses")
 
-		# check signature <version>,<uri>,<sha256>
-		msg = metainfo["version"] + "," + metainfo["uri"] + "," + metainfo["sha256"]
+		# check signature <sha256>
+		msg = metainfo["sha256"]
 		metainfo["sig_msg"] = msg # for display to user
 		is_verified = bitcoin.verify_message(adr, base64.b64decode(sig), msg.encode('utf-8'), net=MainNet)
 		self.print_error("signature verified: ", is_verified)
-
-		# migrate to check signature <sha256>
-		if sig_of_sha256 and not is_verified:
-			msg = metainfo["sha256"]
-			metainfo["sig_msg"] = msg # for display to user
-			is_verified = bitcoin.verify_message(adr, base64.b64decode(sig), msg.encode('utf-8'), net=MainNet)
-			self.print_error("signature verified: ", is_verified)
 
 		if is_verified:
 			self.got_new_version.emit(metainfo)
