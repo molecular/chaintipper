@@ -12,7 +12,7 @@ __pycache__
 *.zip
 *.mp4
 *.ogv
-/scripts/local_release.sh
+/scripts/packaged_local.sh
 /scripts/deploy.sh
 /scripts/sign.sh
 /doc/manual/manual.html

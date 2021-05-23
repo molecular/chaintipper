@@ -1,43 +1,14 @@
 cd $(dirname $0)/..
-version=$(cat manifest.json | jq -r '.version')
-zipfile="ChainTipper-${version}.zip"
+source scripts/vars.sh
 
-# prepare git (should be on develop branch)
-git push 
-git push github
+echo "make sure you're on develop branch, everything commited and hit key"
+read
 
-# precompile to pyc files
-echo -ne "\n\ncompiling python files..."
-python -m compileall . > /dev/null
-
-echo -ne "\n\npreparing release files..."
-
-# remove old files 
-rm ${zipfile}
-rm -rf release
-
-# gather stuff in release folder
-mkdir -p release/chaintipper
-cp *.py release/chaintipper
-
-for module in praw prawcore websocket iterators; do
-	cp -ar bundled_deps/patched/${module} release/chaintipper
+# push to git (should be on develop branch)
+for repo in ${repos}; do
+	git push ${repo} || die
 done
-
-cp manifest.json release
-
-# zip release folder
-echo -ne "\n\ncreating .zip file..."
-cd release
-t=$(date +%s)
-#find . -exec touch -t ${t} {} + 
-zip -q -X -r ../${zipfile} *
-cd ..
-
-# sha256sums
-echo -ne "\n\ncreating checksums..."
-sha256sum ChainTipper*.zip > "SHA256.ChainTipper.txt"
-
+exit 1
 # create lastest_release.json
 echo -ne "\n\ncreating latest_version.json...."
 sha256=$(sha256sum ${zipfile} | cut -f 1 -d " ")
@@ -59,25 +30,23 @@ echo -ne '{
 }
 ' > update_checker/latest_version.json
 
-# update version tag 
+git add update_checker/latest_version.json
+
+# update version tag and push everything
 git tag -d ${version}
 git tag ${version}
-for repo in origin github; do
+for repo in ${repos}; do
 	git push ${repo}
 	git push --delete ${repo} ${version}
 	git push ${repo} ${version}
 done
 
-# run any post-release copying 
-if [ -e "scripts/local_release.sh" ]; then
-	echo -ne "\n\nrunning scripts/local_release.sh..."
-	scripts/local_release.sh ${zipfile}
-fi
 
 # deploy to distribution location
-if [ -e "scripts/deploy.sh" ]; then
-	echo -ne "\n\nrunning scripts/deploy.sh..."
-	#scripts/deploy.sh ${zipfile}
+sh="deploy.sh"
+if [ -e "scripts/${sh}" ]; then
+	echo -ne "\n\nrunning scripts/${sh}..."
+	#scripts/${sh} ${zipfile}
 fi
 
 echo "as a last step, to activate update_checker, merge develop -> release"

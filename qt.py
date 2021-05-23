@@ -107,8 +107,7 @@ class Plugin(BasePlugin):
 			"<li><b>", _("SHA256(ZIP file)"), "</b>: ", metainfo["sha256"], "</li>",
 			"<li><b>", _("Signature CashAccount"), "</b>: ", metainfo["sig_ca"], "</li>",
 			"<li><b>", _("Signature Address"), "</b>: ", metainfo["sig_addr"], "</li>",
-			"<li><b>", _("Signed Message"), "</b>: ", metainfo["sig_msg"], "</li>",
-			"<li><b>", _("Signature (verified)"), "</b>: ", metainfo["sig"], "</li>",
+			"<li><b>", _("Signature of SHA256 (verified)"), "</b>: ", metainfo["sig_of_sha256"], "</li>",
 			"</ul>"
 		])
 
@@ -164,7 +163,6 @@ class Plugin(BasePlugin):
 		local_version = self.getVersionFromManifest()
 		self.print_error("local_version:", local_version)
 
-		local_version = 'test'
 		if local_version == 'internal':
 			self.print_error("chaintipper runs as 'internal' plugin, aborting update check.")
 			return
