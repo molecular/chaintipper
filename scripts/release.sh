@@ -6,9 +6,9 @@ read
 
 # push to git (should be on develop branch)
 for repo in ${repos}; do
-	git push ${repo}
+	git push ${repo} || die
 done
-
+exit 1
 # create lastest_release.json
 echo -ne "\n\ncreating latest_version.json...."
 sha256=$(sha256sum ${zipfile} | cut -f 1 -d " ")
@@ -29,7 +29,7 @@ echo -ne '{
 	"sig_of_sha256": "'${sig_of_sha256}'"
 }
 ' > update_checker/latest_version.json
-exit 1
+
 git add update_checker/latest_version.json
 
 # update version tag and push everything
