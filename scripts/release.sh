@@ -8,7 +8,7 @@ read
 for repo in ${repos}; do
 	git push ${repo} || die
 done
-exit 1
+
 # create lastest_release.json
 echo -ne "\n\ncreating latest_version.json...."
 sha256=$(sha256sum ${zipfile} | cut -f 1 -d " ")
@@ -41,12 +41,14 @@ for repo in ${repos}; do
 	git push ${repo} ${version}
 done
 
+# package
+scripts/package.sh
 
 # deploy to distribution location
 sh="deploy.sh"
 if [ -e "scripts/${sh}" ]; then
 	echo -ne "\n\nrunning scripts/${sh}..."
-	#scripts/${sh} ${zipfile}
+	scripts/${sh}
 fi
 
 echo "as a last step, to activate update_checker, merge develop -> release"

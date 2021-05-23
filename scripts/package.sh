@@ -41,5 +41,5 @@ echo -e "\n--- created ${zipfile} ---\n"
 sh="packaged_local.sh"
 if [ -e "scripts/${sh}" ]; then
 	echo -ne "\n\nrunning scripts/${sh}..."
-	scripts/${sh} ${zipfile}
+	scripts/${sh}
 fi
