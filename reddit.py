@@ -347,12 +347,13 @@ class Reddit(PrintError, QObject):
 				and hasattr(tip, "acceptance_status") and (
 					(tip.acceptance_status == "claimed") or 
 					(tip.acceptance_status == "returned") or 
-					(tip.acceptance_status == "linked" and hasattr(tip, "chaintip_confirmation_status") and tip.chaintip_confirmation_status == "confirmed")
+					(tip.acceptance_status == "linked" and hasattr(tip, "chaintip_confirmation_status") and tip.chaintip_confirmation_status == "confirmed") or
+					(tip.acceptance_status == "not yet linked" and hasattr(tip, "chaintip_confirmation_status") and tip.chaintip_confirmation_status == "returned")
 				)
 				
 			]
 			if len(tips) > 0:
-				self.print_error("marking {len(tips)} confirmed tips as read")
+				self.print_error(f"marking {len(tips)} finished tips as read")
 				self.mark_read_tips(tips, include_associated_items=True)
 
 
