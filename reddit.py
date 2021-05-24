@@ -14,6 +14,7 @@ import random
 import socket
 import sys
 from time import time, sleep
+from collections import defaultdict
 
 from PyQt5.QtCore import QObject, pyqtSignal, QThread
 from PyQt5.QtWidgets import QApplication, QMessageBox
@@ -94,14 +95,14 @@ class Reddit(PrintError, QObject):
 		self.state = None # used in reddit auth flow
 		self.tips_to_refresh = []
 		self.tip_or_message_by_message = dict()
-		self.unassociated_claim_return_by_tipping_comment_id = {} # store claim/return info (dict with "message" and "action") for later association with a tip
+		self.unassociated_claim_return_by_tipping_comment_id = defaultdict(list) # store claim/return info (dict with "message" and "action") for later association with a tip
 		self.unassociated_chaintip_comments_by_tipping_comment_id = {} # store chaintip comments for later association with a tip
 		self.items_by_fullname = {}
 
 	def debug_stats(self):
 		return f"\
             Reddit: {len(self.unassociated_chaintip_comments_by_tipping_comment_id)} unassociated chaintip comments\n\
-                       {len(self.unassociated_claim_return_by_tipping_comment_id)} unassociated claim/returned messages\n\
+                       {sum([len(i) for i in self.unassociated_claim_return_by_tipping_comment_id])} unassociated claim/returned messages\n\
                        {len(self.items_by_fullname)} items registered"
 
 	def disconnect(self):
@@ -347,7 +348,8 @@ class Reddit(PrintError, QObject):
 				and hasattr(tip, "acceptance_status") and (
 					(tip.acceptance_status == "claimed") or 
 					(tip.acceptance_status == "returned") or 
-					(tip.acceptance_status == "linked" and hasattr(tip, "chaintip_confirmation_status") and tip.chaintip_confirmation_status == "confirmed")
+					(tip.acceptance_status == "linked" and hasattr(tip, "chaintip_confirmation_status") and tip.chaintip_confirmation_status == "confirmed") or
+					(tip.acceptance_status == "linked" and hasattr(tip, "chaintip_confirmation_status") and tip.chaintip_confirmation_status == "returned")
 				)
 				
 			]
@@ -512,8 +514,16 @@ class Reddit(PrintError, QObject):
 			else:
 				self.print_error("chaintip comment doesn't parse: ", comment.body)
 
-
 	def digestItem(self, item, item_is_new=False):
+		# digest message
+		if isinstance(item, praw.models.Message):
+			self.digestMessage(item, item_is_new=True)
+
+		# digest comment
+		elif isinstance(item, praw.models.Comment):
+			self.parseChaintipComment(item)
+
+	def digestMessage(self, item, item_is_new=False):
 		if item is None:
 			return
 		#self.print_error("incoming item of type", type(item))
@@ -595,13 +605,7 @@ class Reddit(PrintError, QObject):
 
 					counter += 1
 
-					# digest message
-					if isinstance(item, praw.models.Message):
-						self.digestItem(item, item_is_new=True)
-
-					# digest comment
-					if isinstance(item, praw.models.Comment):
-						self.parseChaintipComment(item)
+					self.digestItem(item, item_is_new=True)
 
 				if counter > 0:
 					self.print_error(f"loaded {counter} items, sleeping...")
@@ -622,7 +626,7 @@ class Reddit(PrintError, QObject):
 				if hasattr(self.wallet_ui, "autopay") and self.wallet_ui.autopay:
 					self.wallet_ui.autopay.do_work()
 
-				#self.wallet_ui.print_debug_stats()
+				self.wallet_ui.print_debug_stats()
 
 				# after first cycle, assumption is that unassociated items are for old tips that will never load
 				# note: this assumption is false with the "TEMPORARY load more items" feature
