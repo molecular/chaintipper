@@ -8,9 +8,10 @@
 
 	* beta n+1
 
-		* "mark read when tip is confirmed/claimed/returned"
-		* really parse mount on old tips? maybe just subreddit?
-		* release.sh -> release.sh + package.sh
+		* really parse amount on old tips? maybe just subreddit?
+		* dowload uri -> github
+			* link to release page instead of zip?
+
 
 	* beta n+2
 

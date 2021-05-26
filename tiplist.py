@@ -70,7 +70,7 @@ class TipListItem(QTreeWidgetItem, PrintError):
 
 	def getDataArray(self, tip):
 		return [
-			#tip.id,
+			tip.getID(),
 			format_time(tip.chaintip_message.created_utc), 
 			#tip.type,
 			tip.read_status,
@@ -86,14 +86,15 @@ class TipListItem(QTreeWidgetItem, PrintError):
 			#tip.direction,
 			tip.tip_amount_text,
 			"{0:.8f}".format(tip.amount_bch) if isinstance(tip.amount_bch, Decimal) else "",
-			"{0:.2f}".format(tip.amount_fiat) if tip.amount_fiat else "",
+			"{0:.2f}".format(tip.amount_fiat) if hasattr(tip, "amount_fiat") and tip.amount_fiat else "",
 			#tip.recipient_address.to_ui_string() if tip.recipient_address else None,
 			#str(tip.tip_quantity),
 			#tip.tip_unit,
-			#tip.tipping_comment_id,
-			tip.tipping_comment.body.partition('\n')[0] if hasattr(tip, "tipping_comment") else "",
+			tip.tipping_comment_id,
 			#tip.tippee_content_link,
-			#tip.tippee_post_id
+			tip.tippee_post_id,
+			tip.tippee_comment_id,
+			tip.tipping_comment.body.partition('\n')[0] if hasattr(tip, "tipping_comment") else ""
 		]
 
 	def refreshData(self):
@@ -101,7 +102,8 @@ class TipListItem(QTreeWidgetItem, PrintError):
 		data = self.getDataArray(self.tip)
 		for idx, value in enumerate(data, start=0):
 			self.setData(idx, Qt.DisplayRole, value)
-			self.setForeground(idx, Qt.gray if self.tip.read_status == 'read' else Qt.black)			
+			#self.setForeground(idx, Qt.gray if self.tip.read_status == 'read' else Qt.black)			
+			self.setForeground(idx, Qt.gray if self.tip.isFinished() else Qt.black)			
 
 
 
@@ -126,7 +128,7 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 
 	def refresh_headers(self):
 		headers = [
-			#_('ID'), 
+			_('ID'), 
 			_('Date'),
 			#_('Type'),
 			_('Read'),
@@ -146,10 +148,11 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 			#_('Recipient Address'),
 			#_('Tip Quantity'),
 			#_('Tip Unit'),
-			#_('Tip Comment'), 
-			_('Tip Comment body'),
+			_('Tip Comment ID'), 
 			#_('Tippee Content Link'),
-			#_('Tipee post id')
+			_('Tipee post id'),
+			_('Tipee comment id'),
+			_('Tip Comment body')
 		]
 		fx = self.window.fx
 		
@@ -225,8 +228,8 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 		if tip.recipient_address:
 			self.tips_by_address[tip.recipient_address] = tip 
 
-		self.calculateFiatAmount(tip)
 		TipListItem(tip) 
+		self.calculateFiatAmount(tip)
 
 		if c["use_categories"]:
 			category_item = self.getCategoryItemForTip(tip)
@@ -234,9 +237,6 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 			category_item.addChild(tip.tiplist_item)
 		else:
 			self.addTopLevelItem(tip.tiplist_item)
-
-		# self.checkPaymentStatus()
-		# self.pay([tip])
 
 	def tipRemoved(self, tip):
 		if tip.recipient_address:
@@ -259,8 +259,11 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 		self.updated_tips = []
 		for tip in updated_tips:
 			if hasattr(tip, 'tiplist_item'):
+				#self.print_error("digesting tip update for tip", tip)
 				self.calculateFiatAmount(tip)
 				tip.tiplist_item.refreshData()
+			# else:
+			# 	self.print_error("trying to update tip without tiplistitem: ", tip)
 
 	#
 
@@ -305,6 +308,7 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 		def doOpenBrowserToTippingComment(tip):
 			if not hasattr(tip, "tipping_comment"):
 				tip.fetchTippingComment()
+			self.print_error("tipping comment permalink: ", tip.tipping_comment.permalink)
 			doOpenBrowser(tip.tipping_comment.permalink)
 
 		def doOpenBlockExplorerTX(txid: str):

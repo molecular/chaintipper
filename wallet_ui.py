@@ -271,7 +271,7 @@ class ChaintipperButton(StatusBarButton, PrintError):
 		action_settings = QAction(_("Forget Reddit Authorization (e.g. to switch reddit account)"), self)
 		action_settings.triggered.connect(self.disconnect_reddit)
 
-		action_settings2 = QAction(_("Import more messages/comments from Reddit"), self)
+		action_settings2 = QAction(_("(TEMPORARY) 'Import' 500 more messages/comments from Reddit"), self)
 		action_settings2.triggered.connect(self.unread_messages)
 
 		# action_settings = QAction(_("Global Settings..."), self)
@@ -336,7 +336,7 @@ class ChaintipperButton(StatusBarButton, PrintError):
 
 	def unread_messages(self):
 		if self.wallet_ui.reddit:
-			self.wallet_ui.reddit.markChaintipMessagesUnread(100)
+			self.wallet_ui.reddit.markChaintipMessagesUnread(500)
 
 
 

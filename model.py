@@ -33,6 +33,8 @@ class Tip(PrintError):
 	def update(self):
 		if self.tiplist_weakref():
 			self.tiplist_weakref().updateTip(self)
+		else:
+			self.print_error("weakref to tiplist broken, can't update tip", self)
 
 	def registerPayment(self, txhash: str, amount_bch: Decimal, source: str):
 		#self.print_error(f"registerPayment({txhash}, {amount_bch})")
