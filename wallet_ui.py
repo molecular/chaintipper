@@ -162,7 +162,7 @@ class WalletUI(MessageBoxMixin, PrintError, QWidget):
 		Will be called by the ChaintipperButton on deactivation.
 		Deconstructs UI and winds down reddit thread
 		"""
-		if self.reddit:
+		if self.reddit and hasattr(self.reddit, "dathread"):
 			self.reddit.dathread.finished.connect(self.reddit_thread_finished)
 			self.reddit.quit()
 		else:
