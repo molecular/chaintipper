@@ -61,8 +61,9 @@ class WalletUI(MessageBoxMixin, PrintError, QWidget):
 	Encapsulates UI for a wallet and associated window.
 	Plugin class will instantiate one WalletUI per wallet.
 	"""
-	def __init__(self, wallet: Abstract_Wallet, window: ElectrumWindow):
+	def __init__(self, plugin, wallet: Abstract_Wallet, window: ElectrumWindow):
 		QWidget.__init__(self, window)
+		self.plugin = plugin
 		self.window = window
 		self.wallet = wallet
 		self.wallet_name = self.wallet.basename()
@@ -156,6 +157,8 @@ class WalletUI(MessageBoxMixin, PrintError, QWidget):
 		self.setup_reddit()
 		self.refresh_ui()
 		self.show_chaintipper_tab()
+
+		self.plugin.runUpdateChecker(self.window)
 
 	def deactivate(self):
 		"""
@@ -337,8 +340,6 @@ class ChaintipperButton(StatusBarButton, PrintError):
 	def unread_messages(self):
 		if self.wallet_ui.reddit:
 			self.wallet_ui.reddit.markChaintipMessagesUnread(100)
-
-
 
 
 

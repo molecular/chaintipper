@@ -70,17 +70,16 @@ class Plugin(BasePlugin):
 		Hook called when a wallet is loaded and a window opened for it.
 		Instantiates WalletUI for given wallet in given window and stores it in wallet_uis 
 		"""
-		self.runUpdateChecker(window)
-
 		wallet_name = window.wallet.basename()
 
 		self.print_error("load_wallet(", wallet_name,")")
 
-		wallet_ui = WalletUI(wallet, window)
+		wallet_ui = WalletUI(self, wallet, window)
 		self.wallet_uis[wallet_name] = wallet_ui
 
 		# activate chaintipper if desired by user
-		wallet_ui.sbbtn.set_active(read_config(wallet, "activate_on_wallet_open"))
+		active = read_config(wallet, "activate_on_wallet_open")
+		wallet_ui.sbbtn.set_active(active)
 
 		#self.wallet_windows[wallet_name] = window
 
@@ -95,6 +94,7 @@ class Plugin(BasePlugin):
 		# del self.wallet_windows[wallet_name]
 		# self.remove_ui_for_wallet(wallet_name, window)
 
+	
 	# update checker stuff
 
 	def on_auto_update_timeout(self, window):
@@ -187,7 +187,6 @@ class Plugin(BasePlugin):
 		# self.update_checker.raise_()
 		self.update_checker.do_check()
 
-
 		self.update_checker_ran = True
 
 	def getVersionFromManifest(self):
@@ -204,7 +203,6 @@ class Plugin(BasePlugin):
 
 		metadata = plugins.external_plugin_metadata[self.fullname()]
 		version = metadata["version"]
-		return version
 
 		return version
-	
+
