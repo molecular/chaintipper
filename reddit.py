@@ -568,6 +568,8 @@ class Reddit(PrintError, QObject):
 			if len(tipping_comment_ids) > 0:
 				self.print_error(f"fetchTippingComments(): reddit.info({tipping_comment_ids})")
 				for info in self.reddit.info(fullnames = tipping_comment_ids):
+					if self.should_quit:
+						break
 					#self.print_error("info", info)
 					tip = self.wallet_ui.tiplist.tips[info.fullname]
 					tip.parseTippingComment(info)
