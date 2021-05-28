@@ -31,7 +31,7 @@ fi
 echo -ne '{
 	"version": "'${version}'",
 	"uri": "'${uri}'",
-	"zip_filename": "'${zipfile}'"
+	"zip_filename": "'${zipfile}'",
 	"sha256": "'${sha256}'",
 	"sig_ca": "molecular#123",
 	"sig_addr": "bitcoincash:qzz3zl6sl7zahh00dnzw0vrs0f3rxral9uedywqlfw",
@@ -43,7 +43,7 @@ echo -ne '{
 # add and commit latest_version and sha sums
 git add update_checker/latest_version.json
 git add SHA256.ChainTipper.txt
-git commit -m ""
+git commit -m "release.sh (version $version) committing latest_version.json and SHA256sums"
 
 # update version tag and push everything
 git tag -d ${version}
