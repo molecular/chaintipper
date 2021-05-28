@@ -164,7 +164,6 @@ class Plugin(BasePlugin):
 		local_version = self.getVersionFromManifest()
 		self.print_error("local_version:", local_version)
 
-		local_version='nix'
 		if local_version == 'internal':
 			self.print_error("chaintipper runs as 'internal' plugin, aborting update check.")
 			return
