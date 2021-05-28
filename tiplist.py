@@ -70,7 +70,7 @@ class TipListItem(QTreeWidgetItem, PrintError):
 
 	def getDataArray(self, tip):
 		return [
-			tip.getID(),
+			#tip.getID(),
 			format_time(tip.chaintip_message.created_utc), 
 			#tip.type,
 			tip.read_status,
@@ -90,10 +90,10 @@ class TipListItem(QTreeWidgetItem, PrintError):
 			#tip.recipient_address.to_ui_string() if tip.recipient_address else None,
 			#str(tip.tip_quantity),
 			#tip.tip_unit,
-			tip.tipping_comment_id,
+			#tip.tipping_comment_id,
 			#tip.tippee_content_link,
-			tip.tippee_post_id,
-			tip.tippee_comment_id,
+			#tip.tippee_post_id,
+			#tip.tippee_comment_id,
 			tip.tipping_comment.body.partition('\n')[0] if hasattr(tip, "tipping_comment") else ""
 		]
 
@@ -128,7 +128,7 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 
 	def refresh_headers(self):
 		headers = [
-			_('ID'), 
+			#_('ID'), 
 			_('Date'),
 			#_('Type'),
 			_('Read'),
@@ -148,10 +148,10 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 			#_('Recipient Address'),
 			#_('Tip Quantity'),
 			#_('Tip Unit'),
-			_('Tip Comment ID'), 
+			#_('Tip Comment ID'), 
 			#_('Tippee Content Link'),
-			_('Tipee post id'),
-			_('Tipee comment id'),
+			#_('Tipee post id'),
+			#_('Tipee comment id'),
 			_('Tip Comment body')
 		]
 		fx = self.window.fx
@@ -172,6 +172,8 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 
 		self.updated_tips = []
 
+		self.setTiplist(tiplist)
+
 		self.refresh_headers()
 
 		if self.reddit == None:
@@ -190,8 +192,6 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 			self.addTopLevelItem(self.incoming_items)
 			self.other_items = QTreeWidgetItem([_("other messages")])
 			#self.addTopLevelItem(self.other_items)
-
-		self.setTiplist(tiplist)
 
 	def __del__(self):
 		if self.tiplist:
@@ -262,8 +262,9 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 				#self.print_error("digesting tip update for tip", tip)
 				self.calculateFiatAmount(tip)
 				tip.tiplist_item.refreshData()
-			# else:
-			# 	self.print_error("trying to update tip without tiplistitem: ", tip)
+			else:
+				self.updated_tips.append(tip)
+				self.print_error("trying to update tip without tiplistitem: ", tip, ", re-adding to updated_tips list")
 
 	#
 

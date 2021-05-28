@@ -207,9 +207,9 @@ class WalletUI(MessageBoxMixin, PrintError, QWidget):
 			del self.blockchain_watcher
 		if self.vbox:
 			self.vbox.removeWidget(self.tiplist_widget)
-		if self.tiplist:
+		if hasattr(self, "tiplist") and self.tiplist:
 			del self.tiplist
-		if self.tab:
+		if hasattr(self, "tab") and self.tab:
 			self.window.tabs.removeTab(self.window.tabs.indexOf(self.tab))
 #			self.tab.deleteLater()
 		self.tab = None
@@ -271,7 +271,7 @@ class ChaintipperButton(StatusBarButton, PrintError):
 		action_settings = QAction(_("Forget Reddit Authorization (e.g. to switch reddit account)"), self)
 		action_settings.triggered.connect(self.disconnect_reddit)
 
-		action_settings2 = QAction(_("(TEMPORARY) 'Import' 500 more messages/comments from Reddit"), self)
+		action_settings2 = QAction(_("(TEMPORARY) 'Import' 100 more messages/comments from Reddit"), self)
 		action_settings2.triggered.connect(self.unread_messages)
 
 		# action_settings = QAction(_("Global Settings..."), self)
@@ -336,7 +336,7 @@ class ChaintipperButton(StatusBarButton, PrintError):
 
 	def unread_messages(self):
 		if self.wallet_ui.reddit:
-			self.wallet_ui.reddit.markChaintipMessagesUnread(500)
+			self.wallet_ui.reddit.markChaintipMessagesUnread(100)
 
 
 
