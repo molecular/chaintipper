@@ -16,7 +16,7 @@ scripts/package.sh
 # create lastest_release.json
 echo -ne "\n\ncreating latest_version.json...."
 sha256=$(sha256sum ${zipfile} | cut -f 1 -d " ")
-uri='http://criptolayer.net/Pk4p2VyxVtOAkWzq/'${zipfile}
+uri='https://github.com/molecular/chaintipper/releases/tag/'${version}
 
 echo -ne "\n\nwill call ../scripts/sign.sh. open the wallet, then hit <anykey>"
 read
@@ -26,6 +26,7 @@ sig_of_sha256=$(scripts/sign.sh $sha256)
 echo -ne '{
 	"version": "'${version}'",
 	"uri": "'${uri}'",
+	"zip_filename": "'${zipfile}'"
 	"sha256": "'${sha256}'",
 	"sig_ca": "molecular#123",
 	"sig_addr": "bitcoincash:qzz3zl6sl7zahh00dnzw0vrs0f3rxral9uedywqlfw",
@@ -33,7 +34,7 @@ echo -ne '{
 	"sig_of_sha256": "'${sig_of_sha256}'"
 }
 ' > update_checker/latest_version.json
-
+exit
 # add and commit latest_version and sha sums
 git add update_checker/latest_version.json
 git add SHA256.ChainTipper.txt
