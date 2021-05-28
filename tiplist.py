@@ -264,7 +264,7 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 				tip.tiplist_item.refreshData()
 			else:
 				self.updated_tips.append(tip)
-				self.print_error("trying to update tip without tiplistitem: ", tip, ", re-adding to updated_tips list")
+				#self.print_error("trying to update tip without tiplistitem: ", tip, ", re-adding to updated_tips list")
 
 	#
 

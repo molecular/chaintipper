@@ -63,7 +63,7 @@ class UpdateChecker(QWidget, PrintError):
 		# 	self.print_error("   ", k, " = ", v)
 
 		# check if installed version is latest
-		self.print_error("metainfo version: ", metainfo["version"], "local verision:", self.local_version)
+		self.print_error("metainfo version:", metainfo["version"], "local verision:", self.local_version)
 		if metainfo["version"] == self.local_version:
 			self.print_error(f"most recent version {metainfo['version']} already installed.")
 			self.checked.emit(metainfo)
