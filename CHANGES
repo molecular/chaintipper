@@ -1,10 +1,10 @@
-CHANGES
-
-1.0-beta12:
+1.0-beta13:
 
   * fix bug with update_checker always thinking there's a new version
   * do not run update_checker before chaintipper activation
-   
+
++++
+
 1.0-beta12:
 
   * listen to blockchain instead of only connected wallet for payments
