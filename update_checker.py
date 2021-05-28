@@ -76,10 +76,10 @@ class UpdateChecker(QWidget, PrintError):
 		if adr not in self.VERSION_ANNOUNCEMENT_SIGNING_ADDRESSES:
 			raise Exception(f"signig address {adr} not in list of signing addresses")
 
-		# check signature <sha256>
+		# check signature, msg=<sha256>
 		msg = metainfo["sha256"]
 		metainfo["sig_msg"] = msg # for display to user
-		is_verified = bitcoin.verify_message(adr, base64.b64decode(sig), msg.encode('utf-8'), net=MainNet)
+		is_verified = bitcoin.verify_message(adr, base64.b64decode(sig_of_sha256), msg.encode('utf-8'), net=MainNet)
 		self.print_error("signature verified: ", is_verified)
 
 		if is_verified:

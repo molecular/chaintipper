@@ -103,7 +103,8 @@ class Plugin(BasePlugin):
 	def getMetainfoText(self, metainfo):
 		return "".join([
 			"<br><ul>",
-			"<li><b>", _("ZIP uri"), "</b>: ", metainfo["uri"], "</li>",
+			"<li><b>", _("Release Page"), "</b>: ", metainfo["uri"], "</li>",
+			"<li><b>", _("ZIP filename"), "</b>: ", metainfo["zip_filename"], "</li>",
 			"<li><b>", _("SHA256(ZIP file)"), "</b>: ", metainfo["sha256"], "</li>",
 			"<li><b>", _("Signature CashAccount"), "</b>: ", metainfo["sig_ca"], "</li>",
 			"<li><b>", _("Signature Address"), "</b>: ", metainfo["sig_addr"], "</li>",
@@ -122,9 +123,9 @@ class Plugin(BasePlugin):
 				"<h3>", _("New ChainTipper version {} available").format(metainfo["version"]), "</h3>",
 				_("The new version will <b>not</b> be automatically installed. You will have to do this manually."), "<br>",
 				self.getMetainfoText(metainfo),
-				"<b>", _("You can open the download link in your browser."), "</b>"
+				"<b>", _("You can open the linked github release page in your browser and download the plugin ZIP file."), "</b>"
 			]),
-			buttons = (_("Open Browser with download link"), _("Not now, close")),
+			buttons = (_("Open Browser to github release page"), _("Not now, close")),
 			defaultButton = _("Open Browser"),
 			escapeButton = _("Not now, close")
 		)
@@ -163,6 +164,7 @@ class Plugin(BasePlugin):
 		local_version = self.getVersionFromManifest()
 		self.print_error("local_version:", local_version)
 
+		local_version='nix'
 		if local_version == 'internal':
 			self.print_error("chaintipper runs as 'internal' plugin, aborting update check.")
 			return

@@ -34,7 +34,7 @@ echo -ne '{
 	"sig_of_sha256": "'${sig_of_sha256}'"
 }
 ' > update_checker/latest_version.json
-exit
+
 # add and commit latest_version and sha sums
 git add update_checker/latest_version.json
 git add SHA256.ChainTipper.txt
