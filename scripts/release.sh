@@ -23,6 +23,11 @@ read
 sig=$(scripts/sign.sh $version,$uri,$sha256)
 sig_of_sha256=$(scripts/sign.sh $sha256)
 
+if [ "$sig" -eq "" ]; then
+	echo "signing failed: sig is empty"
+	exit 1
+fi
+
 echo -ne '{
 	"version": "'${version}'",
 	"uri": "'${uri}'",
