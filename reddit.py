@@ -94,7 +94,6 @@ class Reddit(PrintError, QObject):
 		self.should_quit = False
 		self.state = None # used in reddit auth flow
 		self.tips_to_refresh = []
-		self.tip_or_message_by_message = dict()
 		self.unassociated_claim_return_by_tipping_comment_id = defaultdict(list) # store claim/return info (dict with "message" and "action") for later association with a tip
 		self.unassociated_chaintip_comments_by_tipping_comment_id = {} # store chaintip comments for later association with a tip
 		self.items_by_fullname = {}
@@ -367,10 +366,11 @@ class Reddit(PrintError, QObject):
 
 		for item in items:
 			if isinstance(item, praw.models.Message):
-				tip = self.tip_or_message_by_message[item.id]
-				if isinstance(tip, RedditTip):
-					tip.read_status = 'read' if not unread else 'new'
-					self.wallet_ui.tiplist.updateTip(tip)
+				if item.id in self.wallet_ui.tiplist.tips.keys():
+					tip = self.wallet_ui.tiplist.tips[item.id]
+					if isinstance(tip, RedditTip):
+						tip.read_status = 'read' if not unread else 'new'
+						self.wallet_ui.tiplist.updateTip(tip)
 
 	def mark_read_unassociated_items(self):
 		# mark_read all unassociated items
@@ -539,8 +539,7 @@ class Reddit(PrintError, QObject):
 		if isinstance(item, praw.models.Message):
 			message = item
 			# if message hasn't been seen before, digest according to its nature
-			if message.id not in self.tip_or_message_by_message: 
-				self.tip_or_message_by_message[message.id] = message
+			if message.id not in self.wallet_ui.tiplist.tips.keys(): 
 				claimed_or_returned = self.parseClaimedOrReturnedMessage(message)
 
 				if not claimed_or_returned: # must be a tip message
@@ -554,7 +553,6 @@ class Reddit(PrintError, QObject):
 					# parse message and fill tip values
 					tip.parseChaintipMessage(message)
 
-					self.tip_or_message_by_message[message.id] = tip
 					if item_is_new:
 						tip.read_status = 'new'
 					if tip.isValid():
@@ -563,7 +561,7 @@ class Reddit(PrintError, QObject):
 
 			# if we've seen the message before, just mark associated tip as "new"
 			elif item_is_new:
-				tip = self.tip_or_message_by_message[message.id]
+				tip = self.wallet_ui.tiplist.tips[message.id]
 				if isinstance(tip, RedditTip):
 					tip.read_status = 'new'
 					self.wallet_ui.tiplist.updateTip(tip)
