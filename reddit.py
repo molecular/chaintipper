@@ -383,6 +383,11 @@ class Reddit(PrintError, QObject):
 		self.unassociated_claim_return_by_tipping_comment_id = defaultdict(list)
 		self.unassociated_chaintip_comments_by_tipping_comment_id = {}
 
+	def findTipByReference(self, reference):
+		for tip in self.wallet_ui.tiplist.tips.values():
+			if tip.getReference() == reference:
+				return tip
+		raise Exception(f"tip not found by reference {reference}")
 
 	p_claimed_subject = re.compile('Tip claimed.')
 	p_returned_subject = re.compile('Tip returned to you.')
@@ -459,7 +464,7 @@ class Reddit(PrintError, QObject):
 			#self.print_error("", message.fullname, ": looking for tip...")
 			# find tip matching claim and set its acceptance_status
 			try:
-				tip = self.wallet_ui.tiplist.tips[reference]
+				tip = self.findTipByReference(reference)
 				#self.print_error(f"when parsing claim/returned message {message.id}: found matching tip (for claim)", tip)
 				self.print_error("", message.fullname, ": setAcceptance...()")
 				tip.setAcceptanceOrConfirmationStatus(message, action)
@@ -572,9 +577,11 @@ class Reddit(PrintError, QObject):
 					if self.should_quit:
 						break
 					#self.print_error("info", info)
-					tip = self.wallet_ui.tiplist.tips[info.fullname]
-					tip.parseTippingComment(info)
-
+					try:
+						tip = self.findTipByReference(info.fullname)
+						tip.parseTippingComment(info)
+					except Exception as e: # possibly tip was removed while we made the request
+						self.print_error(f"fetchTippingComments() error: {e}")
 
 
 	def run(self):
@@ -737,6 +744,9 @@ class RedditTip(Tip):
 		}
 
 	def getID(self):
+		return self.chaintip_message_id
+
+	def getReference(self):
 		if self.tipping_comment_id:
 			return self.tipping_comment_id
 		elif self.tippee_comment_id:

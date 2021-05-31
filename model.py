@@ -98,11 +98,11 @@ class TipList(PrintError, QObject):
 
 class TipListener():
 	def tipAdded(self, tip):
-		print_error("not implemented")
+		raise Exception(f"tipAdded() not implemented in class {type(self)}")
 
 	def tipRemoved(self, tip):
-		print_error("not implemented")
+		raise Exception(f"tipRemoved() not implemented in class {type(self)}")
 
 	def tipUpdated(self, tip):
-		print_error("not implemented")
+		raise Exception(f"tipUpdated() not implemented in class {type(self)}")
 

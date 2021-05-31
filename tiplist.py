@@ -408,12 +408,6 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 		# create the context menu
 		menu = QMenu()
 
-		# remove
-		if len(tips) > 0:
-			menu.addAction(_("remove{}").format(count_display_string), lambda: doRemove(tips, True))
-			menu.addSeparator()
-
-
 		# mark_read
 		if len(new_tips) > 0:
 			menu.addAction(_("mark read{}").format(new_count_display_string), lambda: doMarkRead(new_tips, True))
@@ -454,10 +448,16 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 			if hasattr(tip, "recipient_address") and tip.recipient_address:
 				menu.addAction(_(f"open blockexplorer to recipient address"), lambda: doOpenBlockExplorerAddress(tip.recipient_address))
 
-		menu.addSeparator()
-
+		# pay...
 		if len(unpaid_tips) > 0:
+			menu.addSeparator()
 			menu.addAction(_(f"pay{unpaid_count_display_string}..."), lambda: doPay(unpaid_tips))
+
+		# remove
+		if len(tips) > 0:
+			menu.addSeparator()
+			menu.addAction(_("remove{}").format(count_display_string), lambda: doRemove(tips))
+
 		
 		menu.exec_(self.viewport().mapToGlobal(position))
 

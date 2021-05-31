@@ -175,6 +175,9 @@ class WalletUI(MessageBoxMixin, PrintError, QWidget):
 		else:
 			self.reddit_thread_finished()
 
+		# write storage
+		self.wallet.storage.write()
+
 	def reddit_thread_finished(self):
 		self.remove_ui()
 		self.show_previous_tab()
@@ -200,7 +203,7 @@ class WalletUI(MessageBoxMixin, PrintError, QWidget):
 		self.autopay = AutoPay(self.wallet, self.tiplist)
 		self.blockchain_watcher = BlockchainWatcher(self.wallet, self.tiplist)
 		self.tiplist_widget = TipListWidget(self, self.window, self.wallet, self.tiplist, self.reddit)
-		self.tiplist.read(self.wallet.storage)
+		#self.tiplist.read(self.wallet.storage)
 		self.vbox.addWidget(self.tiplist_widget)
 
 		self.tab = self.window.create_list_tab(self)

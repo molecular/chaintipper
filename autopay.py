@@ -41,7 +41,8 @@ class AutoPay(TipListener, PrintError):
 
 	# TipListener overrides
 
-	#def tipRemoved(self, tip):
+	def tipRemoved(self, tip):
+		True or False
 
 	def tipAdded(self, tip):
 		self.tipUpdated(tip)
