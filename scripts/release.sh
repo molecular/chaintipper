@@ -61,4 +61,6 @@ if [ -e "scripts/${sh}" ]; then
 	scripts/${sh}
 fi
 
+cat SHA256.ChainTipper.txt | tail -n 1
+
 echo "as a last step, to activate update_checker, merge develop -> release, then push"
