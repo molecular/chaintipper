@@ -82,6 +82,8 @@ class TipList(PrintError, QObject):
 		self.tip_listeners.remove(tip_listener)
 
 	def addTip(self, tip):
+		if tip.getID() in self.tips.keys():
+			raise Exception("addTip(): duplicate tip.getID()")
 		self.tips[tip.getID()] = tip
 		for tip_listener in self.tip_listeners:
 			tip_listener.tipAdded(tip)

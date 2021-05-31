@@ -55,8 +55,12 @@ from . import prawcore
 #                                                                                                            88                                              #
 ##############################################################################################################################################################
 
+class StorageVersionMismatchException(Exception):
+	pass
+
 class PersistentTipList(TipList):
 	KEY = "chaintipper_tiplist"
+	STORAGE_VERSION = "2"
 
 	def __init__(self, wallet_ui):
 		super(PersistentTipList, self).__init__()
@@ -84,16 +88,19 @@ class PersistentTipList(TipList):
 
 	def write_if_dirty(self, storage: WalletStorage):
 		if self.dirty:
-			d = self.to_dict()
+			d = {
+				"version": PersistentTipList.STORAGE_VERSION,
+				"tips": self.to_dict()
+			}
 			storage.put(PersistentTipList.KEY, d)
 			self.dirty = False
 
 	def read(self, storage: WalletStorage):
 		data = storage.get(PersistentTipList.KEY)
-		if not data:
-			return
-		self.print_error("read() d:", data.values())
-		for id, d in data.items():
+		if not data or not "version" in data.keys() or data["version"] != PersistentTipList.STORAGE_VERSION:
+			raise StorageVersionMismatchException("tiplist not in wallet storage or tiplist storage version too old")
+		tips = data["tips"]
+		for id, d in tips.items():
 			# klass = globals()[d["_class_name"]]
 			# tip = klass(self)
 			class_name = d["_class_name"]
@@ -132,7 +139,7 @@ class TipListItem(QTreeWidgetItem, PrintError):
 
 	def getDataArray(self, tip):
 		return [
-			#tip.getID(),
+			tip.getID(),
 			format_time(tip.chaintip_message_created_utc), 
 			#tip.type,
 			tip.read_status,
@@ -189,7 +196,7 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 
 	def refresh_headers(self):
 		headers = [
-			#_('ID'), 
+			_('getID()'), 
 			_('Date'),
 			#_('Type'),
 			_('Read'),
@@ -421,7 +428,7 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 		if len(tips) == 1:
 			tip = tips[0]
 
-			if tip.chaintip_message:
+			if tip.chaintip_message_id:
 				menu.addAction(_("open browser to chaintip message"), lambda: doOpenBrowser("/message/messages/" + tip.chaintip_message_id))
 
 			# open browser...			

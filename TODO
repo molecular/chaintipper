@@ -12,6 +12,8 @@
 		* skip "tip received" messages in reddit.markChaintipMessagesUnread()
 		* quick deactivate/activate leads to error
 		* when tipping posts, subreddit is not parsed
+		* self.tip_or_message_by_message[message.id] = tip <- can be replace by self.wallet_ui.tiplist.tips, because getID() is now message.id
+
 
 	* beta n+2
 
@@ -20,7 +22,7 @@
 		* top up, double down
 		* move reddit forget button to settings
 
-		* about box
+		* about box (see main_window:772)
 
 	* consider it
 

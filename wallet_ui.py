@@ -30,7 +30,7 @@ from .qresources import qInitResources
 from . import fullname
 from .reddit import Reddit
 from .model import TipList, TipListener
-from .tiplist import TipListWidget, PersistentTipList
+from .tiplist import TipListWidget, PersistentTipList, StorageVersionMismatchException
 from .util import read_config, write_config, commit_config
 from .config import c, amount_config_to_rich_text
 from .blockchain_watcher import BlockchainWatcher
@@ -163,6 +163,7 @@ class WalletUI(MessageBoxMixin, PrintError, QWidget):
 		self.show_chaintipper_tab()
 
 		self.plugin.runUpdateChecker(self.window)
+		self.initializeTipList()
 
 	def deactivate(self):
 		"""
@@ -197,13 +198,39 @@ class WalletUI(MessageBoxMixin, PrintError, QWidget):
 			self.window.tabs.setCurrentIndex(self.previous_tab_index)
 			self.previous_tab_index = None
 
+	def importTipsFromReddit(self):
+		choice = self.msg_box(
+			icon = QMessageBox.Question,
+			parent = self,
+			title = _("Cannot load tips from wallet file"),
+			rich_text = True,
+			text = "".join([
+				"<h3>", _("TipList storage version too old"), "</h3>",
+				_("Either there is no List of Tips stored in your wallet file (yet), or the storage version is too old"), "<br><br>",
+				_("You can 'import' tips (i.e. read inbox items authored by u/chaintip) from reddit... either all available items, 10 days worth of items or only items that are currently marked 'unread'."), "<br><br>",
+				_("After this initial import, new items coming into your inbox will be automatically read and digested into the list of tips according to their meaning."), "<br><br>"
+			]),
+			buttons = (_("Import all available"), _("Import 10 days worth"), _("Import currently unread")),
+			defaultButton = _("Import 10 days worth"),
+			escapeButton = _("Import only currently unread inbox items"),
+		)
+		if choice in (0, 1): # import messages from reddit
+			days = (-1, 10)[choice]
+			self.reddit.markChaintipMessagesUnread(days)
+
+	def initializeTipList(self):
+		try:
+			self.tiplist.read(self.wallet.storage)
+		except StorageVersionMismatchException as e:
+			self.print_error("error loading tips from wallet file: ", e)
+			self.importTipsFromReddit()
+
 	def add_ui(self):
 		"""construct TipList, and a tab with tiplist widget and add it to window"""
 		self.tiplist = PersistentTipList(self)
 		self.autopay = AutoPay(self.wallet, self.tiplist)
 		self.blockchain_watcher = BlockchainWatcher(self.wallet, self.tiplist)
 		self.tiplist_widget = TipListWidget(self, self.window, self.wallet, self.tiplist, self.reddit)
-		#self.tiplist.read(self.wallet.storage)
 		self.vbox.addWidget(self.tiplist_widget)
 
 		self.tab = self.window.create_list_tab(self)
@@ -281,8 +308,8 @@ class ChaintipperButton(StatusBarButton, PrintError):
 		action_settings = QAction(_("Forget Reddit Authorization (e.g. to switch reddit account)"), self)
 		action_settings.triggered.connect(self.disconnect_reddit)
 
-		action_settings2 = QAction(_("(TEMPORARY) 'Import' 10 more messages/comments from Reddit"), self)
-		action_settings2.triggered.connect(self.unread_messages)
+		action_settings2 = QAction(_("(TEMPORARY) 'Import' 10 days worth of items from reddit"), self)
+		action_settings2.triggered.connect(lambda: self.wallet_ui.reddit.markChaintipMessagesUnread(10))
 
 		# action_settings = QAction(_("Global Settings..."), self)
 		# action_settings.triggered.connect(self.wallet_ui.plugin.show_settings_dialog)
@@ -298,7 +325,7 @@ class ChaintipperButton(StatusBarButton, PrintError):
 			action_wsettings,
 			action_settings,
 			action_settings2,
-			action_separator2, 
+			action_separator2,
 			show_monikers
 		])
 
@@ -343,10 +370,6 @@ class ChaintipperButton(StatusBarButton, PrintError):
 	def disconnect_reddit(self):
 		self.wallet_ui.reddit.disconnect()
 		self.set_active(False)
-
-	def unread_messages(self):
-		if self.wallet_ui.reddit:
-			self.wallet_ui.reddit.markChaintipMessagesUnread(10)
 
 
 

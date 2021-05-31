@@ -301,26 +301,26 @@ class Reddit(PrintError, QObject):
 
 	p_mark_1 = re.compile('u/(\S*) has not yet linked an address\.', re.MULTILINE | re.DOTALL)
 	p_mark_2 = re.compile('Unfortunately, this .* bot is unable to understand your message\..*', re.MULTILINE | re.DOTALL)
-	def markChaintipMessagesUnread(self, limit):
+	def markChaintipMessagesUnread(self, limit_days):
+		current_time_utc = int(round(time()))
 		items = []
-		for item in self.reddit.inbox.all(limit=1000):
+		for item in self.reddit.inbox.all():
 			if item.new: continue
 			if item.author != 'chaintip': continue
-			if isinstance(item, praw.models.Message) and item.subject == 'Trying to tip yourself?': 
-				continue
+			if isinstance(item, praw.models.Message):
+				if limit_days > 0 and (current_time_utc - item.created_utc) / 60*60*24 < limit_days:
+					break 
+				if item.subject == 'Trying to tip yourself?': 
+					continue
 			if Reddit.p_mark_1.match(item.body): 
 				continue
 			if Reddit.p_mark_2.match(item.body): 
 				continue
 
 			if item.author == 'chaintip' and item.fullname not in self.items_by_fullname:
-				limit -= 1
 				items.append(item)
 
-			if limit <= 0:
-				break
-
-		self.print_error("found ", len(items), "new items")
+		self.print_error(f"found {len(items)} items younger than {limit_days} days")
 		self.reddit.inbox.mark_unread(items)
 		self.items_by_fullname = {} # to enable unread() loop to read everything
 
@@ -544,8 +544,16 @@ class Reddit(PrintError, QObject):
 				claimed_or_returned = self.parseClaimedOrReturnedMessage(message)
 
 				if not claimed_or_returned: # must be a tip message
-					tip = RedditTip(self.wallet_ui.tiplist, self)
+					# try to find existing tip by message.id
+					if message.id in self.wallet_ui.tiplist.tips.keys():
+						tip = self.wallet_ui.tiplist.tips[message.id]
+					# if not found, instantiate new tip
+					else:
+						tip = RedditTip(self.wallet_ui.tiplist, self)
+
+					# parse message and fill tip values
 					tip.parseChaintipMessage(message)
+
 					self.tip_or_message_by_message[message.id] = tip
 					if item_is_new:
 						tip.read_status = 'new'
@@ -703,6 +711,9 @@ class RedditTip(Tip):
 		else:
 			return "t1_" + id
 
+	def getID(self):
+		return self.chaintip_message_id
+
 	def __str__(self):
 		return f"RedditTip {self.getID()}: {self.amount_bch} to {self.username}"
 
@@ -742,9 +753,6 @@ class RedditTip(Tip):
 			"chaintip_message_subject": self.chaintip_message_subject,
 			"chaintip_message_author_name": self.chaintip_message_author_name,
 		}
-
-	def getID(self):
-		return self.chaintip_message_id
 
 	def getReference(self):
 		if self.tipping_comment_id:
