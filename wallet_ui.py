@@ -30,7 +30,7 @@ from .qresources import qInitResources
 from . import fullname
 from .reddit import Reddit
 from .model import TipList, TipListener
-from .tiplist import TipListWidget
+from .tiplist import TipListWidget, PersistentTipList
 from .util import read_config, write_config, commit_config
 from .config import c, amount_config_to_rich_text
 from .blockchain_watcher import BlockchainWatcher
@@ -105,6 +105,10 @@ class WalletUI(MessageBoxMixin, PrintError, QWidget):
 		if s != self.old_debug_stats:
 			self.old_debug_stats = s
 			self.print_error(s)
+
+	def persistTipList(self):
+		if isinstance(self.tiplist, PersistentTipList):
+			self.tiplist.write_if_dirty(self.wallet.storage)
 
 	def kill_join(self):
 		self.print_error("kill_join()")
@@ -192,11 +196,11 @@ class WalletUI(MessageBoxMixin, PrintError, QWidget):
 
 	def add_ui(self):
 		"""construct TipList, and a tab with tiplist widget and add it to window"""
-		self.tiplist = TipList()
+		self.tiplist = PersistentTipList(self)
 		self.autopay = AutoPay(self.wallet, self.tiplist)
 		self.blockchain_watcher = BlockchainWatcher(self.wallet, self.tiplist)
 		self.tiplist_widget = TipListWidget(self, self.window, self.wallet, self.tiplist, self.reddit)
-		#self.tiplist_widget.checkPaymentStatus()
+		self.tiplist.read(self.wallet.storage)
 		self.vbox.addWidget(self.tiplist_widget)
 
 		self.tab = self.window.create_list_tab(self)
@@ -274,7 +278,7 @@ class ChaintipperButton(StatusBarButton, PrintError):
 		action_settings = QAction(_("Forget Reddit Authorization (e.g. to switch reddit account)"), self)
 		action_settings.triggered.connect(self.disconnect_reddit)
 
-		action_settings2 = QAction(_("(TEMPORARY) 'Import' 100 more messages/comments from Reddit"), self)
+		action_settings2 = QAction(_("(TEMPORARY) 'Import' 10 more messages/comments from Reddit"), self)
 		action_settings2.triggered.connect(self.unread_messages)
 
 		# action_settings = QAction(_("Global Settings..."), self)
@@ -339,7 +343,7 @@ class ChaintipperButton(StatusBarButton, PrintError):
 
 	def unread_messages(self):
 		if self.wallet_ui.reddit:
-			self.wallet_ui.reddit.markChaintipMessagesUnread(100)
+			self.wallet_ui.reddit.markChaintipMessagesUnread(10)
 
 
 

@@ -28,7 +28,7 @@ from electroncash.storage import WalletStorage
 from electroncash.keystore import Hardware_KeyStore
 from electroncash.wallet import Standard_Wallet, Multisig_Wallet
 from electroncash.address import Address
-from electroncash.wallet import Abstract_Wallet
+from electroncash.wallet import Abstract_Wallet, WalletStorage
 import electroncash.web as web
 
 from .model import Tip, TipList, TipListener
@@ -41,6 +41,68 @@ from . import praw
 from . import prawcore
 
 
+##############################################################################################################################################################
+#                                                                                                                                                            #
+#    88888888ba                                 88                                           888888888888 88             88          88                      #
+#    88      "8b                                ""             ,d                           ,d    88      ""             88          ""             ,d       #
+#    88      ,8P                                               88                           88    88                     88                         88       #
+#    88aaaaaa8P' ,adPPYba, 8b,dPPYba, ,adPPYba, 88 ,adPPYba, MM88MMM ,adPPYba, 8b,dPPYba, MM88MMM 88      88 8b,dPPYba,  88          88 ,adPPYba, MM88MMM    #
+#    88""""""'  a8P_____88 88P'   "Y8 I8[    "" 88 I8[    ""   88   a8P_____88 88P'   `"8a  88    88      88 88P'    "8a 88          88 I8[    ""   88       #
+#    88         8PP""""""" 88          `"Y8ba,  88  `"Y8ba,    88   8PP""""""" 88       88  88    88      88 88       d8 88          88  `"Y8ba,    88       #
+#    88         "8b,   ,aa 88         aa    ]8I 88 aa    ]8I   88,  "8b,   ,aa 88       88  88,   88      88 88b,   ,a8" 88          88 aa    ]8I   88,      #
+#    88          `"Ybbd8"' 88         `"YbbdP"' 88 `"YbbdP"'   "Y888 `"Ybbd8"' 88       88  "Y888 88      88 88`YbbdP"'  88888888888 88 `"YbbdP"'   "Y888    #
+#                                                                                                            88                                              #
+#                                                                                                            88                                              #
+##############################################################################################################################################################
+
+class PersistentTipList(TipList):
+	KEY = "chaintipper_tiplist"
+
+	def __init__(self, wallet_ui):
+		super(PersistentTipList, self).__init__()
+		self.wallet_ui = wallet_ui
+		self.dirty = False
+
+	def addTip(self, tip):
+		super().addTip(tip)
+		self.dirty = True
+
+	def removeTip(self, tip):
+		super().removeTip(tip)
+		self.dirty = True
+
+	def updateTip(self, tip):
+		super().updateTip(tip)
+		self.dirty = True
+
+	def to_dict(self):
+		d = {}
+		for id, tip in self.tips.items():
+			d[id] = tip.to_dict()
+			d[id]["_class_name"] = type(tip).__name__
+		return d
+
+	def write_if_dirty(self, storage: WalletStorage):
+		if self.dirty:
+			d = self.to_dict()
+			storage.put(PersistentTipList.KEY, d)
+			self.dirty = False
+
+	def read(self, storage: WalletStorage):
+		data = storage.get(PersistentTipList.KEY)
+		if not data:
+			return
+		self.print_error("read() d:", data.values())
+		for id, d in data.items():
+			# klass = globals()[d["_class_name"]]
+			# tip = klass(self)
+			class_name = d["_class_name"]
+			if class_name == "RedditTip":
+				tip = RedditTip(self, self.wallet_ui.reddit)
+			tip.from_dict(d)
+			assert tip.getID() == id
+			self.addTip(tip)
+			self.updateTip(tip)
 
 #################################################
 #                                               #
@@ -71,16 +133,15 @@ class TipListItem(QTreeWidgetItem, PrintError):
 	def getDataArray(self, tip):
 		return [
 			#tip.getID(),
-			format_time(tip.chaintip_message.created_utc), 
+			format_time(tip.chaintip_message_created_utc), 
 			#tip.type,
 			tip.read_status,
 			tip.acceptance_status,
 			tip.payment_status,
 			"{0:.8f}".format(tip.amount_received_bch) if isinstance(tip.amount_received_bch, Decimal) else "",
 			tip.chaintip_confirmation_status if hasattr(tip, "chaintip_confirmation_status") else "",
-			#str(self.autopay.qualifiesForAutopay(tip)),
-			#tip.chaintip_message.author.name,
-			#tip.chaintip_message.subject,
+			tip.chaintip_message_author_name,
+			tip.chaintip_message_subject,
 			tip.subreddit_str if hasattr(tip, "subreddit_str") else "",
 			tip.username,
 			#tip.direction,
@@ -136,9 +197,8 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 			_('Payment'),
 			_('Received (BCH)'),
 			_('ChainTip'),
-			#_('will autopay'), 
-			#_('Author'), 
-			#_('Subject'), 
+			_('Author'), 
+			_('Subject'), 
 			_('Subreddit'), 
 			_('Recipient'), 
 			#_('Direction'), 
@@ -167,7 +227,6 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 		self.wallet_ui = wallet_ui
 		self.window = window
 		self.wallet = wallet
-		self.tiplist = None # will be set at end of __init__
 		self.reddit = reddit
 
 		self.updated_tips = []
@@ -198,7 +257,7 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 			self.tiplist.unregistertipListener(self)
 
 	def setTiplist(self, tiplist):
-		if self.tiplist:
+		if hasattr(self, "tiplist") and self.tiplist:
 			self.tiplist.unregistertipListener(self)
 
 		self.tiplist = tiplist
@@ -210,7 +269,7 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 
 	def calculateFiatAmount(self, tip):
 		# calc tip.amount_fiat
-		d_t = datetime.utcfromtimestamp(tip.chaintip_message.created_utc)
+		d_t = datetime.utcfromtimestamp(tip.chaintip_message_created_utc)
 		fx_rate = self.window.fx.history_rate(d_t)
 
 		if fx_rate and tip.amount_bch:
@@ -281,7 +340,7 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 			# calc description
 			desc, desc_separator = ("chaintip ", "")
 			for tip in valid_tips:
-				desc += f"{desc_separator}{tip.amount_bch} BCH to u/{tip.username} ({tip.chaintip_message.id})"
+				desc += f"{desc_separator}{tip.amount_bch} BCH to u/{tip.username} ({tip.chaintip_message_id})"
 				desc_separator = ", "
 
 			# calc payto
@@ -323,6 +382,11 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 		def doMarkRead(tips: list, include_associated_items: bool = False, unread: bool = False):
 			self.reddit.mark_read_tips(tips, include_associated_items, unread)
 
+		def doRemove(tips: list):
+			for tip in tips:
+				tip.remove()
+				del tip
+
 		col = self.currentColumn()
 		column_title = self.headerItem().text(col)
 
@@ -344,6 +408,12 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 		# create the context menu
 		menu = QMenu()
 
+		# remove
+		if len(tips) > 0:
+			menu.addAction(_("remove{}").format(count_display_string), lambda: doRemove(tips, True))
+			menu.addSeparator()
+
+
 		# mark_read
 		if len(new_tips) > 0:
 			menu.addAction(_("mark read{}").format(new_count_display_string), lambda: doMarkRead(new_tips, True))
@@ -358,7 +428,7 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 			tip = tips[0]
 
 			if tip.chaintip_message:
-				menu.addAction(_("open browser to chaintip message"), lambda: doOpenBrowser("/message/messages/" + tip.chaintip_message.id))
+				menu.addAction(_("open browser to chaintip message"), lambda: doOpenBrowser("/message/messages/" + tip.chaintip_message_id))
 
 			# open browser...			
 			if tip.tippee_content_link:
@@ -402,70 +472,3 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 			i = self.outgoing_items
 		return i
 
-	# def potentiallyAutoPay(self, tips: list):
-	# 	if read_config(self.wallet, "autopay"):
-	# 		tips_to_pay = [tip for tip in tips if tip.payment_status == 'ready to pay']
-	# 		self.pay(tips_to_pay)
-
-	# def checkPaymentStatus(self):
-	# 	return 
-		# txo = self.wallet.storage.get('txo', {})
-		# self.txo = {tx_hash: self.wallet.to_Address_dict(value)
-		# 	for tx_hash, value in txo.items()
-		# 	# skip empty entries to save memory and disk space
-		# 	if value}
-		# for txhash in txo:
-		# 	#self.print_error("  txhash", txhash)
-		# 	##tx = Transaction.tx_cache_get(txhash)
-		# 	tx = self.wallet.transactions.get(txhash)
-		# 	#txinfo = self.wallet.get_tx_info(tx)
-		# 	for txout in tx.outputs():
-		# 		#self.print_error("     txout", txout)
-		# 		#self.print_error("     address", txout[1])
-		# 		address = txout[1]
-		# 		satoshis = txout[2]
-
-		# 		try:
-		# 			tip = self.tips_by_address[address]
-		# 			#self.print_error("   ****** TIP", tip, "paid in txhash", txhash)
-		# 			tip.registerPayment(txhash, Decimal("0.00000001") * satoshis, "wallet")
-		# 			# if tip.payment_status[:4] != "paid":
-		# 			# 	tip.payment_status = "paid"
-		# 			# 	tip.payment_txid = txhash
-		# 			# 	self.tiplist.updateTip(tip)
-		# 		except KeyError:
-		# 			continue
-		# 			#self.print_error("   cannot find tip for address", address)
-
-
-
-			# hist = self.wallet.get_history(self.get_domain(), reverse=True)
-			# for h in hist:
-			# 	self.print_error("  h: ", h)
-
-
-	# 	"""Returns the failure reason as a string on failure, or 'None'
-	# 	on success."""
-	# 	self.wallet.add_input_info(coin)
-	# 	inputs = [coin]
-	# 	self.print_error("recipient_address: ", recipient_address)
-	# 	outputs = [(recipient_address.kind, recipient_address, coin['value'])]
-	# 	kwargs = {}
-	# 	if hasattr(self.wallet, 'is_schnorr_enabled'):
-	# 		# This EC version has Schnorr, query the flag
-	# 		kwargs['sign_schnorr'] = self.wallet.is_schnorr_enabled()
-	# 	# create the tx once to get a fee from the size
-	# 	tx = Transaction.from_io(inputs, outputs, locktime=self.wallet.get_local_height(), **kwargs)
-	# 	fee = tx.estimated_size()
-	# 	if coin['value'] - fee < self.wallet.dust_threshold():
-	# 		self.print_error("Resulting output value is below dust threshold, aborting send_tx")
-	# 		return _("Too small")
-	# 	# create the tx again, this time with the real fee
-	# 	outputs = [(recipient_address.kind, recipient_address, coin['value'] - fee)]
-	# 	tx = Transaction.from_io(inputs, outputs, locktime=self.wallet.get_local_height(), **kwargs)
-	# 	try:
-	# 		self.wallet.sign_transaction(tx, self.password)
-	# 	except InvalidPassword as e:
-	# 		return str(e)
-	# 	except Exception:
-	# 		return _("Unspecified failure")

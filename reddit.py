@@ -539,7 +539,8 @@ class Reddit(PrintError, QObject):
 				claimed_or_returned = self.parseClaimedOrReturnedMessage(message)
 
 				if not claimed_or_returned: # must be a tip message
-					tip = RedditTip(self.wallet_ui.tiplist, self, message)
+					tip = RedditTip(self.wallet_ui.tiplist, self)
+					tip.parseChaintipMessage(message)
 					self.tip_or_message_by_message[message.id] = tip
 					if item_is_new:
 						tip.read_status = 'new'
@@ -630,7 +631,7 @@ class Reddit(PrintError, QObject):
 				
 				self.fetchTippingComments()
 
-				# self.wallet_ui.print_debug_stats()
+				#self.wallet_ui.print_debug_stats()
 
 				self.markReadFinishedTips()
 			
@@ -648,6 +649,7 @@ class Reddit(PrintError, QObject):
 							item = cr["message"]
 							self.print_error(f"{k}: {format_time(item.created_utc)} {item.subject}")
 
+				self.wallet_ui.persistTipList()
 
 				# after first cycle, assumption is that unassociated items are for old tips that will never load
 				# note: this assumption is false with the "TEMPORARY load more items" feature
@@ -689,30 +691,50 @@ class Reddit(PrintError, QObject):
 class RedditTip(Tip):
 
 	def sanitizeID(id):
-		# if id[0] == "t" and id[2] == "_":
-		# 	return id[3:]
-		# else:
-		# 	return id
 		if id[0] == "t" and id[2] == "_":
 			return id
 		else:
 			return "t1_" + id
 
-	def __init__(self, tiplist: TipList, reddit: Reddit, message: praw.models.Message):
+	def __str__(self):
+		return f"RedditTip {self.getID()}: {self.amount_bch} to {self.username}"
+
+	def __init__(self, tiplist: TipList, reddit: Reddit):
 		Tip.__init__(self, tiplist)
 		self.platform = "reddit"
 		self.reddit = reddit
 		self.acceptance_status = ""
 		self.read_status = "read" # will be set to "new" by inbox streamer
 
-		self.chaintip_message = message
-
-		self.parseChaintipMessage()
-
-	def __str__(self):
-		return f"RedditTip {self.getID()}: {self.amount_bch} to {self.username}"
+		self.chaintip_message_id = ""
+		self.chaintip_message_created_utc = ""
+		self.chaintip_message_author_name = ""
+		self.chaintip_message_subject = ""
 
 	# Tip overrides
+
+	def from_dict(self, d: dict):
+		"""used to load from wallet storage"""
+		self.tipping_comment_id = d["tipping_comment_id"]
+		self.tippee_comment_id = d["tippee_comment_id"]
+		self.tippee_post_id = d["tippee_post_id"]
+		self.read_status = d["read_status"]
+		self.chaintip_message_id = d["chaintip_message_id"]
+		self.chaintip_message_created_utc = d["chaintip_message_created_utc"]
+		self.chaintip_message_subject = d["chaintip_message_subject"]
+		self.chaintip_message_author_name = d["chaintip_message_author_name"]
+
+	def to_dict(self):
+		return {
+			"tipping_comment_id": self.tipping_comment_id,
+			"tippee_comment_id": self.tippee_comment_id,
+			"tippee_post_id": self.tippee_post_id,
+			"read_status": self.read_status,
+			"chaintip_message_id": self.chaintip_message_id,
+			"chaintip_message_created_utc": self.chaintip_message_created_utc,
+			"chaintip_message_subject": self.chaintip_message_subject,
+			"chaintip_message_author_name": self.chaintip_message_author_name,
+		}
 
 	def getID(self):
 		if self.tipping_comment_id:
@@ -767,7 +789,8 @@ class RedditTip(Tip):
 	p_sender = re.compile('^u/(\S*) has just sent you (\S*) Bitcoin Cash \(about \S* USD\) \[via\]\(\S*/_/(\S*)\) .*', re.MULTILINE | re.DOTALL)
 	p_stealth = re.compile('.*Tip \*\*.*\*\* for their \[(\w*)\]\((/(r/\w*)/\S*/(\w*)/(\w*)/)\).*', re.MULTILINE | re.DOTALL)
 
-	def parseChaintipMessage(self):
+	def parseChaintipMessage(self, message: praw.models.Message):
+		self.chaintip_message = message
 		self.is_chaintip = False
 		self.type = None
 		self.default_amount_used = False
@@ -865,6 +888,12 @@ class RedditTip(Tip):
 				if confirmation:
 					self.chaintip_confirmation_status = confirmation["status"]
 					self.chaintip_confirmation_comment = confirmation["comment"]
+
+			# copy values to top level
+			self.chaintip_message_id = self.chaintip_message.id
+			self.chaintip_message_created_utc = self.chaintip_message.created_utc
+			self.chaintip_message_author_name = self.chaintip_message.author.name
+			self.chaintip_message_subject = self.chaintip_message.subject
 
 	def setAcceptanceOrConfirmationStatus(self, claim_or_returned_message, action):
 		if self.acceptance_status in ("received", "claimed", "returned"):

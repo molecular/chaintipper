@@ -30,11 +30,23 @@ class Tip(PrintError):
 	def getID(self):
 		raise Exception("getID() not implemented by subclass")
 
+	def to_dict(self):
+		raise Exception("to_dict() not implemented by subclass")
+
+	def from_dict(self):
+		raise Exception("from_dict() not implemented by subclass")
+
 	def update(self):
 		if self.tiplist_weakref():
 			self.tiplist_weakref().updateTip(self)
 		else:
 			self.print_error("weakref to tiplist broken, can't update tip", self)
+
+	def remove(self):
+		if self.tiplist_weakref():
+			self.tiplist_weakref().removeTip(self)
+		else:
+			self.print_error("weakref to tiplist broken, can't remove tip", self)
 
 	def registerPayment(self, txhash: str, amount_bch: Decimal, source: str):
 		#self.print_error(f"registerPayment({txhash}, {amount_bch})")
@@ -50,13 +62,15 @@ class Tip(PrintError):
 				self.payment_status = f'paid ({len(self.payments_by_txhash)} tx)'
 			self.update()
 
+
+
 class TipList(PrintError, QObject):
 	update_signal = pyqtSignal()
 
 	def __init__(self):
 		super(TipList, self).__init__()
 		self.tip_listeners = []
-		self.tips = {} # tip instances by tipping_comment id
+		self.tips = {} # tip instances by id (uses getID())
 
 	def debug_stats(self):
 		return f"           Tiplist: {len(self.tips)} tips"
@@ -91,5 +105,4 @@ class TipListener():
 
 	def tipUpdated(self, tip):
 		print_error("not implemented")
-
 
