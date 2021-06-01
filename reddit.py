@@ -732,7 +732,7 @@ class RedditTip(Tip):
 		self.chaintip_message_author_name = ""
 		self.chaintip_message_subject = ""
 		self.subreddit_str = ""
-		self.confirmation_status = ""
+		self.chaintip_confirmation_status = ""
 		self.tipping_comment_body = ""
 
 	# Tip overrides
@@ -745,7 +745,7 @@ class RedditTip(Tip):
 		self.read_status = d["read_status"]
 		self.acceptance_status = d["acceptance_status"]
 		self.payment_status = d["payment_status"]
-		self.confirmation_status = d["confirmation_status"]
+		self.chaintip_confirmation_status = d["chaintip_confirmation_status"]
 		self.chaintip_message_id = d["chaintip_message_id"]
 		self.chaintip_message_created_utc = d["chaintip_message_created_utc"]
 		self.chaintip_message_subject = d["chaintip_message_subject"]
@@ -778,7 +778,7 @@ class RedditTip(Tip):
 			"read_status": self.read_status,
 			"acceptance_status": self.acceptance_status,
 			"payment_status": self.payment_status,
-			"confirmation_status": self.confirmation_status,
+			"chaintip_confirmation_status": self.chaintip_confirmation_status,
 			"chaintip_message_id": self.chaintip_message_id,
 			"chaintip_message_created_utc": self.chaintip_message_created_utc,
 			"chaintip_message_subject": self.chaintip_message_subject,
