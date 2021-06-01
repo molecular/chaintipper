@@ -60,7 +60,7 @@ class StorageVersionMismatchException(Exception):
 
 class PersistentTipList(TipList):
 	KEY = "chaintipper_tiplist"
-	STORAGE_VERSION = "9"
+	STORAGE_VERSION = "10"
 
 	def __init__(self, wallet_ui):
 		super(PersistentTipList, self).__init__()
@@ -139,7 +139,7 @@ class TipListItem(QTreeWidgetItem, PrintError):
 
 	def getDataArray(self, tip):
 		return [
-			tip.getID(),
+			#tip.getID(),
 			format_time(tip.chaintip_message_created_utc), 
 			tip.read_status,
 			tip.acceptance_status,
@@ -194,9 +194,9 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 
 	default_sort = MyTreeWidget.SortSpec(1, Qt.AscendingOrder)
 
-	def refresh_headers(self):
+	def get_headers(self):
 		headers = [
-			_('getID()'), 
+			#_('getID()'), 
 			_('Date'),
 			_('Read'),
 			_('Acceptance'),
@@ -225,22 +225,21 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 		
 		# replace 'amount_fiat' header
 		headers = [_('Amount ({ccy})').format(ccy=fx.ccy) if h=='amount_fiat' else h for h in headers]
-		self.update_headers(headers)
+
+		return headers
 
 	def __init__(self, wallet_ui, window: ElectrumWindow, wallet: Abstract_Wallet, tiplist: TipList, reddit: Reddit):
-		MyTreeWidget.__init__(self, window, self.create_menu, [], 10, [],  # headers, stretch_column, editable_columns
-							deferred_updates=True, save_sort_settings=True)
-
 		self.wallet_ui = wallet_ui
 		self.window = window
 		self.wallet = wallet
 		self.reddit = reddit
 
+		MyTreeWidget.__init__(self, window, self.create_menu, self.get_headers(), 10, [],  # headers, stretch_column, editable_columns
+							deferred_updates=True, save_sort_settings=True)
+
 		self.updated_tips = []
 
 		self.setTiplist(tiplist)
-
-		self.refresh_headers()
 
 		if self.reddit == None:
 			raise Exception("no reddit")
@@ -249,7 +248,6 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 		self.setSelectionMode(QAbstractItemView.ExtendedSelection)
 		self.setSortingEnabled(True)
 		self.setIndentation(0)
-
 
 		if c["use_categories"]:
 			self.outgoing_items = QTreeWidgetItem([_("outgoing")])
