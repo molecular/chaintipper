@@ -122,6 +122,34 @@ diff -Naur praw/models/auth.py ../praw/models/auth.py
  
  from ..exceptions import InvalidImplicitAuth, MissingRequiredAttributeException
  from .base import PRAWBase
+diff -Naur praw/models/inbox.py ../praw/models/inbox.py
+--- praw/models/inbox.py	2021-02-24 03:49:04.000000000 +0100
++++ ../praw/models/inbox.py	2021-06-01 09:41:43.736733862 +0200
+@@ -81,12 +81,12 @@
+         )
+ 
+     def mark_read(
+-        self, items: List[Union["praw.models.Comment", "praw.models.Message"]]
++        self, items: List[Union["praw.models.Comment", "praw.models.Message", "str"]]
+     ):
+-        """Mark Comments or Messages as read.
++        """Mark Comments or Messages (given as object or fullname) as read.
+ 
+         :param items: A list containing instances of :class:`.Comment` and/or
+-            :class:`.Message` to be be marked as read relative to the authorized user's
++            :class:`.Message` and/or :class:`str` to be be marked as read relative to the authorized user's
+             inbox.
+ 
+         Requests are batched at 25 items (reddit limit).
+@@ -109,7 +109,7 @@
+ 
+         """
+         while items:
+-            data = {"id": ",".join(x.fullname for x in items[:25])}
++            data = {"id": ",".join(x if isinstance(x, str) else x.fullname for x in items[:25])}
+             self._reddit.post(API_PATH["read_message"], data=data)
+             items = items[25:]
+ 
 diff -Naur praw/models/reddit/submission.py ../praw/models/reddit/submission.py
 --- praw/models/reddit/submission.py	2021-02-24 03:49:04.000000000 +0100
 +++ ../praw/models/reddit/submission.py	2021-04-21 19:59:09.419424320 +0200

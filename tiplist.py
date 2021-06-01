@@ -60,7 +60,7 @@ class StorageVersionMismatchException(Exception):
 
 class PersistentTipList(TipList):
 	KEY = "chaintipper_tiplist"
-	STORAGE_VERSION = "10"
+	STORAGE_VERSION = "12"
 
 	def __init__(self, wallet_ui):
 		super(PersistentTipList, self).__init__()

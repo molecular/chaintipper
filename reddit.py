@@ -350,8 +350,8 @@ class Reddit(PrintError, QObject):
 	def mark_read_tips(self, tips, include_associated_items=True, unread=False):
 		"""call mark_read() on messages associated with the given 'tips' 
 		and remove the tips from tiplist"""
-		tips_with_messages = [tip for tip in tips if hasattr(tip, "chaintip_message") and tip.chaintip_message and isinstance(tip, RedditTip)]
-		items = [tip.chaintip_message for tip in tips_with_messages]
+		tips_with_messages = [tip for tip in tips if hasattr(tip, "chaintip_message_id") and tip.chaintip_message_id and isinstance(tip, RedditTip)]
+		items = [tip.chaintip_message if hasattr(tip, "chaintip_message") else "t4_" + tip.chaintip_message_id for tip in tips_with_messages]
 		if include_associated_items:
 			items += [tip.claim_or_returned_message for tip in tips if hasattr(tip, "claim_or_returned_message")]
 			items += [tip.chaintip_confirmation_comment for tip in tips if hasattr(tip, "chaintip_confirmation_comment")]
@@ -365,9 +365,14 @@ class Reddit(PrintError, QObject):
 			self.reddit.inbox.mark_read(items)
 
 		for item in items:
+			id = None
 			if isinstance(item, praw.models.Message):
-				if item.id in self.wallet_ui.tiplist.tips.keys():
-					tip = self.wallet_ui.tiplist.tips[item.id]
+				id = item.id
+			if isinstance(item, str):
+				id = item[3:]
+			if id:
+				if id in self.wallet_ui.tiplist.tips.keys():
+					tip = self.wallet_ui.tiplist.tips[id]
 					if isinstance(tip, RedditTip):
 						tip.read_status = 'read' if not unread else 'new'
 						self.wallet_ui.tiplist.updateTip(tip)

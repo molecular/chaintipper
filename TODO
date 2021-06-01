@@ -17,6 +17,9 @@
 		* can I remove tip.read_status??? should I?
 		* can I remove tip.type? (all are "send", I guess)
 		* looks like saving sorting prefs on tiplist is broken
+		* mark_read doesn't work on stored tips (no chaintip_message)
+		* remove "iterators" bundled depependency
+		* weird empty frames popping up like with thunderbird
 
 	* beta n+2
 
@@ -27,6 +30,8 @@
 		* move back to chaintipper tab after "pay..."?
 
 		* about box (see main_window:772)
+
+		* have praw devs considered this issue: https://github.com/praw-dev/praw/issues/1732 ? if so, update praw and our patch
 
 	* consider it
 
