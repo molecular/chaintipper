@@ -201,7 +201,7 @@ class WalletUI(MessageBoxMixin, PrintError, QWidget):
 	def importTipsFromReddit(self):
 		choice = self.msg_box(
 			icon = QMessageBox.Question,
-			parent = self,
+			parent = self.window,
 			title = _("Cannot load tips from wallet file"),
 			rich_text = True,
 			text = "".join([

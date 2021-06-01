@@ -13,7 +13,10 @@
 		* quick deactivate/activate leads to error
 		* when tipping posts, subreddit is not parsed
 		* self.tip_or_message_by_message[message.id] = tip <- can be replace by self.wallet_ui.tiplist.tips, because getID() is now message.id
-
+		* mark messages read on digestion
+		* can I remove tip.read_status??? should I?
+		* can I remove tip.type? (all are "send", I guess)
+		* looks like saving sorting prefs on tiplist is broken
 
 	* beta n+2
 
@@ -21,6 +24,7 @@
 		* set amount...
 		* top up, double down
 		* move reddit forget button to settings
+		* move back to chaintipper tab after "pay..."?
 
 		* about box (see main_window:772)
 

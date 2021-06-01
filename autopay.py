@@ -125,7 +125,7 @@ class AutoPay(TipListener, PrintError):
 		desc_separator = ""
 		for tip in tips:
 			if tip.recipient_address and tip.amount_bch and isinstance(tip.recipient_address, Address) and isinstance(tip.amount_bch, Decimal):
-				desc += f"{desc_separator}{tip.amount_bch} BCH to u/{tip.username} ({tip.chaintip_message.id})"
+				desc += f"{desc_separator}{tip.amount_bch} BCH to u/{tip.username} ({tip.chaintip_message_id})"
 				desc_separator = ", "
 		self.print_error("label for tx: ", desc)
 

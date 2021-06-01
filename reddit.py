@@ -350,11 +350,11 @@ class Reddit(PrintError, QObject):
 	def mark_read_tips(self, tips, include_associated_items=True, unread=False):
 		"""call mark_read() on messages associated with the given 'tips' 
 		and remove the tips from tiplist"""
-		tips_with_messages = [tip for tip in tips if tip.chaintip_message and isinstance(tip, RedditTip)]
+		tips_with_messages = [tip for tip in tips if hasattr(tip, "chaintip_message") and tip.chaintip_message and isinstance(tip, RedditTip)]
 		items = [tip.chaintip_message for tip in tips_with_messages]
 		if include_associated_items:
-			items += [tip.claim_or_returned_message for tip in tips_with_messages if hasattr(tip, "claim_or_returned_message")]
-			items += [tip.chaintip_confirmation_comment for tip in tips_with_messages if hasattr(tip, "chaintip_confirmation_comment")]
+			items += [tip.claim_or_returned_message for tip in tips if hasattr(tip, "claim_or_returned_message")]
+			items += [tip.chaintip_confirmation_comment for tip in tips if hasattr(tip, "chaintip_confirmation_comment")]
 		self.print_error(f"will mark_read() {len(items)} items (associated from {len(tips_with_messages)} tips).")
 		self.mark_read_items(items, unread)
 
@@ -523,6 +523,8 @@ class Reddit(PrintError, QObject):
 				self.print_error("chaintip comment doesn't parse: ", comment.body)
 
 	def digestItem(self, item, item_is_new=False):
+		self.print_error("digesting item", item)
+
 		# digest message
 		if isinstance(item, praw.models.Message):
 			self.digestMessage(item, item_is_new=True)
@@ -545,6 +547,7 @@ class Reddit(PrintError, QObject):
 				if not claimed_or_returned: # must be a tip message
 					# try to find existing tip by message.id
 					if message.id in self.wallet_ui.tiplist.tips.keys():
+						self.print_error("associated existing tip for message.id", message.id)
 						tip = self.wallet_ui.tiplist.tips[message.id]
 					# if not found, instantiate new tip
 					else:
@@ -571,7 +574,12 @@ class Reddit(PrintError, QObject):
 			tips = self.wallet_ui.tiplist.tips.values()
 
 			# construct list of tips to work on
-			tips_without_tipping_comments = list([tip for tip in tips if hasattr(tip, "tipping_comment_id") and tip.tipping_comment_id is not None and (not hasattr(tip, "tipping_comment") or tip.tipping_comment is None)])
+			tips_without_tipping_comments = list([tip for tip in tips if \
+				hasattr(tip, "tipping_comment_id") and \
+				tip.tipping_comment_id is not None and \
+				(not hasattr(tip, "tipping_comment") or tip.tipping_comment is None) and\
+				(not hasattr(tip, "subreddit_str") or len(tip.subreddit_str) == 0)
+			])
 			# prefer unpaid tips which we NEED to get the tipping coments for
 			tips_without_tipping_comments.sort(key=lambda t: t.isPaid()) 
 
@@ -683,9 +691,6 @@ class Reddit(PrintError, QObject):
 
 
 
-
-
-
 #########################################################################################
 #                                                                                       #
 #    88888888ba                     88          88 88    888888888888 88                #
@@ -726,6 +731,9 @@ class RedditTip(Tip):
 		self.chaintip_message_created_utc = ""
 		self.chaintip_message_author_name = ""
 		self.chaintip_message_subject = ""
+		self.subreddit_str = ""
+		self.confirmation_status = ""
+		self.tipping_comment_body = ""
 
 	# Tip overrides
 
@@ -735,10 +743,32 @@ class RedditTip(Tip):
 		self.tippee_comment_id = d["tippee_comment_id"]
 		self.tippee_post_id = d["tippee_post_id"]
 		self.read_status = d["read_status"]
+		self.acceptance_status = d["acceptance_status"]
+		self.payment_status = d["payment_status"]
+		self.confirmation_status = d["confirmation_status"]
 		self.chaintip_message_id = d["chaintip_message_id"]
 		self.chaintip_message_created_utc = d["chaintip_message_created_utc"]
 		self.chaintip_message_subject = d["chaintip_message_subject"]
 		self.chaintip_message_author_name = d["chaintip_message_author_name"]
+		self.tipping_comment_id = d["tipping_comment_id"]
+		self.tipping_comment_body = d["tipping_comment_body"]
+		self.tippee_content_link = d["tippee_content_link"]
+		self.tippee_post_id = d["tippee_post_id"]
+		self.tippee_comment_id = d["tippee_comment_id"]
+		self.subreddit_str = d["subreddit_str"]
+		self.username = d["username"]
+		self.direction = d["direction"]
+		self.tip_amount_text = d["tip_amount_text"]
+		self.tip_unit = d["tip_unit"]
+		self.tip_quantity = Decimal(d["tip_quantity"]) if len(d["tip_quantity"]) > 0 else None
+		self.amount_bch = Decimal(d["amount_bch"]) if len(d["amount_bch"]) > 0 else None
+		self.amount_fiat = Decimal(d["amount_fiat"]) if len(d["amount_fiat"]) > 0 else None
+		self.fiat_currency = d["fiat_currency"]
+		self.recipient_address = Address.from_cashaddr_string(d["recipient_address"])
+		self.direction = d["direction"]
+
+		#	tip.payment_status,
+		#	"{0:.8f}".format(tip.amount_received_bch) if isinstance(tip.amount_received_bch, Decimal) else "",
 
 	def to_dict(self):
 		return {
@@ -746,10 +776,28 @@ class RedditTip(Tip):
 			"tippee_comment_id": self.tippee_comment_id,
 			"tippee_post_id": self.tippee_post_id,
 			"read_status": self.read_status,
+			"acceptance_status": self.acceptance_status,
+			"payment_status": self.payment_status,
+			"confirmation_status": self.confirmation_status,
 			"chaintip_message_id": self.chaintip_message_id,
 			"chaintip_message_created_utc": self.chaintip_message_created_utc,
 			"chaintip_message_subject": self.chaintip_message_subject,
 			"chaintip_message_author_name": self.chaintip_message_author_name,
+			"tipping_comment_id": self.tipping_comment_id,
+			"tipping_comment_body": self.tipping_comment_body,
+			"tippee_content_link": self.tippee_content_link,
+			"tippee_post_id": self.tippee_post_id,
+			"tippee_comment_id": self.tippee_comment_id,
+			"subreddit_str": self.subreddit_str,
+			"username": self.username,
+			"direction": self.direction,
+			"tip_amount_text": self.tip_amount_text,
+			"tip_unit": self.tip_unit,
+			"tip_quantity": str(self.tip_quantity) if self.tip_quantity else "",
+			"amount_bch": str(self.amount_bch) if self.amount_bch else "",
+			"amount_fiat": str(self.amount_fiat) if self.amount_fiat else "",
+			"fiat_currency": self.fiat_currency if self.fiat_currency else "",
+			"recipient_address": self.recipient_address.to_cashaddr(),
 		}
 
 	def getReference(self):
@@ -765,7 +813,7 @@ class RedditTip(Tip):
 	def refreshAmount(self):
 		if not self.isPaid():
 			self.print_error("refresh being called and activates on tip: ", self)
-			self.parseChaintipMessage()
+			#self.parseChaintipMessage() <- necessary? Impossible for stored tips
 			# re-parse tipping comment to re-set amount
 			if hasattr(self, "tipping_comment") and self.tipping_comment:
 				self.parseTippingComment(self.tipping_comment)
@@ -831,7 +879,6 @@ class RedditTip(Tip):
 
 			# "Tip funded."
 			if self.chaintip_message.subject == "Tip funded.":
-				self.print_error("IMPLEMENT digesting 'Tip funded.' message, example message at hand:", self.chaintip_message.id)
 				return
 
 			# "Tip claimed." <- we need to ignore this here, p_tip_comment will catch it as tip otherwise

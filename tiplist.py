@@ -60,7 +60,7 @@ class StorageVersionMismatchException(Exception):
 
 class PersistentTipList(TipList):
 	KEY = "chaintipper_tiplist"
-	STORAGE_VERSION = "2"
+	STORAGE_VERSION = "9"
 
 	def __init__(self, wallet_ui):
 		super(PersistentTipList, self).__init__()
@@ -141,7 +141,6 @@ class TipListItem(QTreeWidgetItem, PrintError):
 		return [
 			tip.getID(),
 			format_time(tip.chaintip_message_created_utc), 
-			#tip.type,
 			tip.read_status,
 			tip.acceptance_status,
 			tip.payment_status,
@@ -151,17 +150,18 @@ class TipListItem(QTreeWidgetItem, PrintError):
 			tip.chaintip_message_subject,
 			tip.subreddit_str if hasattr(tip, "subreddit_str") else "",
 			tip.username,
-			#tip.direction,
+			tip.direction,
 			tip.tip_amount_text,
 			"{0:.8f}".format(tip.amount_bch) if isinstance(tip.amount_bch, Decimal) else "",
 			"{0:.2f}".format(tip.amount_fiat) if hasattr(tip, "amount_fiat") and tip.amount_fiat else "",
-			#tip.recipient_address.to_ui_string() if tip.recipient_address else None,
-			#str(tip.tip_quantity),
-			#tip.tip_unit,
-			#tip.tipping_comment_id,
-			#tip.tippee_content_link,
-			#tip.tippee_post_id,
-			#tip.tippee_comment_id,
+			tip.fiat_currency if hasattr(tip, "fiat_currency") else "",
+			tip.recipient_address.to_ui_string() if tip.recipient_address else None,
+			str(tip.tip_quantity),
+			tip.tip_unit,
+			tip.tipping_comment_id,
+			tip.tippee_content_link,
+			tip.tippee_post_id,
+			tip.tippee_comment_id,
 			tip.tipping_comment.body.partition('\n')[0] if hasattr(tip, "tipping_comment") else ""
 		]
 
@@ -198,7 +198,6 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 		headers = [
 			_('getID()'), 
 			_('Date'),
-			#_('Type'),
 			_('Read'),
 			_('Acceptance'),
 			_('Payment'),
@@ -208,17 +207,18 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 			_('Subject'), 
 			_('Subreddit'), 
 			_('Recipient'), 
-			#_('Direction'), 
+			_('Direction'), 
 			_('Tip Amount Text'),
 			_('Amount (BCH)'),
 			"amount_fiat", 
-			#_('Recipient Address'),
-			#_('Tip Quantity'),
-			#_('Tip Unit'),
-			#_('Tip Comment ID'), 
-			#_('Tippee Content Link'),
-			#_('Tipee post id'),
-			#_('Tipee comment id'),
+			"fiat_currency",
+			_('Recipient Address'),
+			_('Tip Quantity'),
+			_('Tip Unit'),
+			_('Tip Comment ID'), 
+			_('Tippee Content Link'),
+			_('Tipee post id'),
+			_('Tipee comment id'),
 			_('Tip Comment body')
 		]
 		fx = self.window.fx
@@ -279,6 +279,7 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 		d_t = datetime.utcfromtimestamp(tip.chaintip_message_created_utc)
 		fx_rate = self.window.fx.history_rate(d_t)
 
+		tip.fiat_currency = self.window.fx.ccy
 		if fx_rate and tip.amount_bch:
 			try:
 				tip.amount_fiat = fx_rate * tip.amount_bch
@@ -339,7 +340,7 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 
 		def doPay(tips: list):
 			"""Start semi-automatic payment of a list of tips using the payto dialog ('send' tab)"""
-			self.print_error("paying tips: ", [t.id for t in tips])
+			self.print_error("paying tips: ", [t.getID() for t in tips])
 			w = self.parent # main_window
 
 			valid_tips = [tip for tip in tips if tip.recipient_address and tip.amount_bch and isinstance(tip.recipient_address, Address) and isinstance(tip.amount_bch, Decimal)]
