@@ -60,7 +60,7 @@ class StorageVersionMismatchException(Exception):
 
 class PersistentTipList(TipList):
 	KEY = "chaintipper_tiplist"
-	STORAGE_VERSION = "12"
+	STORAGE_VERSION = "13"
 
 	def __init__(self, wallet_ui):
 		super(PersistentTipList, self).__init__()
@@ -100,6 +100,8 @@ class PersistentTipList(TipList):
 		if not data or not "version" in data.keys() or data["version"] != PersistentTipList.STORAGE_VERSION:
 			raise StorageVersionMismatchException("tiplist not in wallet storage or tiplist storage version too old")
 		tips = data["tips"]
+		if len(tips) <= 0:
+			raise StorageVersionMismatchException("tiplist empty")
 		for id, d in tips.items():
 			# klass = globals()[d["_class_name"]]
 			# tip = klass(self)

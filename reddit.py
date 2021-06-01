@@ -303,7 +303,7 @@ class Reddit(PrintError, QObject):
 	def markChaintipMessagesUnread(self, limit_days):
 		current_time_utc = int(round(time()))
 		items = []
-		for item in self.reddit.inbox.all():
+		for item in self.reddit.inbox.all(limit=None):
 			if item.new: continue
 			if item.author != 'chaintip': continue
 			if isinstance(item, praw.models.Message):
@@ -344,6 +344,16 @@ class Reddit(PrintError, QObject):
 			tips = [tip for tip in self.wallet_ui.tiplist.tips.values() if tip.read_status == "new" and tip.isFinished()]
 			if len(tips) > 0:
 				self.print_error(f"marking {len(tips)} finished tips as read")
+				self.mark_read_tips(tips, include_associated_items=True)
+
+	def markReadDigestedTips(self):
+		if not read_config(self.wallet_ui.wallet, "mark_read_digested_tips"):
+			return
+
+		if hasattr(self.wallet_ui, "tiplist"):
+			tips = [tip for tip in self.wallet_ui.tiplist.tips.values() if tip.read_status == "new"]
+			if len(tips) > 0:
+				self.print_error(f"marking {len(tips)} digested tips as read")
 				self.mark_read_tips(tips, include_associated_items=True)
 
 
@@ -609,11 +619,6 @@ class Reddit(PrintError, QObject):
 
 		self.await_reddit_authorization()
 
-		#self.markChaintipMessagesUnread(1000)
-
-		max_age_days = 3
-		do_read_from_read = False
-
 		# use inbox.unread(), not inbox.stream
 		cycle = 0
 		while not self.should_quit:
@@ -660,6 +665,8 @@ class Reddit(PrintError, QObject):
 				#self.wallet_ui.print_debug_stats()
 
 				self.markReadFinishedTips()
+
+				self.markReadDigestedTips()
 			
 				self.refreshTips()
 			

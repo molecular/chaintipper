@@ -205,14 +205,14 @@ class WalletUI(MessageBoxMixin, PrintError, QWidget):
 			title = _("Cannot load tips from wallet file"),
 			rich_text = True,
 			text = "".join([
-				"<h3>", _("TipList storage version too old"), "</h3>",
-				_("Either there is no List of Tips stored in your wallet file (yet), or the storage version is too old"), "<br><br>",
+				"<h3>", _("No valid data in TipList storaged"), "</h3>",
+				_("Either there is no List of Tips stored in your wallet file (yet), the storage version is too old or the TipList is empty"), "<br><br>",
 				_("You can 'import' tips (i.e. read inbox items authored by u/chaintip) from reddit... either all available items, 10 days worth of items or only items that are currently marked 'unread'."), "<br><br>",
 				_("After this initial import, new items coming into your inbox will be automatically read and digested into the list of tips according to their meaning."), "<br><br>"
 			]),
-			buttons = (_("Import all available"), _("Import 10 days worth"), _("Import currently unread")),
-			defaultButton = _("Import 10 days worth"),
-			escapeButton = _("Import only currently unread inbox items"),
+			buttons = (_("Import all available"), _("Import 10 days worth"), _("Import nothing additional")),
+			defaultButton = _("Import all available"),
+			escapeButton = _("Import nothing additional"),
 		)
 		if choice in (0, 1): # import messages from reddit
 			days = (-1, 10)[choice]
@@ -430,6 +430,14 @@ class WalletSettingsDialog(WindowModalDialog, PrintError, MessageBoxMixin):
 			write_config(self.wallet, "mark_read_confirmed_tips", self.cb_mark_read_confirmed_tips.isChecked())
 		self.cb_mark_read_confirmed_tips.stateChanged.connect(on_cb_mark_read_confirmed_tips)
 		grid.addWidget(self.cb_mark_read_confirmed_tips)
+
+		# mark read digested
+		self.cb_mark_read_digested_tips = QCheckBox(_("Mark Tips as read when they are digested"))
+		self.cb_mark_read_digested_tips.setChecked(read_config(self.wallet, "mark_read_digested_tips"))
+		def on_cb_mark_read_digested_tips():
+			write_config(self.wallet, "mark_read_digested_tips", self.cb_mark_read_digested_tips.isChecked())
+		self.cb_mark_read_digested_tips.stateChanged.connect(on_cb_mark_read_digested_tips)
+		grid.addWidget(self.cb_mark_read_digested_tips)
 
 		# --- group Default Tip Amount ------------------------------------------------------------------------------------------
 
