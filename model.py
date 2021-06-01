@@ -66,6 +66,7 @@ class Tip(PrintError):
 
 class TipList(PrintError, QObject):
 	update_signal = pyqtSignal()
+	added_signal = pyqtSignal()
 
 	def __init__(self):
 		super(TipList, self).__init__()
@@ -87,6 +88,7 @@ class TipList(PrintError, QObject):
 		self.tips[tip.getID()] = tip
 		for tip_listener in self.tip_listeners:
 			tip_listener.tipAdded(tip)
+		self.added_signal.emit()
 
 	def removeTip(self, tip):
 		del self.tips[tip.getID()]

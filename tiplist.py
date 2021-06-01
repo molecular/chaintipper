@@ -240,6 +240,7 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 							deferred_updates=True, save_sort_settings=True)
 
 		self.updated_tips = []
+		self.added_tips = []
 
 		self.setTiplist(tiplist)
 
@@ -261,18 +262,26 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 
 	def __del__(self):
 		if self.tiplist:
-			self.tiplist.unregistertipListener(self)
+			# clean up signal connections
+			self.tiplist.update_signal.disconnect(self.digestTipUpdates)
+			self.tiplist.added_signal.disconnect(self.digestTipAdds)
+			# deregister as tiplistener
+			self.tiplist.unregisterTipListener(self)
 
 	def setTiplist(self, tiplist):
 		if hasattr(self, "tiplist") and self.tiplist:
 			self.tiplist.unregistertipListener(self)
 
+		self.tips_by_address = dict()
 		self.tiplist = tiplist
 
+		# connect to tiplist added and update signals
 		self.tiplist.update_signal.connect(self.digestTipUpdates)
+		self.tiplist.added_signal.connect(self.digestTipAdds)
 
+		# register as TipListener
 		self.tiplist.registerTipListener(self)
-		self.tips_by_address = dict()
+
 
 	def calculateFiatAmount(self, tip):
 		# calc tip.amount_fiat
@@ -291,19 +300,14 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 
 	# TipListener implementation
 
+
 	def tipAdded(self, tip):
-		if tip.recipient_address:
-			self.tips_by_address[tip.recipient_address] = tip 
+		"""store added tip to local list for later digestion in gui thread"""
+		self.added_tips.append(tip)
 
-		TipListItem(tip) 
-		self.calculateFiatAmount(tip)
-
-		if c["use_categories"]:
-			category_item = self.getCategoryItemForTip(tip)
-			category_item.setExpanded(True)
-			category_item.addChild(tip.tiplist_item)
-		else:
-			self.addTopLevelItem(tip.tiplist_item)
+	def tipUpdated(self, tip):
+		"""store updated tip to local list for later digestion in gui thread"""
+		self.updated_tips.append(tip)
 
 	def tipRemoved(self, tip):
 		if tip.recipient_address:
@@ -318,10 +322,27 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 		else:
 			self.print_error("no tiplist_item")
 
-	def tipUpdated(self, tip):
-		self.updated_tips.append(tip)
+	def digestTipAdds(self):
+		"""actually digest tip adds collected through tipAdded() (runs in gui thread)"""
+		added_tips = self.added_tips
+		self.added_tips = []
+
+		for tip in added_tips:
+			if tip.recipient_address:
+				self.tips_by_address[tip.recipient_address] = tip 
+
+			TipListItem(tip) 
+			self.calculateFiatAmount(tip)
+
+			if c["use_categories"]:
+				category_item = self.getCategoryItemForTip(tip)
+				category_item.setExpanded(True)
+				category_item.addChild(tip.tiplist_item)
+			else:
+				self.addTopLevelItem(tip.tiplist_item)
 
 	def digestTipUpdates(self):
+		"""actually digest tip updates collected through tipUpdated() (runs in gui thread)"""
 		updated_tips = self.updated_tips
 		self.updated_tips = []
 		for tip in updated_tips:

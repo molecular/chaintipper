@@ -97,6 +97,7 @@ class Reddit(PrintError, QObject):
 		self.unassociated_claim_return_by_tipping_comment_id = defaultdict(list) # store claim/return info (dict with "message" and "action") for later association with a tip
 		self.unassociated_chaintip_comments_by_tipping_comment_id = {} # store chaintip comments for later association with a tip
 		self.items_by_fullname = {}
+		self.trigger_mark_chaintip_messages_unread_limit_days = None
 
 	def debug_stats(self):
 		return f"\
@@ -297,6 +298,9 @@ class Reddit(PrintError, QObject):
 					else:
 						tip.payment_status = f'amount set ({secs}s)' 
 					tip.update()
+
+	def triggerMarkChaintipMessagesUnread(limit_days):
+		self.trigger_mark_chaintip_messages_unread_limit_days = limit_days
 
 	p_mark_1 = re.compile('u/(\S*) has not yet linked an address\.', re.MULTILINE | re.DOTALL)
 	p_mark_2 = re.compile('Unfortunately, this .* bot is unable to understand your message\..*', re.MULTILINE | re.DOTALL)
@@ -658,7 +662,7 @@ class Reddit(PrintError, QObject):
 						sleep(0.1)
 						cnt -= 1
 
-				# some "background tasks"
+				# -- some "background tasks" (reddit thread is abused as a main loop) ---
 				
 				self.fetchTippingComments()
 
@@ -669,11 +673,17 @@ class Reddit(PrintError, QObject):
 				self.markReadDigestedTips()
 			
 				self.refreshTips()
-			
+
+				# import (triggered by wallet_ui import dialog)
+				if self.trigger_mark_chaintip_messages_unread_limit_days:
+					self.markChaintipMessagesUnread(self.trigger_mark_chaintip_messages_unread_limit_days)
+					self.trigger_mark_chaintip_messages_unread_limit_days = None
+
+				# payment readiness check and autopay
 				self.transition_amount_set_2_ready_to_pay()
-			
 				if hasattr(self.wallet_ui, "autopay") and self.wallet_ui.autopay:
 					self.wallet_ui.autopay.do_work()
+
 
 				if False and items_this_cycle > 0:
 					# print unassociated infos:
@@ -682,6 +692,7 @@ class Reddit(PrintError, QObject):
 							item = cr["message"]
 							self.print_error(f"{k}: {format_time(item.created_utc)} {item.subject}")
 
+				# write tiplist to wallet.storage
 				self.wallet_ui.persistTipList()
 
 				# after first cycle, assumption is that unassociated items are for old tips that will never load
@@ -809,7 +820,7 @@ class RedditTip(Tip):
 			"amount_bch": str(self.amount_bch) if self.amount_bch else "",
 			"amount_fiat": str(self.amount_fiat) if self.amount_fiat else "",
 			"fiat_currency": self.fiat_currency if self.fiat_currency else "",
-			"recipient_address": self.recipient_address.to_cashaddr(),
+			"recipient_address": self.recipient_address.to_cashaddr() if self.recipient_address else "",
 		}
 
 	def getReference(self):

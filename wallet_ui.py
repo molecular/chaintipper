@@ -216,7 +216,7 @@ class WalletUI(MessageBoxMixin, PrintError, QWidget):
 		)
 		if choice in (0, 1): # import messages from reddit
 			days = (-1, 10)[choice]
-			self.reddit.markChaintipMessagesUnread(days)
+			self.reddit.triggerMarkChaintipMessagesUnread(days)
 
 	def initializeTipList(self):
 		try:
@@ -308,9 +308,6 @@ class ChaintipperButton(StatusBarButton, PrintError):
 		action_settings = QAction(_("Forget Reddit Authorization (e.g. to switch reddit account)"), self)
 		action_settings.triggered.connect(self.disconnect_reddit)
 
-		action_settings2 = QAction(_("(TEMPORARY) 'Import' 10 days worth of items from reddit"), self)
-		action_settings2.triggered.connect(lambda: self.wallet_ui.reddit.markChaintipMessagesUnread(10))
-
 		# action_settings = QAction(_("Global Settings..."), self)
 		# action_settings.triggered.connect(self.wallet_ui.plugin.show_settings_dialog)
 
@@ -324,8 +321,6 @@ class ChaintipperButton(StatusBarButton, PrintError):
 			action_separator1,
 			action_wsettings,
 			action_settings,
-			action_settings2,
-			action_separator2,
 			show_monikers
 		])
 
