@@ -52,7 +52,7 @@ class Tip(PrintError):
 		#self.print_error(f"registerPayment({txhash}, {amount_bch})")
 		if not txhash in self.payments_by_txhash.keys():
 			self.payments_by_txhash[txhash] = amount_bch
-			if not self.amount_received_bch:
+			if not self.amount_received_bch or type(self.amount_received_bch) != Decimal:
 				self.amount_received_bch = amount_bch
 			else:
 				self.amount_received_bch += amount_bch

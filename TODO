@@ -20,6 +20,7 @@
 		* mark_read doesn't work on stored tips (no chaintip_message)
 		* remove "iterators" bundled depependency
 		* weird empty frames popping up like with thunderbird
+		* chaintipper button: switch to deactivated only after everything is wound down
 
 	* beta n+2
 

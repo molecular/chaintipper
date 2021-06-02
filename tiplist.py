@@ -60,7 +60,7 @@ class StorageVersionMismatchException(Exception):
 
 class PersistentTipList(TipList):
 	KEY = "chaintipper_tiplist"
-	STORAGE_VERSION = "13"
+	STORAGE_VERSION = "15"
 
 	def __init__(self, wallet_ui):
 		super(PersistentTipList, self).__init__()
@@ -88,12 +88,15 @@ class PersistentTipList(TipList):
 
 	def write_if_dirty(self, storage: WalletStorage):
 		if self.dirty:
-			d = {
-				"version": PersistentTipList.STORAGE_VERSION,
-				"tips": self.to_dict()
-			}
-			storage.put(PersistentTipList.KEY, d)
-			self.dirty = False
+			try:
+				d = {
+					"version": PersistentTipList.STORAGE_VERSION,
+					"tips": self.to_dict()
+				}
+				storage.put(PersistentTipList.KEY, d)
+				self.dirty = False
+			except RuntimeError as e: # looking for "RuntimeError: dictionary changed size during iteration"
+				pass
 
 	def read(self, storage: WalletStorage):
 		data = storage.get(PersistentTipList.KEY)
@@ -148,8 +151,8 @@ class TipListItem(QTreeWidgetItem, PrintError):
 			tip.payment_status,
 			"{0:.8f}".format(tip.amount_received_bch) if isinstance(tip.amount_received_bch, Decimal) else "",
 			tip.chaintip_confirmation_status if hasattr(tip, "chaintip_confirmation_status") else "",
-			tip.chaintip_message_author_name,
-			tip.chaintip_message_subject,
+			#tip.chaintip_message_author_name,
+			#tip.chaintip_message_subject,
 			tip.subreddit_str if hasattr(tip, "subreddit_str") else "",
 			tip.username,
 			tip.direction,
@@ -205,8 +208,8 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 			_('Payment'),
 			_('Received (BCH)'),
 			_('ChainTip'),
-			_('Author'), 
-			_('Subject'), 
+			#_('Author'), 
+			#_('Subject'), 
 			_('Subreddit'), 
 			_('Recipient'), 
 			_('Direction'), 
@@ -263,8 +266,8 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 	def __del__(self):
 		if self.tiplist:
 			# clean up signal connections
-			self.tiplist.update_signal.disconnect(self.digestTipUpdates)
-			self.tiplist.added_signal.disconnect(self.digestTipAdds)
+			# self.tiplist.update_signal.disconnect(self.digestTipUpdates)
+			# self.tiplist.added_signal.disconnect(self.digestTipAdds)
 			# deregister as tiplistener
 			self.tiplist.unregisterTipListener(self)
 

@@ -153,17 +153,22 @@ class WalletUI(MessageBoxMixin, PrintError, QWidget):
 		Constructs UI and starts reddit thread
 		"""
 
+		# update checker
+		self.plugin.runUpdateChecker(self.window)
+
 		# wait for wallet to sync to help avoid spending spent utxos
 		self.wallet.wait_until_synchronized()
 
+		# create reddit and ui
 		self.reddit = Reddit(self)
 		self.add_ui()
+
+		# 
+		self.initializeTipList()
+
 		self.setup_reddit()
 		self.refresh_ui()
 		self.show_chaintipper_tab()
-
-		self.plugin.runUpdateChecker(self.window)
-		self.initializeTipList()
 
 	def deactivate(self):
 		"""
@@ -205,18 +210,19 @@ class WalletUI(MessageBoxMixin, PrintError, QWidget):
 			title = _("Cannot load tips from wallet file"),
 			rich_text = True,
 			text = "".join([
-				"<h3>", _("No valid data in TipList storaged"), "</h3>",
-				_("Either there is no List of Tips stored in your wallet file (yet), the storage version is too old or the TipList is empty"), "<br><br>",
+				"<h3>", _("No valid tip data found in storage"), "</h3>",
+				_("Either there are no tips stored in your wallet file (yet) or the storage version is too old"), "<br><br>",
 				_("You can 'import' tips (i.e. read inbox items authored by u/chaintip) from reddit... either all available items, 10 days worth of items or only items that are currently marked 'unread'."), "<br><br>",
 				_("After this initial import, new items coming into your inbox will be automatically read and digested into the list of tips according to their meaning."), "<br><br>"
 			]),
-			buttons = (_("Import all available"), _("Import 10 days worth"), _("Import nothing additional")),
+			buttons = (_("Import all available"), _("Import 10 days worth"), _("Import nothing")),
 			defaultButton = _("Import all available"),
 			escapeButton = _("Import nothing additional"),
 		)
 		if choice in (0, 1): # import messages from reddit
 			days = (-1, 10)[choice]
 			self.reddit.triggerMarkChaintipMessagesUnread(days)
+			#self.reddit.triggerImport(days)
 
 	def initializeTipList(self):
 		try:
@@ -427,7 +433,7 @@ class WalletSettingsDialog(WindowModalDialog, PrintError, MessageBoxMixin):
 		grid.addWidget(self.cb_mark_read_confirmed_tips)
 
 		# mark read digested
-		self.cb_mark_read_digested_tips = QCheckBox(_("Mark Tips as read when they are digested"))
+		self.cb_mark_read_digested_tips = QCheckBox(_("Mark messages/comments as read when they are digested"))
 		self.cb_mark_read_digested_tips.setChecked(read_config(self.wallet, "mark_read_digested_tips"))
 		def on_cb_mark_read_digested_tips():
 			write_config(self.wallet, "mark_read_digested_tips", self.cb_mark_read_digested_tips.isChecked())
@@ -576,7 +582,7 @@ class WalletSettingsDialog(WindowModalDialog, PrintError, MessageBoxMixin):
 			self.setParent(None)
 			del self.wallet._chaintipper_settings_window
 		if self.wallet_ui.reddit != None:
-			self.wallet_ui.reddit.triggerRefreshTips() # TODO why?!? <- to re-trigger autopay, for example
+			self.wallet_ui.reddit.triggerRefreshTipAmounts() 
 
 	def showEvent(self, event):
 		super().showEvent(event)
