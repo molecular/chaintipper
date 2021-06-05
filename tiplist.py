@@ -141,6 +141,7 @@ class TipListItem(QTreeWidgetItem, PrintError):
 			self.__init__(self.getDataArray(self.tip))
 		else:
 			QTreeWidgetItem.__init__(self)
+		self.refreshData()
 
 	def getDataArray(self, tip):
 		return [
@@ -330,6 +331,8 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 		added_tips = self.added_tips
 		self.added_tips = []
 
+		if len(added_tips) > 0: self.print_error(f"digesting {len(added_tips)} tip adds")
+
 		for tip in added_tips:
 			if tip.recipient_address:
 				self.tips_by_address[tip.recipient_address] = tip 
@@ -348,6 +351,9 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 		"""actually digest tip updates collected through tipUpdated() (runs in gui thread)"""
 		updated_tips = self.updated_tips
 		self.updated_tips = []
+
+		if len(updated_tips) > 0: self.print_error(f"digesting {len(updated_tips)} tip updates")
+
 		for tip in updated_tips:
 			if hasattr(tip, 'tiplist_item'):
 				#self.print_error("digesting tip update for tip", tip)

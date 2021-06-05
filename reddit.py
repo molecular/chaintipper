@@ -279,24 +279,34 @@ class Reddit(PrintError, QObject):
 			tip = self.tips_to_refresh_amount.pop()
 			tip.refreshAmount()
 
-	def transition_amount_set_2_ready_to_pay(self):
+	def payment_state_transitions(self):
 		network = Network.get_instance()
 		offline = not network
 		if not hasattr(self.wallet_ui, "tiplist") or self.wallet_ui.tiplist is None:
 			return
 		for tip in self.wallet_ui.tiplist.tips.values():
-			if tip.payment_status and tip.payment_status[:10] == 'amount set':
-				if offline:
-					tip.amount_set_time = time()
-				else:
-					secs = int(time() - tip.amount_set_time)
-					if secs > c["ready_to_pay_grace_secs"]:
-						tip.payment_status = "ready to pay"
-						# reset autopay timer to improve batching (wait for more tips to become ready to pay)
-						if self.wallet_ui.autopay:
-							self.wallet_ui.autopay.resetTimer() 
+			if tip.payment_status:
+				# "amount set" -> "check"
+				if tip.payment_status[:10] == 'amount set':
+					if offline:
+						tip.amount_set_time = time()
 					else:
-						tip.payment_status = f'amount set ({secs}s)' 
+						secs = c["ready_to_pay_grace_secs"] - (int(time() - tip.amount_set_time))
+						if secs <= 0:
+							tip.payment_status = "check"
+							# reset autopay timer to improve batching (wait for more tips to become ready to pay)
+							if self.wallet_ui.autopay:
+								self.wallet_ui.autopay.resetTimer() 
+						else:
+							tip.payment_status = f'amount set ({secs}s)' 
+						tip.update()
+				# "check" -> "ready to pay"
+				if tip.payment_status[:5] == "check" and hasattr(tip, "subscription_time") and tip.subscription_time:
+					secs = c["check_grace_secs"] - (int(time() - tip.subscription_time))
+					if secs <= 0:
+						tip.payment_status = "ready to pay"
+					else:
+						tip.payment_status = f"check ({secs}s)"
 					tip.update()
 
 	def triggerMarkChaintipMessagesUnread(self, limit_days):
@@ -610,12 +620,26 @@ class Reddit(PrintError, QObject):
 					if self.should_quit:
 						break
 					#self.print_error("info", info)
-					#try:
-					tip = self.findTipByReference(info.fullname)
-					tip.parseTippingComment(info)
-					#except Exception as e: # possibly tip was removed while we made the request
-				#		self.print_error(f"fetchTippingComments() error: {e}")
+					try:
+						tip = self.findTipByReference(info.fullname)
+						tip.parseTippingComment(info)
+					except Exception as e: # possibly tip was removed while we made the request
+						self.print_error(f"fetchTippingComments() error: {e}")
 
+	def doImport(self, limit_days = -1):
+		self.print_error("Reddit.import() called")
+		current_time_utc = int(round(time()))
+		counter = 0
+		for item in self.reddit.inbox.all(limit=None):
+			if self.should_quit: break
+			if isinstance(item, praw.models.Message) or isinstance(item, praw.models.Comment):
+				if limit_days > 0 and ((current_time_utc - item.created_utc) / (60*60*24)) > limit_days:
+					break
+			if item.author != 'chaintip': continue
+			self.digestItem(item)
+			counter += 1
+			if counter % 10 == 0:
+				self.print_error(f"digested {counter} items")
 
 	def run(self):
 		self.print_error("Reddit.run() called")
@@ -624,10 +648,12 @@ class Reddit(PrintError, QObject):
 		self.await_reddit_authorization()
 
 		# use inbox.unread(), not inbox.stream
+		flow_debug = True
 		cycle = 0
 		while not self.should_quit:
 			counter = 0
 			try:
+				if flow_debug: self.print_error("digest loop start (reddit request)")
 				items_this_cycle = 0
 				for item in self.reddit.inbox.unread(limit=None):
 
@@ -652,11 +678,13 @@ class Reddit(PrintError, QObject):
 
 					self.digestItem(item, item_is_new=True)
 
+				if flow_debug: self.print_error("digest loop finished")
+
 				if counter > 0:
 					self.print_error(f"loaded {counter} items, sleeping...")
 					counter = 0
 				else:
-					#self.print_error("no more unread messages to load, sleeping")
+					if flow_debug: self.print_error("sleep...")
 					cnt = 20
 					while not self.should_quit and cnt > 0:
 						sleep(0.1)
@@ -667,32 +695,39 @@ class Reddit(PrintError, QObject):
 				# after first round of loading items,...
 				if cycle == 0:
 					# refresh tip amounts (basically to set payment_status, which is not stored)
+					if flow_debug: self.print_error("cycle 0 triggerRefreshTipAmounts()")
 					self.triggerRefreshTipAmounts()
+					if flow_debug: self.print_error("cycle 0 refreshTipAmounts()")
 					self.refreshTipAmounts()
 
 					# after first cycle, assumption is that unassociated items are for old tips that will never load
 					# note: this assumption is false with the "TEMPORARY load more items" feature
 					# this is done on wind-down only
-					# if cycle == 0:
-					# 	self.mark_read_unassociated_items()
+					self.mark_read_unassociated_items()
 				
 				#self.wallet_ui.print_debug_stats()
 
+				if flow_debug: self.print_error("markReadFinishedTips()")
 				self.markReadFinishedTips()
 
+				if flow_debug: self.print_error("markReadDigestedTips()")
 				self.markReadDigestedTips()
-			
+
+				if flow_debug: self.print_error("fetchTippingComments()")
 				self.fetchTippingComments()
 
+				if flow_debug: self.print_error("refreshTipAmounts()")
 				self.refreshTipAmounts()
 
 				# import (triggered by wallet_ui import dialog)
 				if self.trigger_mark_chaintip_messages_unread_limit_days:
+					if flow_debug: self.print_error("markChaintipMessagesUnread")
 					self.markChaintipMessagesUnread(self.trigger_mark_chaintip_messages_unread_limit_days)
 					self.trigger_mark_chaintip_messages_unread_limit_days = None
 
 				# payment readiness check and autopay
-				self.transition_amount_set_2_ready_to_pay()
+				if flow_debug: self.print_error("payment_state_transitions")
+				self.payment_state_transitions()
 				if hasattr(self.wallet_ui, "autopay") and self.wallet_ui.autopay:
 					self.wallet_ui.autopay.do_work()
 
@@ -704,6 +739,7 @@ class Reddit(PrintError, QObject):
 							self.print_error(f"{k}: {format_time(item.created_utc)} {item.subject}")
 
 				# write tiplist to wallet.storage
+				if flow_debug: self.print_error("persistTipList")
 				self.wallet_ui.persistTipList()
 
 				cycle += 1
@@ -842,7 +878,7 @@ class RedditTip(Tip):
 
 	def refreshAmount(self):
 		if not self.isPaid():
-			if not hasattr(self, "tip_unit") or len(self.tip_unit) == 0 or not hasattr(self, "tip_quantity") or type(self.tip_quantity) != Decimal:
+			if not hasattr(self, "tip_unit") or not self.tip_unit or len(self.tip_unit) == 0 or not hasattr(self, "tip_quantity") or type(self.tip_quantity) != Decimal:
 				self.setAmount() # update default amount
 			else:
 				self.evaluateAmount() # refresh parsed amount (to set payment_status = "amount set")
@@ -1020,7 +1056,9 @@ class RedditTip(Tip):
 		self.subreddit_str = "r/" + self.tipping_comment.subreddit.display_name
 		self.tip_unit = ''
 
-		if not self.isPaid():
+		if self.isPaid():
+			self.update() # update subreddit to gui
+		else:
 			# match u/chaintip <prefix_symbol> <decimal>
 			m = RedditTip.p_tip_prefix_symbol_decimal.match(self.tipping_comment.body)
 			if m:

@@ -125,24 +125,6 @@ class WalletUI(MessageBoxMixin, PrintError, QWidget):
 		self.widgets.add(self.sbbtn)
 		self.window._chaintipper_button = weakref.ref(self.sbbtn)
 
-	def setup_reddit(self):
-		"""log in to reddit, start a thread and begin receiving messages"""
-		if not self.reddit.login():
-			# login fails, deactivate, inform user and open settings dialog
-			self.print_error("reddit.login() returned False")
-			# self.window.show_critical(_("Reddit authentication failed.\n\nDeactivating chaintipper on this wallet.\n\nYou can activate it to try again."))
-			if self.sbbtn:
-				self.sbbtn.set_active(False) # abort activation and toggle back to inactive
-				#self.show_wallet_settings()
-		else:
-			self.reddit.start_thread()
-			self.reddit.new_tip.connect(self.tiplist.addTip)
-			self.reddit.dathread.finished.connect(self.reddit_thread_finished)
-
-			# So that we get told about when new coins come in, and the UI updates itself
-			# if hasattr(self.window, 'history_updated_signal'):
-			# 	self.window.history_updated_signal.connect(self.tiplist_widget.checkPaymentStatus)
-
 	def reddit_thread_finished(self):
 		self.print_error("reddit thread finished")
 		self.sbbtn.set_active(False)
@@ -163,12 +145,23 @@ class WalletUI(MessageBoxMixin, PrintError, QWidget):
 		self.reddit = Reddit(self)
 		self.add_ui()
 
-		# 
-		self.initializeTipList()
+		if not self.reddit.login():
+			# login fails, deactivate, inform user and open settings dialog
+			self.print_error("reddit.login() returned False")
+			# self.window.show_critical(_("Reddit authentication failed.\n\nDeactivating chaintipper on this wallet.\n\nYou can activate it to try again."))
+			if self.sbbtn:
+				self.sbbtn.set_active(False) # abort activation and toggle back to inactive
+				#self.show_wallet_settings()
 
-		self.setup_reddit()
-		self.refresh_ui()
-		self.show_chaintipper_tab()
+		else:
+			self.reddit.new_tip.connect(self.tiplist.addTip)
+			self.initializeTipList()
+
+			self.reddit.start_thread()
+			self.reddit.dathread.finished.connect(self.reddit_thread_finished)
+
+			self.refresh_ui()
+			self.show_chaintipper_tab()
 
 	def deactivate(self):
 		"""
@@ -221,8 +214,11 @@ class WalletUI(MessageBoxMixin, PrintError, QWidget):
 		)
 		if choice in (0, 1): # import messages from reddit
 			days = (-1, 10)[choice]
-			self.reddit.triggerMarkChaintipMessagesUnread(days)
+			#self.reddit.triggerMarkChaintipMessagesUnread(days)
 			#self.reddit.triggerImport(days)
+			
+			# import...
+			dialog = WaitingDialog(self.window, "importing...", lambda: self.reddit.doImport(days), auto_exec=True)
 
 	def initializeTipList(self):
 		try:
@@ -351,10 +347,10 @@ class ChaintipperButton(StatusBarButton, PrintError):
 			self.setStatusTip(_('ChainTipper - Active on wallet "{wallet_name}"').format(wallet_name=self.wallet_ui.wallet_name))
 			self.wallet_ui.activate()
 		else:
+			self.wallet_ui.deactivate()
 			self.setIcon(icon_chaintip_gray)
 			self.setToolTip(_('ChainTipper - not active on wallet "{wallet_name}"').format(wallet_name=self.wallet_ui.wallet_name))
 			self.setStatusTip(_('ChainTipper - Inactive (click to activate on wallet "{wallet_name}")').format(wallet_name=self.wallet_ui.wallet_name))
-			self.wallet_ui.deactivate()
 
 	def toggle_active(self):
 		if self.is_active:

@@ -1,5 +1,6 @@
 import traceback
 from decimal import Decimal
+from time import time
 
 from electroncash.util import PrintError
 from electroncash.network import Network
@@ -72,9 +73,7 @@ class BlockchainWatcher(TipListener, PrintError):
 				else:
 					#self.print_error("subscribing to ", tip.recipient_address)
 					self.network.subscribe_to_scripthashes([scripthash], self.on_status_change)
-
-				# get scripthash history
-				#self.network.request_scripthash_history(scripthash, self.on_address_history)		
+					tip.subscription_time = time()
 
 	def on_status_change(self, c):
 		scripthash = c["params"][0]
@@ -91,7 +90,6 @@ class BlockchainWatcher(TipListener, PrintError):
 		tx_hashes = map(lambda item: item['tx_hash'], result)
 		self.request_tx(tx_hashes)
 	
-
 	def request_tx(self, tx_hashes):
 		requests = []
 		for tx_hash in tx_hashes:
@@ -128,5 +126,3 @@ class BlockchainWatcher(TipListener, PrintError):
 			traceback.print_exc()
 			self.print_msg("cannot deserialize transaction, skipping", tx_hash)
 			return
-		
-

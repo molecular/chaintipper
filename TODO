@@ -21,6 +21,7 @@
 		* remove "iterators" bundled depependency
 		* weird empty frames popping up like with thunderbird
 		* chaintipper button: switch to deactivated only after everything is wound down
+		* on network trouble, autpay will trigger :-(
 
 	* beta n+2
 

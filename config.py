@@ -13,7 +13,8 @@ c = {
 		},
 		"use_categories": False,
 		"autopay_min_wait_secs": 3,
-		"ready_to_pay_grace_secs": 3,
+		"ready_to_pay_grace_secs": 2,
+		"check_grace_secs": 6,
 
 		"default_default_amount": "0.1",
 		"default_default_amount_currency": "USD",

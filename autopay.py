@@ -79,7 +79,7 @@ class AutoPay(TipListener, PrintError):
 
 		# autopay deactivated?
 		if not read_config(wallet, "autopay"): 
-			tip.print_error("autopay: ", read_config(wallet, "autopay"))
+			#tip.print_error("autopay: ", read_config(wallet, "autopay"))
 			tip.payment_status = 'autopay disabled'
 			tip.update()
 			return False		
