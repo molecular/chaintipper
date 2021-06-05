@@ -389,6 +389,8 @@ class Reddit(PrintError, QObject):
 		else:
 			self.reddit.inbox.mark_read(items)
 
+		self.print_error("marking read items:", items)
+
 		for item in items:
 			id = None
 			if isinstance(item, praw.models.Message):
@@ -516,53 +518,62 @@ class Reddit(PrintError, QObject):
 	p_confirmation_comment_claimed = re.compile('.*u/(\S*).*has \[claimed\].*', re.MULTILINE | re.DOTALL)
 	p_confirmation_comment_returned = re.compile('.*\[chaintip\].* has \[returned\]\(.*/(bitcoincash:\w*)\).*', re.MULTILINE | re.DOTALL)
 	def parseChaintipComment(self, comment: praw.models.Comment):
-			tipping_comment_id = RedditTip.sanitizeID(comment.parent_id)
-			tip = self.wallet_ui.tiplist.tips.get(tipping_comment_id, None)
+		"""returns True if comment was digested, False otherwise"""
+		tipping_comment_id = RedditTip.sanitizeID(comment.parent_id)
+		tip = self.wallet_ui.tiplist.tips.get(tipping_comment_id, None)
 
-			status = None
+		status = None
 
-			if Reddit.p_confirmation_comment.match(comment.body):
-				status = 'confirmed'
+		if Reddit.p_confirmation_comment.match(comment.body):
+			status = 'confirmed'
 
-			if Reddit.p_confirmation_comment_please_claim.match(comment.body):
-				status = 'unclaimed'
+		if Reddit.p_confirmation_comment_please_claim.match(comment.body):
+			status = 'unclaimed'
 
-			if Reddit.p_confirmation_comment_claimed.match(comment.body):
-				status = 'claimed'
+		if Reddit.p_confirmation_comment_claimed.match(comment.body):
+			status = 'claimed'
 
-			if Reddit.p_confirmation_comment_returned.match(comment.body):
-				status = 'returned'
+		if Reddit.p_confirmation_comment_returned.match(comment.body):
+			status = 'returned'
 
-			# if comment.id == "gyb1ayx":
-			# 	self.print_error("gyb1ayx body", comment.body)
-			# 	self.print_error("gyb1ayx parsed as", status)
+		if comment.id == "126gben":
+			self.print_error("gyb1ayx body", comment.body)
+			self.print_error("gyb1ayx parsed as", status)
 
-			# set data on tip (or defer)
-			if status:
-				if tip:
-					tip.chaintip_confirmation_status = status
-					tip.chaintip_confirmation_comment = comment
-					tip.update()
-				else:
-					self.unassociated_chaintip_comments_by_tipping_comment_id[tipping_comment_id] = {
-						"comment": comment,
-						"status": status
-					}
+		# set data on tip (or defer)
+		if status:
+			if tip:
+				tip.chaintip_confirmation_status = status
+				tip.chaintip_confirmation_comment = comment
+				tip.update()
 			else:
-				self.print_error("chaintip comment doesn't parse: ", comment.body)
+				self.unassociated_chaintip_comments_by_tipping_comment_id[tipping_comment_id] = {
+					"comment": comment,
+					"status": status
+				}
+			return True
+		else:
+			self.print_error("chaintip comment doesn't parse: ", comment.body)
+			return False
 
 	def digestItem(self, item, item_is_new=False):
-		#self.print_error("digesting item", item)
+		"""returns True if item was digested or deferred, False otherwise"""
+		self.print_error("digestItem(", item, ")")
 
 		# digest message
 		if isinstance(item, praw.models.Message):
-			self.digestMessage(item, item_is_new=True)
+			if item.id == "126gben":
+				self.print_error(f"{item.id}: is message")
+			return self.digestMessage(item, item_is_new=True)
 
 		# digest comment
 		elif isinstance(item, praw.models.Comment):
-			self.parseChaintipComment(item)
+			if item.id == "126gben":
+				self.print_error(f"{item.id}: is comment")
+			return self.parseChaintipComment(item)
 
 	def digestMessage(self, item, item_is_new=False):
+		"""returns True if item was digested or deferred, False otherwise"""
 		if item is None:
 			return
 		#self.print_error("incoming item of type", type(item))
@@ -572,6 +583,11 @@ class Reddit(PrintError, QObject):
 			# if message hasn't been seen before, digest according to its nature
 			if message.id not in self.wallet_ui.tiplist.tips.keys(): 
 				claimed_or_returned = self.parseClaimedOrReturnedMessage(message)
+
+				if item.id == "126gben":
+					self.print_error(f"{item.id}: claimed_or_returned: {claimed_or_returned}")
+
+				rc = True
 
 				if not claimed_or_returned: # must be a tip message
 					# try to find existing tip by message.id
@@ -583,7 +599,9 @@ class Reddit(PrintError, QObject):
 						tip = RedditTip(self.wallet_ui.tiplist, self)
 
 					# parse message and fill tip values
-					tip.parseChaintipMessage(message)
+					rc = tip.parseChaintipMessage(message)
+					if item.id == "126gben":
+						self.print_error(f"{item.id}: parseChaintipMessage() = {rc}")
 
 					if item_is_new:
 						tip.read_status = 'new'
@@ -591,12 +609,18 @@ class Reddit(PrintError, QObject):
 						if not self.should_quit:
 							self.new_tip.emit(tip)
 
+				return rc
+
 			# if we've seen the message before, just mark associated tip as "new"
-			elif item_is_new:
-				tip = self.wallet_ui.tiplist.tips[message.id]
-				if isinstance(tip, RedditTip):
-					tip.read_status = 'new'
-					self.wallet_ui.tiplist.updateTip(tip)
+			else:
+				raise Exception("not sure this can happen")
+				if item_is_new:
+					tip = self.wallet_ui.tiplist.tips[message.id]
+					if isinstance(tip, RedditTip):
+						tip.read_status = 'new'
+						self.wallet_ui.tiplist.updateTip(tip)
+					
+		return False
 
 	def fetchTippingComments(self):
 		if hasattr(self.wallet_ui, "tiplist"):
@@ -676,8 +700,10 @@ class Reddit(PrintError, QObject):
 
 					counter += 1
 
-					self.print_error("digesting item", item)
-					self.digestItem(item, item_is_new=True)
+					digested = self.digestItem(item, item_is_new=True)
+					self.print_error("digesting item", item, "and marking read" if digested else "NOT recognized")
+					if digested:
+						self.mark_read_items([item]) # TODO accumulate in list and do periodically isntead
 
 				if flow_debug: self.print_error("digest loop finished")
 
@@ -919,6 +945,7 @@ class RedditTip(Tip):
 	p_stealth = re.compile('.*Tip \*\*.*\*\* for their \[(\w*)\]\((/(r/\w*)/\S*/(\w*)/(\w*)/)\).*', re.MULTILINE | re.DOTALL)
 
 	def parseChaintipMessage(self, message: praw.models.Message):
+		"""returns True if item was digested or deferred, False otherwise"""
 		self.chaintip_message = message
 		self.is_chaintip = False
 		self.type = None
@@ -944,11 +971,11 @@ class RedditTip(Tip):
 
 			# "Tip funded."
 			if self.chaintip_message.subject == "Tip funded.":
-				return
+				return False
 
 			# "Tip claimed." <- we need to ignore this here, p_tip_comment will catch it as tip otherwise
 			if self.chaintip_message.subject == "Tip claimed.":
-				return
+				return False
 
 			# "You've been tipped!"
 			elif self.chaintip_message.subject == "You've been tipped!":
@@ -961,6 +988,7 @@ class RedditTip(Tip):
 					self.print_error("p_sender matches, user: ", self.username)
 				else:
 					self.print_error("p_sender doesn't match")
+				return False
 
 			# match outgoing tip
 			elif RedditTip.p_subject_outgoing_tip.match(self.chaintip_message.subject):
@@ -1022,6 +1050,8 @@ class RedditTip(Tip):
 			self.chaintip_message_created_utc = self.chaintip_message.created_utc
 			self.chaintip_message_author_name = self.chaintip_message.author.name
 			self.chaintip_message_subject = self.chaintip_message.subject
+
+			return True
 
 	def setAcceptanceOrConfirmationStatus(self, claim_or_returned_message, action):
 		if self.acceptance_status in ("received", "claimed", "returned"):

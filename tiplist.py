@@ -331,7 +331,7 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 		added_tips = self.added_tips
 		self.added_tips = []
 
-		if len(added_tips) > 0: self.print_error(f"digesting {len(added_tips)} tip adds")
+		#if len(added_tips) > 0: self.print_error(f"digesting {len(added_tips)} tip adds")
 
 		for tip in added_tips:
 			if tip.recipient_address:
@@ -352,7 +352,7 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 		updated_tips = self.updated_tips
 		self.updated_tips = []
 
-		if len(updated_tips) > 0: self.print_error(f"digesting {len(updated_tips)} tip updates")
+		#if len(updated_tips) > 0: self.print_error(f"digesting {len(updated_tips)} tip updates")
 
 		for tip in updated_tips:
 			if hasattr(tip, 'tiplist_item'):
