@@ -648,7 +648,7 @@ class Reddit(PrintError, QObject):
 		self.await_reddit_authorization()
 
 		# use inbox.unread(), not inbox.stream
-		flow_debug = True
+		flow_debug = False
 		cycle = 0
 		while not self.should_quit:
 			counter = 0
@@ -676,6 +676,7 @@ class Reddit(PrintError, QObject):
 
 					counter += 1
 
+					self.print_error("digesting item", item)
 					self.digestItem(item, item_is_new=True)
 
 				if flow_debug: self.print_error("digest loop finished")
