@@ -702,7 +702,7 @@ class Reddit(PrintError, QObject):
 
 					digested = self.digestItem(item, item_is_new=True)
 					self.print_error("digesting item", item, "and marking read" if digested else "NOT recognized")
-					if digested:
+					if digested and read_config(self.wallet_ui.wallet, "mark_read_digested_tips"):
 						self.mark_read_items([item]) # TODO accumulate in list and do periodically isntead
 
 				if flow_debug: self.print_error("digest loop finished")
