@@ -98,7 +98,7 @@ class Reddit(PrintError, QObject):
 		self.unassociated_claim_return_by_tipping_comment_id = defaultdict(list) # store claim/return info (dict with "message" and "action") for later association with a tip
 		self.unassociated_chaintip_comments_by_tipping_comment_id = {} # store chaintip comments for later association with a tip
 		self.items_by_fullname = {}
-		self.trigger_mark_chaintip_messages_unread_limit_days = None
+		self.items_to_mark_read = []
 
 	def debug_stats(self):
 		return f"\
@@ -309,12 +309,12 @@ class Reddit(PrintError, QObject):
 						tip.payment_status = f"check ({secs}s)"
 					tip.update()
 
-	def triggerMarkChaintipMessagesUnread(self, limit_days):
-		self.trigger_mark_chaintip_messages_unread_limit_days = limit_days
-
 	p_mark_1 = re.compile('u/(\S*) has not yet linked an address\.', re.MULTILINE | re.DOTALL)
 	p_mark_2 = re.compile('Unfortunately, this .* bot is unable to understand your message\..*', re.MULTILINE | re.DOTALL)
 	def markChaintipMessagesUnread(self, limit_days):
+		"""mark reddit messages as unread up to a certain age
+			currently unused, can be deprecated at some point
+		"""
 		self.print_error("limit_days", limit_days)
 		current_time_utc = int(round(time()))
 		items = []
@@ -338,82 +338,23 @@ class Reddit(PrintError, QObject):
 		self.reddit.inbox.mark_unread(items)
 		self.items_by_fullname = {} # to enable unread() loop to read everything
 
-	def markPaidTipsRead(self):
-		if not read_config(self.wallet_ui.wallet, "mark_read_paid_tips"):
-			return
+	def mark_read_items_to_mark_read(self):
+		if len(self.items_to_mark_read) > 0:
+			self.reddit.inbox.mark_unread(self.items_to_mark_read) # workaround reddit message indicator bug
+			self.reddit.inbox.mark_read(self.items_to_mark_read)
+			self.print_error("marking read items:", self.items_to_mark_read)
+			self.items_to_mark_read = []
 
-		if hasattr(self.wallet_ui, "tiplist"):
-			tips = [tip for tip in self.wallet_ui.tiplist.tips.values() \
-				if tip.read_status == 'new' 
-				and tip.isPaid()
-			]
-			if len(tips) > 0:
-				self.print_error("marking {len(tips)} new paid tips as read")
-				self.mark_read_tips(tips, include_associated_items=True)
-
-	def markReadFinishedTips(self):
-		if not read_config(self.wallet_ui.wallet, "mark_read_confirmed_tips"):
-			return
-
-		if hasattr(self.wallet_ui, "tiplist"):
-			tips = [tip for tip in self.wallet_ui.tiplist.tips.values() if tip.read_status == "new" and tip.isFinished()]
-			if len(tips) > 0:
-				self.print_error(f"marking {len(tips)} finished tips as read")
-				self.mark_read_tips(tips, include_associated_items=True)
-
-	def markReadDigestedTips(self):
-		if not read_config(self.wallet_ui.wallet, "mark_read_digested_tips"):
-			return
-
-		if hasattr(self.wallet_ui, "tiplist"):
-			tips = [tip for tip in self.wallet_ui.tiplist.tips.values() if tip.read_status == "new"]
-			if len(tips) > 0:
-				self.print_error(f"marking {len(tips)} digested tips as read")
-				self.mark_read_tips(tips, include_associated_items=True)
-
-
-	def mark_read_tips(self, tips, include_associated_items=True, unread=False):
-		"""call mark_read() on messages associated with the given 'tips' 
-		and remove the tips from tiplist"""
-		tips_with_messages = [tip for tip in tips if hasattr(tip, "chaintip_message_id") and tip.chaintip_message_id and isinstance(tip, RedditTip)]
-		items = [tip.chaintip_message if hasattr(tip, "chaintip_message") else "t4_" + tip.chaintip_message_id for tip in tips_with_messages]
-		if include_associated_items:
-			items += [tip.claim_or_returned_message for tip in tips if hasattr(tip, "claim_or_returned_message")]
-			items += [tip.chaintip_confirmation_comment for tip in tips if hasattr(tip, "chaintip_confirmation_comment")]
-		self.print_error(f"will mark_read() {len(items)} items (associated from {len(tips_with_messages)} tips).")
-		self.mark_read_items(items, unread)
-
-	def mark_read_items(self, items: list, unread: bool = False):
-		if unread:
-			self.reddit.inbox.mark_unread(items)
-		else:
-			self.reddit.inbox.mark_read(items)
-
-		self.print_error("marking read items:", items)
-
-		for item in items:
-			id = None
-			if isinstance(item, praw.models.Message):
-				id = item.id
-			if isinstance(item, str):
-				id = item[3:]
-			if id:
-				if id in self.wallet_ui.tiplist.tips.keys():
-					tip = self.wallet_ui.tiplist.tips[id]
-					if isinstance(tip, RedditTip):
-						tip.read_status = 'read' if not unread else 'new'
-						self.wallet_ui.tiplist.updateTip(tip)
-
-	def mark_read_unassociated_items(self):
-		# mark_read all unassociated items
-		items = \
-			[o["comment"] for o in self.unassociated_chaintip_comments_by_tipping_comment_id.values()]
-		for l in self.unassociated_claim_return_by_tipping_comment_id.values():
-			items += [o["message"] for o in l]
-		self.print_error("unassociated items: ", items)
-		self.mark_read_items(items)
-		self.unassociated_claim_return_by_tipping_comment_id = defaultdict(list)
-		self.unassociated_chaintip_comments_by_tipping_comment_id = {}
+	# def mark_read_unassociated_items(self):
+	# 	# mark_read all unassociated items
+	# 	items = \
+	# 		[o["comment"] for o in self.unassociated_chaintip_comments_by_tipping_comment_id.values()]
+	# 	for l in self.unassociated_claim_return_by_tipping_comment_id.values():
+	# 		items += [o["message"] for o in l]
+	# 	self.print_error("unassociated items: ", items)
+	# 	self.mark_read_items(items)
+	# 	self.unassociated_claim_return_by_tipping_comment_id = defaultdict(list)
+	# 	self.unassociated_chaintip_comments_by_tipping_comment_id = {}
 
 	def findTipByReference(self, reference):
 		for tip in self.wallet_ui.tiplist.tips.values():
@@ -536,7 +477,7 @@ class Reddit(PrintError, QObject):
 		if Reddit.p_confirmation_comment_returned.match(comment.body):
 			status = 'returned'
 
-		if comment.id == "126gben":
+		if comment.id == "127i0vp":
 			self.print_error("gyb1ayx body", comment.body)
 			self.print_error("gyb1ayx parsed as", status)
 
@@ -556,23 +497,23 @@ class Reddit(PrintError, QObject):
 			self.print_error("chaintip comment doesn't parse: ", comment.body)
 			return False
 
-	def digestItem(self, item, item_is_new=False):
+	def digestItem(self, item):
 		"""returns True if item was digested or deferred, False otherwise"""
-		self.print_error("digestItem(", item, ")")
+		self.print_error("digestItem(", item.id, ")")
 
 		# digest message
 		if isinstance(item, praw.models.Message):
-			if item.id == "126gben":
+			if item.id == "127i0vp":
 				self.print_error(f"{item.id}: is message")
-			return self.digestMessage(item, item_is_new=True)
+			return self.digestMessage(item)
 
 		# digest comment
 		elif isinstance(item, praw.models.Comment):
-			if item.id == "126gben":
+			if item.id == "127i0vp":
 				self.print_error(f"{item.id}: is comment")
 			return self.parseChaintipComment(item)
 
-	def digestMessage(self, item, item_is_new=False):
+	def digestMessage(self, item):
 		"""returns True if item was digested or deferred, False otherwise"""
 		if item is None:
 			return
@@ -580,11 +521,14 @@ class Reddit(PrintError, QObject):
 
 		if isinstance(item, praw.models.Message):
 			message = item
-			# if message hasn't been seen before, digest according to its nature
-			if message.id not in self.wallet_ui.tiplist.tips.keys(): 
+			# message already associated with a tip?
+			if message.id in self.wallet_ui.tiplist.tips.keys(): 
+				return True	
+			else:
+				# message not seen before, digest	
 				claimed_or_returned = self.parseClaimedOrReturnedMessage(message)
 
-				if item.id == "126gben":
+				if item.id == "127i0vp":
 					self.print_error(f"{item.id}: claimed_or_returned: {claimed_or_returned}")
 
 				rc = True
@@ -600,26 +544,14 @@ class Reddit(PrintError, QObject):
 
 					# parse message and fill tip values
 					rc = tip.parseChaintipMessage(message)
-					if item.id == "126gben":
+					if item.id == "127i0vp":
 						self.print_error(f"{item.id}: parseChaintipMessage() = {rc}")
 
-					if item_is_new:
-						tip.read_status = 'new'
 					if tip.isValid():
 						if not self.should_quit:
 							self.new_tip.emit(tip)
 
 				return rc
-
-			# if we've seen the message before, just mark associated tip as "new"
-			else:
-				raise Exception("not sure this can happen")
-				if item_is_new:
-					tip = self.wallet_ui.tiplist.tips[message.id]
-					if isinstance(tip, RedditTip):
-						tip.read_status = 'new'
-						self.wallet_ui.tiplist.updateTip(tip)
-					
 		return False
 
 	def fetchTippingComments(self):
@@ -672,7 +604,7 @@ class Reddit(PrintError, QObject):
 		self.await_reddit_authorization()
 
 		# use inbox.unread(), not inbox.stream
-		flow_debug = False
+		flow_debug = True
 		cycle = 0
 		while not self.should_quit:
 			counter = 0
@@ -700,10 +632,11 @@ class Reddit(PrintError, QObject):
 
 					counter += 1
 
-					digested = self.digestItem(item, item_is_new=True)
-					self.print_error("digesting item", item, "and marking read" if digested else "NOT recognized")
+					digested = self.digestItem(item)
+					if flow_debug:
+						self.print_error("digesting item", item, "and marking read" if digested else "NOT recognized")
 					if digested and read_config(self.wallet_ui.wallet, "mark_read_digested_tips"):
-						self.mark_read_items([item]) # TODO accumulate in list and do periodically isntead
+						self.items_to_mark_read.append(item)
 
 				if flow_debug: self.print_error("digest loop finished")
 
@@ -726,31 +659,17 @@ class Reddit(PrintError, QObject):
 					self.triggerRefreshTipAmounts()
 					if flow_debug: self.print_error("cycle 0 refreshTipAmounts()")
 					self.refreshTipAmounts()
-
-					# after first cycle, assumption is that unassociated items are for old tips that will never load
-					# note: this assumption is false with the "TEMPORARY load more items" feature
-					# this is done on wind-down only
-					self.mark_read_unassociated_items()
 				
 				#self.wallet_ui.print_debug_stats()
 
-				if flow_debug: self.print_error("markReadFinishedTips()")
-				self.markReadFinishedTips()
-
-				if flow_debug: self.print_error("markReadDigestedTips()")
-				self.markReadDigestedTips()
+				if flow_debug: self.print_error("mark_read_items_to_mark_read()")
+				self.mark_read_items_to_mark_read()
 
 				if flow_debug: self.print_error("fetchTippingComments()")
 				self.fetchTippingComments()
 
 				if flow_debug: self.print_error("refreshTipAmounts()")
 				self.refreshTipAmounts()
-
-				# import (triggered by wallet_ui import dialog)
-				if self.trigger_mark_chaintip_messages_unread_limit_days:
-					if flow_debug: self.print_error("markChaintipMessagesUnread")
-					self.markChaintipMessagesUnread(self.trigger_mark_chaintip_messages_unread_limit_days)
-					self.trigger_mark_chaintip_messages_unread_limit_days = None
 
 				# payment readiness check and autopay
 				if flow_debug: self.print_error("payment_state_transitions")
@@ -775,8 +694,6 @@ class Reddit(PrintError, QObject):
 				sleep(30)
 
 		# --- wind down ----
-
-		self.mark_read_unassociated_items()
 
 		self.print_error("exited reddit inbox streaming")
 
@@ -820,7 +737,6 @@ class RedditTip(Tip):
 		self.platform = "reddit"
 		self.reddit = reddit
 		self.acceptance_status = ""
-		self.read_status = "read" # will be set to "new" by inbox streamer
 
 		self.chaintip_message_id = ""
 		self.chaintip_message_created_utc = ""
@@ -837,7 +753,6 @@ class RedditTip(Tip):
 		self.tipping_comment_id = d["tipping_comment_id"]
 		self.tippee_comment_id = d["tippee_comment_id"]
 		self.tippee_post_id = d["tippee_post_id"]
-		self.read_status = d["read_status"]
 		self.acceptance_status = d["acceptance_status"]
 		self.chaintip_confirmation_status = d["chaintip_confirmation_status"]
 		self.chaintip_message_id = d["chaintip_message_id"]
@@ -869,7 +784,6 @@ class RedditTip(Tip):
 			"tipping_comment_id": self.tipping_comment_id,
 			"tippee_comment_id": self.tippee_comment_id,
 			"tippee_post_id": self.tippee_post_id,
-			"read_status": self.read_status,
 			"acceptance_status": self.acceptance_status,
 			"chaintip_confirmation_status": self.chaintip_confirmation_status,
 			"chaintip_message_id": self.chaintip_message_id,
@@ -917,7 +831,11 @@ class RedditTip(Tip):
 			self.is_chaintip and \
 			self.chaintip_message and \
 			self.chaintip_message.author == 'chaintip' and \
-			self.type == 'send' 
+			self.type == 'send' and \
+			tip.recipient_address and \
+			tip.amount_bch and \
+			isinstance(tip.recipient_address, Address) and \
+			isinstance(tip.amount_bch, Decimal)			
 
 	def isPaid(self):
 		if not self.payment_status: return False

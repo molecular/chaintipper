@@ -147,7 +147,6 @@ class TipListItem(QTreeWidgetItem, PrintError):
 		return [
 			#tip.getID(),
 			format_time(tip.chaintip_message_created_utc), 
-			tip.read_status,
 			tip.acceptance_status,
 			tip.payment_status,
 			"{0:.8f}".format(tip.amount_received_bch) if isinstance(tip.amount_received_bch, Decimal) else "",
@@ -176,7 +175,6 @@ class TipListItem(QTreeWidgetItem, PrintError):
 		data = self.getDataArray(self.tip)
 		for idx, value in enumerate(data, start=0):
 			self.setData(idx, Qt.DisplayRole, value)
-			#self.setForeground(idx, Qt.gray if self.tip.read_status == 'read' else Qt.black)			
 			self.setForeground(idx, Qt.gray if self.tip.isFinished() else Qt.black)			
 
 
@@ -204,7 +202,6 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 		headers = [
 			#_('getID()'), 
 			_('Date'),
-			_('Read'),
 			_('Acceptance'),
 			_('Payment'),
 			_('Received (BCH)'),
@@ -373,7 +370,7 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 			self.print_error("paying tips: ", [t.getID() for t in tips])
 			w = self.parent # main_window
 
-			valid_tips = [tip for tip in tips if tip.recipient_address and tip.amount_bch and isinstance(tip.recipient_address, Address) and isinstance(tip.amount_bch, Decimal)]
+			valid_tips = [tip for tip in tips if tip.isValid() and not tip.isPaid()]
 
 			# calc description
 			desc, desc_separator = ("chaintip ", "")
@@ -434,27 +431,11 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 		if len(self.selectedItems()) > 1:
 			count_display_string = f" ({len(tips)})"
 
-		new_tips = [t for t in tips if t.read_status == 'new']
-		new_count_display_string = f" ({len(new_tips)})" if len(new_tips)>1 else "" 
-
-		read_tips = [t for t in tips if t.read_status == 'read']
-		read_count_display_string = f" ({len(read_tips)})" if len(read_tips)>1 else "" 
-
-		unpaid_tips = [t for t in tips if (t.payment_status != None and t.payment_status[:4] != "paid") and t.amount_bch]
+		unpaid_tips = [t for t in tips if t.isValid and not t.isPaid()]
 		unpaid_count_display_string = f" ({len(unpaid_tips)})" if len(unpaid_tips)>1 else "" 
 
 		# create the context menu
 		menu = QMenu()
-
-		# mark_read
-		if len(new_tips) > 0:
-			menu.addAction(_("mark read{}").format(new_count_display_string), lambda: doMarkRead(new_tips, True))
-			menu.addSeparator()
-
-		# mark_unread 
-		if len(read_tips) > 0:
-			menu.addAction(_("mark unread{}").format(read_count_display_string), lambda: doMarkRead(read_tips, include_associated_items=True, unread=True))
-			menu.addSeparator()
 
 		if len(tips) == 1:
 			tip = tips[0]
