@@ -9,8 +9,8 @@
 	* beta n+1
 
 		* calin on signalling: if you wanted to delete the signal you could call util.do_in_main_thread (util lives in the electroncash module)
-		* quick deactivate/activate leads to error
 		* when tipping posts, subreddit is not parsed
+		* quick deactivate/activate leads to error
 		* chaintipper button: switch to deactivated only after everything is wound down
 		* activate locks gui for too long if many tips are present
 

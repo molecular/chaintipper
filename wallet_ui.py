@@ -423,14 +423,6 @@ class WalletSettingsDialog(WindowModalDialog, PrintError, MessageBoxMixin):
 		self.cb_activate_on_open.stateChanged.connect(on_cb_activate_on_open)
 		grid.addWidget(self.cb_activate_on_open)
 
-		# mark read finished
-		self.cb_mark_read_confirmed_tips = QCheckBox(_("Mark Tips as read when they are confirmed, returned or claimed"))
-		self.cb_mark_read_confirmed_tips.setChecked(read_config(self.wallet, "mark_read_confirmed_tips"))
-		def on_cb_mark_read_confirmed_tips():
-			write_config(self.wallet, "mark_read_confirmed_tips", self.cb_mark_read_confirmed_tips.isChecked())
-		self.cb_mark_read_confirmed_tips.stateChanged.connect(on_cb_mark_read_confirmed_tips)
-		grid.addWidget(self.cb_mark_read_confirmed_tips)
-
 		# mark read digested
 		self.cb_mark_read_digested_tips = QCheckBox(_("Keep my inbox clean by marking messages/comments as read when they are digested"))
 		self.cb_mark_read_digested_tips.setChecked(read_config(self.wallet, "mark_read_digested_tips"))
