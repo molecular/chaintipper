@@ -477,10 +477,6 @@ class Reddit(PrintError, QObject):
 		if Reddit.p_confirmation_comment_returned.match(comment.body):
 			status = 'returned'
 
-		if comment.id == "127i0vp":
-			self.print_error("gyb1ayx body", comment.body)
-			self.print_error("gyb1ayx parsed as", status)
-
 		# set data on tip (or defer)
 		if status:
 			if tip:
@@ -499,18 +495,14 @@ class Reddit(PrintError, QObject):
 
 	def digestItem(self, item):
 		"""returns True if item was digested or deferred, False otherwise"""
-		self.print_error("digestItem(", item.id, ")")
+		#self.print_error("digestItem(", item.id, ")")
 
 		# digest message
 		if isinstance(item, praw.models.Message):
-			if item.id == "127i0vp":
-				self.print_error(f"{item.id}: is message")
 			return self.digestMessage(item)
 
 		# digest comment
 		elif isinstance(item, praw.models.Comment):
-			if item.id == "127i0vp":
-				self.print_error(f"{item.id}: is comment")
 			return self.parseChaintipComment(item)
 
 	def digestMessage(self, item):
@@ -528,15 +520,13 @@ class Reddit(PrintError, QObject):
 				# message not seen before, digest	
 				claimed_or_returned = self.parseClaimedOrReturnedMessage(message)
 
-				if item.id == "127i0vp":
-					self.print_error(f"{item.id}: claimed_or_returned: {claimed_or_returned}")
+				#self.print_error(f"{item.id}: claimed_or_returned: {claimed_or_returned}")
 
 				rc = True
 
 				if not claimed_or_returned: # must be a tip message
 					# try to find existing tip by message.id
 					if message.id in self.wallet_ui.tiplist.tips.keys():
-						self.print_error("associated existing tip for message.id", message.id)
 						tip = self.wallet_ui.tiplist.tips[message.id]
 					# if not found, instantiate new tip
 					else:
@@ -544,12 +534,13 @@ class Reddit(PrintError, QObject):
 
 					# parse message and fill tip values
 					rc = tip.parseChaintipMessage(message)
-					if item.id == "127i0vp":
-						self.print_error(f"{item.id}: parseChaintipMessage() = {rc}")
 
-					if tip.isValid():
-						if not self.should_quit:
+					# emit new signal or del tip based on validity
+					if not self.should_quit:
+						if tip.isValid():
 							self.new_tip.emit(tip)
+						else:
+							del tip
 
 				return rc
 		return False
@@ -583,15 +574,19 @@ class Reddit(PrintError, QObject):
 						self.print_error(f"fetchTippingComments() error: {e}")
 
 	def doImport(self, limit_days = -1):
-		self.print_error("Reddit.import() called")
+		self.print_error(f"Reddit.import(limit_days={limit_days}) called")
 		current_time_utc = int(round(time()))
 		counter = 0
 		for item in self.reddit.inbox.all(limit=None):
-			if self.should_quit: break
+			if self.should_quit: 
+				self.print_error("break, should_quit=True")
+				break
 			if isinstance(item, praw.models.Message) or isinstance(item, praw.models.Comment):
 				if limit_days > 0 and ((current_time_utc - item.created_utc) / (60*60*24)) > limit_days:
+					self.print_error("break, limit_days reached")
 					break
-			if item.author != 'chaintip': continue
+			if item.author != 'chaintip': 
+				continue
 			self.digestItem(item)
 			counter += 1
 			if counter % 10 == 0:
@@ -603,8 +598,8 @@ class Reddit(PrintError, QObject):
 
 		self.await_reddit_authorization()
 
-		# use inbox.unread(), not inbox.stream
-		flow_debug = True
+		# main digestion (and other tasks) loop
+		flow_debug = False
 		cycle = 0
 		while not self.should_quit:
 			counter = 0
@@ -754,6 +749,7 @@ class RedditTip(Tip):
 		self.tippee_comment_id = d["tippee_comment_id"]
 		self.tippee_post_id = d["tippee_post_id"]
 		self.acceptance_status = d["acceptance_status"]
+		self.payment_status = d["payment_status"]
 		self.chaintip_confirmation_status = d["chaintip_confirmation_status"]
 		self.chaintip_message_id = d["chaintip_message_id"]
 		self.chaintip_message_created_utc = d["chaintip_message_created_utc"]
@@ -785,6 +781,7 @@ class RedditTip(Tip):
 			"tippee_comment_id": self.tippee_comment_id,
 			"tippee_post_id": self.tippee_post_id,
 			"acceptance_status": self.acceptance_status,
+			"payment_status": self.payment_status,
 			"chaintip_confirmation_status": self.chaintip_confirmation_status,
 			"chaintip_message_id": self.chaintip_message_id,
 			"chaintip_message_created_utc": self.chaintip_message_created_utc,
@@ -827,15 +824,18 @@ class RedditTip(Tip):
 	#
 
 	def isValid(self):
-		 return \
-			self.is_chaintip and \
-			self.chaintip_message and \
-			self.chaintip_message.author == 'chaintip' and \
-			self.type == 'send' and \
-			tip.recipient_address and \
-			tip.amount_bch and \
-			isinstance(tip.recipient_address, Address) and \
-			isinstance(tip.amount_bch, Decimal)			
+		try:
+			return \
+				self.is_chaintip and \
+				self.chaintip_message and \
+				self.chaintip_message.author == 'chaintip' and \
+				self.type == 'send' and \
+				hasattr(self, "recipient_address") and \
+				self.recipient_address and \
+				isinstance(self.recipient_address, Address) 
+		except Exception as e:
+			self.print_error("strange Exception in RedditTip.isValid(): ", e)
+			return False
 
 	def isPaid(self):
 		if not self.payment_status: return False

@@ -60,7 +60,7 @@ class StorageVersionMismatchException(Exception):
 
 class PersistentTipList(TipList):
 	KEY = "chaintipper_tiplist"
-	STORAGE_VERSION = "15"
+	STORAGE_VERSION = "16"
 
 	def __init__(self, wallet_ui):
 		super(PersistentTipList, self).__init__()
@@ -370,7 +370,7 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 			self.print_error("paying tips: ", [t.getID() for t in tips])
 			w = self.parent # main_window
 
-			valid_tips = [tip for tip in tips if tip.isValid() and not tip.isPaid()]
+			valid_tips = [tip for tip in tips if tip.isValid() and not tip.isPaid() and tip.amount_bch and isinstance(tip.amount_bch, Decimal)]
 
 			# calc description
 			desc, desc_separator = ("chaintip ", "")
@@ -431,7 +431,7 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 		if len(self.selectedItems()) > 1:
 			count_display_string = f" ({len(tips)})"
 
-		unpaid_tips = [t for t in tips if t.isValid and not t.isPaid()]
+		unpaid_tips = [tip for tip in tips if tip.isValid and not tip.isPaid() and tip.amount_bch and isinstance(tip.amount_bch, Decimal)]
 		unpaid_count_display_string = f" ({len(unpaid_tips)})" if len(unpaid_tips)>1 else "" 
 
 		# create the context menu
