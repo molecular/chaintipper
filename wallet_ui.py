@@ -181,7 +181,10 @@ class WalletUI(MessageBoxMixin, PrintError, QWidget):
 		self.remove_ui()
 		self.show_previous_tab()
 		if self.reddit:
-			self.reddit.dathread.finished.disconnect(self.reddit_thread_finished)
+			try: 
+				self.reddit.dathread.finished.disconnect(self.reddit_thread_finished)
+			except TypeError as e:
+				self.print_error("error disconnecting finished signal: ", e)
 
 	def show_chaintipper_tab(self):
 		"""switch main window to ChainTipper tab"""
@@ -208,12 +211,12 @@ class WalletUI(MessageBoxMixin, PrintError, QWidget):
 				_("You can 'import' tips (i.e. read inbox items authored by u/chaintip) from reddit... either all available items, 10 days worth of items or only items that are currently marked 'unread'."), "<br><br>",
 				_("After this initial import, new items coming into your inbox will be automatically read and digested into the list of tips according to their meaning."), "<br><br>"
 			]),
-			buttons = (_("Import all available"), _("Import 10 days worth"), _("Import nothing")),
+			buttons = (_("Import all available"), _("Import from 4/8/2021"), _("Import 10 days worth"), _("Import nothing")),
 			defaultButton = _("Import all available"),
 			escapeButton = _("Import nothing additional"),
 		)
-		if choice in (0, 1): # import messages from reddit
-			days = (-1, 10)[choice]
+		if choice in (0, 1, 2): # import messages from reddit
+			days = (-1, -2, 10)[choice]
 			#self.reddit.triggerMarkChaintipMessagesUnread(days)
 			#self.reddit.triggerImport(days)
 			
@@ -429,7 +432,7 @@ class WalletSettingsDialog(WindowModalDialog, PrintError, MessageBoxMixin):
 		grid.addWidget(self.cb_mark_read_confirmed_tips)
 
 		# mark read digested
-		self.cb_mark_read_digested_tips = QCheckBox(_("Mark messages/comments as read when they are digested"))
+		self.cb_mark_read_digested_tips = QCheckBox(_("Keep my inbox clean by marking messages/comments as read when they are digested"))
 		self.cb_mark_read_digested_tips.setChecked(read_config(self.wallet, "mark_read_digested_tips"))
 		def on_cb_mark_read_digested_tips():
 			write_config(self.wallet, "mark_read_digested_tips", self.cb_mark_read_digested_tips.isChecked())

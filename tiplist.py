@@ -13,6 +13,7 @@ from enum import IntEnum
 from decimal import Decimal
 from time import sleep
 from datetime import datetime
+from typing import Union
 
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
@@ -60,7 +61,7 @@ class StorageVersionMismatchException(Exception):
 
 class PersistentTipList(TipList):
 	KEY = "chaintipper_tiplist"
-	STORAGE_VERSION = "16"
+	STORAGE_VERSION = "17"
 
 	def __init__(self, wallet_ui):
 		super(PersistentTipList, self).__init__()
@@ -397,8 +398,12 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 		def doOpenBrowser(path):
 			webopen(c["reddit"]["url_prefix"] + path)
 
-		def doOpenBrowserToMessage(message: praw.models.Message):
-			webopen(c["reddit"]["url_prefix"] + "/message/messages/" + message.id)
+		def doOpenBrowserToMessage(message_or_message_id: Union[praw.models.Message, str]):
+			if isinstance(message_or_message_id, praw.models.Message):
+				message_id = message_or_message_id.id
+			else:
+				message_id = message_or_message_id
+			webopen(c["reddit"]["url_prefix"] + "/message/messages/" + message_id)
 
 		def doOpenBrowserToTippingComment(tip):
 			if not hasattr(tip, "tipping_comment"):
@@ -450,8 +455,8 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 				menu.addAction(_("open browser to tipping comment"), lambda: doOpenBrowserToTippingComment(tip))
 			if hasattr(tip, "chaintip_confirmation_comment") and tip.chaintip_confirmation_comment:
 				menu.addAction(_("open browser to chaintip confirmation comment"), lambda: doOpenBrowser(self.reddit.getCommentLink(tip.chaintip_confirmation_comment)))
-			if hasattr(tip, "claim_or_returned_message") and tip.claim_or_returned_message:
-				menu.addAction(_('open browser to "{type}" message').format(type="funded" if hasattr(tip, "chaintip_confirmation_status") and tip.chaintip_confirmation_status == "funded" else tip.acceptance_status), lambda: doOpenBrowserToMessage(tip.claim_or_returned_message))
+			if hasattr(tip, "claim_or_returned_message_id") and tip.claim_or_returned_message_id:
+				menu.addAction(_('open browser to "{type}" message').format(type="funded" if hasattr(tip, "chaintip_confirmation_status") and tip.chaintip_confirmation_status == "funded" else tip.acceptance_status), lambda: doOpenBrowserToMessage(tip.claim_or_returned_message_id))
 			
 			# open blockexplorer...
 			menu.addSeparator()

@@ -585,6 +585,10 @@ class Reddit(PrintError, QObject):
 				if limit_days > 0 and ((current_time_utc - item.created_utc) / (60*60*24)) > limit_days:
 					self.print_error("break, limit_days reached")
 					break
+				if limit_days == -2:
+					if item.created_utc < RedditTip.CHAINTIP_TIPPING_COMMENT_LINK_INTRODUCTION_TIME:
+						self.print_error("break, CHAINTIP_TIPPING_COMMENT_LINK_INTRODUCTION_TIME reached")
+						break
 			if item.author != 'chaintip': 
 				continue
 			self.digestItem(item)
@@ -740,6 +744,7 @@ class RedditTip(Tip):
 		self.subreddit_str = ""
 		self.chaintip_confirmation_status = ""
 		self.tipping_comment_body = ""
+		self.claim_or_returned_message_id = None
 
 	# Tip overrides
 
@@ -760,6 +765,7 @@ class RedditTip(Tip):
 		self.tippee_content_link = d["tippee_content_link"]
 		self.tippee_post_id = d["tippee_post_id"]
 		self.tippee_comment_id = d["tippee_comment_id"]
+		self.claim_or_returned_message_id = d["claim_or_returned_message_id"]
 		self.subreddit_str = d["subreddit_str"]
 		self.username = d["username"]
 		self.direction = d["direction"]
@@ -792,6 +798,7 @@ class RedditTip(Tip):
 			"tippee_content_link": self.tippee_content_link,
 			"tippee_post_id": self.tippee_post_id,
 			"tippee_comment_id": self.tippee_comment_id,
+			"claim_or_returned_message_id": self.claim_or_returned_message_id,
 			"subreddit_str": self.subreddit_str,
 			"username": self.username,
 			"direction": self.direction,
@@ -980,6 +987,7 @@ class RedditTip(Tip):
 			return
 		self.acceptance_status = action
 		self.claim_or_returned_message = claim_or_returned_message
+		self.claim_or_returned_message_id = claim_or_returned_message.id
 		self.update()
 
 

@@ -9,19 +9,11 @@
 	* beta n+1
 
 		* calin on signalling: if you wanted to delete the signal you could call util.do_in_main_thread (util lives in the electroncash module)
-		* skip "tip received" messages in reddit.markChaintipMessagesUnread()
 		* quick deactivate/activate leads to error
 		* when tipping posts, subreddit is not parsed
-		* self.tip_or_message_by_message[message.id] = tip <- can be replace by self.wallet_ui.tiplist.tips, because getID() is now message.id
-		* mark messages read on digestion
-		* can I remove tip.read_status??? should I?
-		* can I remove tip.type? (all are "send", I guess)
-		* looks like saving sorting prefs on tiplist is broken
-		* mark_read doesn't work on stored tips (no chaintip_message)
 		* remove "iterators" bundled depependency
-		* weird empty frames popping up like with thunderbird
 		* chaintipper button: switch to deactivated only after everything is wound down
-		* on network trouble, autpay will trigger :-(
+		* activate locks gui for too long if many tips are present
 
 	* beta n+2
 
