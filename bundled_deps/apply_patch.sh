@@ -5,7 +5,7 @@ cd $(dirname $0)
 # create copy of libs in "patched" folder
 rm -rf patched
 mkdir -p patched
-cp -ar praw prawcore websocket iterators patched
+cp -ar praw prawcore websocket patched
 
 
 # patch the copy in "patched" folder

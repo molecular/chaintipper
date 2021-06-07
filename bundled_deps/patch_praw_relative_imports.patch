@@ -124,7 +124,7 @@ diff -Naur praw/models/auth.py ../praw/models/auth.py
  from .base import PRAWBase
 diff -Naur praw/models/inbox.py ../praw/models/inbox.py
 --- praw/models/inbox.py	2021-02-24 03:49:04.000000000 +0100
-+++ ../praw/models/inbox.py	2021-06-01 09:41:43.736733862 +0200
++++ ../praw/models/inbox.py	2021-06-01 18:29:57.670342728 +0200
 @@ -81,12 +81,12 @@
          )
  
@@ -141,13 +141,34 @@ diff -Naur praw/models/inbox.py ../praw/models/inbox.py
              inbox.
  
          Requests are batched at 25 items (reddit limit).
-@@ -109,7 +109,7 @@
+@@ -109,17 +109,17 @@
  
          """
          while items:
 -            data = {"id": ",".join(x.fullname for x in items[:25])}
 +            data = {"id": ",".join(x if isinstance(x, str) else x.fullname for x in items[:25])}
              self._reddit.post(API_PATH["read_message"], data=data)
+             items = items[25:]
+ 
+     def mark_unread(
+-        self, items: List[Union["praw.models.Comment", "praw.models.Message"]]
++        self, items: List[Union["praw.models.Comment", "praw.models.Message", "str"]]
+     ):
+         """Unmark Comments or Messages as read.
+ 
+         :param items: A list containing instances of :class:`.Comment` and/or
+-            :class:`.Message` to be be marked as unread relative to the authorized
++            :class:`.Message` and/or :class:`str` to be be marked as unread relative to the authorized
+             user's inbox.
+ 
+         Requests are batched at 25 items (reddit limit).
+@@ -137,7 +137,7 @@
+ 
+         """
+         while items:
+-            data = {"id": ",".join(x.fullname for x in items[:25])}
++            data = {"id": ",".join(x if isinstance(x, str) else x.fullname for x in items[:25])}
+             self._reddit.post(API_PATH["unread_message"], data=data)
              items = items[25:]
  
 diff -Naur praw/models/reddit/submission.py ../praw/models/reddit/submission.py
