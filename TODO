@@ -8,19 +8,20 @@
 
 	* beta n+1
 
-		* calin on signalling: if you wanted to delete the signal you could call util.do_in_main_thread (util lives in the electroncash module)
-		* when tipping posts, subreddit is not parsed
 		* quick deactivate/activate leads to error
 		* chaintipper button: switch to deactivated only after everything is wound down
 		* activate locks gui for too long if many tips are present
 
 	* beta n+2
 
-		* copy recipient (tipee) address
+		* calin on signalling: if you wanted to delete the signal you could call util.do_in_main_thread (util lives in the electroncash module)
 		* set amount...
 		* top up, double down
 		* move reddit forget button to settings
 		* move back to chaintipper tab after "pay..."?
+		* new column: received USD
+
+		* menu-item "set amount" with a dialog
 
 		* about box (see main_window:772)
 
@@ -35,9 +36,6 @@
 			* align right (or better decimal point) amount columns
 			* amount colums: sort by number, not text
 
-
-		* detect payment status from other wallets (use network, blockchain whatever)
-
 		* history rate available if "show history rate" unchecked?
 
 		* parse chaintip confirmation comment <- no added value?
@@ -51,8 +49,6 @@
 		* headless operation
 
 		* pla-plingggg sound?
-
-		* menu-item "set amount" with a dialog
 
 		* reddit logon: display "waiting for yout to authorize chaintipper to access your reddit account, check your browser"?
 

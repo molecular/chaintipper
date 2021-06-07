@@ -160,15 +160,15 @@ class TipListItem(QTreeWidgetItem, PrintError):
 			tip.tip_amount_text,
 			"{0:.8f}".format(tip.amount_bch) if isinstance(tip.amount_bch, Decimal) else "",
 			"{0:.2f}".format(tip.amount_fiat) if hasattr(tip, "amount_fiat") and tip.amount_fiat else "",
-			tip.fiat_currency if hasattr(tip, "fiat_currency") else "",
-			tip.recipient_address.to_ui_string() if tip.recipient_address else None,
-			str(tip.tip_quantity),
-			tip.tip_unit,
-			tip.tipping_comment_id,
-			tip.tippee_content_link,
-			tip.tippee_post_id,
-			tip.tippee_comment_id,
-			tip.tipping_comment.body.partition('\n')[0] if hasattr(tip, "tipping_comment") else ""
+			#tip.fiat_currency if hasattr(tip, "fiat_currency") else "",
+			#tip.recipient_address.to_ui_string() if tip.recipient_address else None,
+			#str(tip.tip_quantity),
+			#tip.tip_unit,
+			#tip.tipping_comment_id,
+			#tip.tippee_content_link,
+			#tip.tippee_post_id,
+			#tip.tippee_comment_id,
+			#tip.tipping_comment.body.partition('\n')[0] if hasattr(tip, "tipping_comment") else ""
 		]
 
 	def refreshData(self):
@@ -215,15 +215,15 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 			_('Tip Amount Text'),
 			_('Amount (BCH)'),
 			"amount_fiat", 
-			"fiat_currency",
-			_('Recipient Address'),
-			_('Tip Quantity'),
-			_('Tip Unit'),
-			_('Tip Comment ID'), 
-			_('Tippee Content Link'),
-			_('Tipee post id'),
-			_('Tipee comment id'),
-			_('Tip Comment body')
+			#"fiat_currency",
+			#_('Recipient Address'),
+			#_('Tip Quantity'),
+			#_('Tip Unit'),
+			#_('Tip Comment ID'), 
+			#_('Tippee Content Link'),
+			#_('Tipee post id'),
+			#_('Tipee comment id'),
+			#_('Tip Comment body')
 		]
 		fx = self.window.fx
 		
@@ -469,8 +469,12 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 				if payment_count > 5:
 						menu.addAction(_("{count} more tx not shown").format(count=payment_count-5))
 				menu.addSeparator()
+
 			if hasattr(tip, "recipient_address") and tip.recipient_address:
 				menu.addAction(_(f"open blockexplorer to recipient address"), lambda: doOpenBlockExplorerAddress(tip.recipient_address))
+
+		menu.addAction(_("copy recipient address(es)"), lambda: self.wallet_ui.window.app.clipboard().setText("\n".join([tip.recipient_address.to_cashaddr() for tip in tips])))
+
 
 		# pay...
 		if len(unpaid_tips) > 0:
