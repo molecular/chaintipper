@@ -28,7 +28,6 @@ from .util import read_config, write_config, has_config
 # praw and prawcore are being imported in this "top-level"-way to avoid loading lower modules which will fail as external plugins
 from . import praw
 from . import prawcore
-from . import iterators
 
 
 ############################################################################################################################
@@ -541,6 +540,7 @@ class Reddit(PrintError, QObject):
 							self.new_tip.emit(tip)
 						else:
 							del tip
+							rc = False
 
 				return rc
 		return False
