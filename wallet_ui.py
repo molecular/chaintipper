@@ -7,6 +7,7 @@ from PyQt5.QtWidgets import (
 	QSizePolicy, QLineEdit
 )
 from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import QApplication
 
 import weakref
 import decimal
@@ -107,7 +108,7 @@ class WalletUI(MessageBoxMixin, PrintError, QWidget):
 			self.print_error(s)
 
 	def persistTipList(self):
-		if isinstance(self.tiplist, PersistentTipList):
+		if hasattr(self, "tiplist") and isinstance(self.tiplist, PersistentTipList):
 			self.tiplist.write_if_dirty(self.wallet.storage)
 
 	def kill_join(self):
@@ -124,10 +125,6 @@ class WalletUI(MessageBoxMixin, PrintError, QWidget):
 		sb.insertPermanentWidget(4, self.sbbtn)
 		self.widgets.add(self.sbbtn)
 		self.window._chaintipper_button = weakref.ref(self.sbbtn)
-
-	def reddit_thread_finished(self):
-		self.print_error("reddit thread finished")
-		self.sbbtn.set_active(False)
 
 	def activate(self):
 		"""
@@ -185,6 +182,8 @@ class WalletUI(MessageBoxMixin, PrintError, QWidget):
 				self.reddit.dathread.finished.disconnect(self.reddit_thread_finished)
 			except TypeError as e:
 				self.print_error("error disconnecting finished signal: ", e)
+
+		self.sbbtn.transition_finished()
 
 	def show_chaintipper_tab(self):
 		"""switch main window to ChainTipper tab"""
@@ -348,24 +347,30 @@ class ChaintipperButton(StatusBarButton, PrintError):
 			self.setIcon(icon_chaintip)
 			self.setToolTip(_('ChainTipper - active on wallet "{wallet_name}"').format(wallet_name=self.wallet_ui.wallet_name))
 			self.setStatusTip(_('ChainTipper - Active on wallet "{wallet_name}"').format(wallet_name=self.wallet_ui.wallet_name))
-			self.wallet_ui.activate()
 		else:
-			self.wallet_ui.deactivate()
 			self.setIcon(icon_chaintip_gray)
 			self.setToolTip(_('ChainTipper - not active on wallet "{wallet_name}"').format(wallet_name=self.wallet_ui.wallet_name))
 			self.setStatusTip(_('ChainTipper - Inactive (click to activate on wallet "{wallet_name}")').format(wallet_name=self.wallet_ui.wallet_name))
-
+		
 	def toggle_active(self):
-		if self.is_active:
-			self.is_active = False
-		else:
-			self.is_active = True
-		self.update_state()
+		self.set_active(not self.is_active)
 
 	def set_active(self, active):
+		self.setDisabled(True)
+		QApplication.processEvents()
 		if self.is_active != active:
 			self.is_active = active
-			self.update_state()
+			if self.is_active:
+				self.wallet_ui.activate()
+				self.transition_finished()
+			else:
+				self.wallet_ui.deactivate()
+				# transition_finished called by wallet_ui.reddit_thread_finished
+
+	def transition_finished(self):
+		self.setDisabled(False)
+		self.update_state()
+
 
 	def disconnect_reddit(self):
 		self.wallet_ui.reddit.disconnect()

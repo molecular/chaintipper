@@ -9,8 +9,8 @@
 	* beta n+1
 
 		* quick deactivate/activate leads to error
-		* chaintipper button: switch to deactivated only after everything is wound down
 		* activate locks gui for too long if many tips are present
+		* remove anything regarding "activation_time"?
 
 	* beta n+2
 
