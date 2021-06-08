@@ -137,25 +137,35 @@ class WalletUI(MessageBoxMixin, PrintError, QWidget):
 
 		# create reddit and ui
 		self.reddit = Reddit(self)
-		self.add_ui()
 
 		if not self.reddit.login():
 			# login fails, deactivate, inform user and open settings dialog
 			self.print_error("reddit.login() returned False")
-			# self.window.show_critical(_("Reddit authentication failed.\n\nDeactivating chaintipper on this wallet.\n\nYou can activate it to try again."))
-			if self.sbbtn:
-				self.sbbtn.set_active(False) # abort activation and toggle back to inactive
-				#self.show_wallet_settings()
+			self.window.show_critical(_("Reddit authentication failed.\n\nDeactivating chaintipper on this wallet.\n\nYou can activate it to try again.\n\n"))
+			return False
 
 		else:
-			self.reddit.new_tip.connect(self.tiplist.addTip)
-			self.initializeTipList()
+			if self.reddit.await_reddit_authorization():
+				self.add_ui()
 
-			self.reddit.start_thread()
-			self.reddit.dathread.finished.connect(self.reddit_thread_finished)
+				self.reddit.new_tip.connect(self.tiplist.addTip)
+				self.print_error("initializeTipList")
+				self.initializeTipList()
 
-			self.refresh_ui()
-			self.show_chaintipper_tab()
+				self.print_error("reddit.start_thread()")
+				self.reddit.start_thread()
+				self.reddit.dathread.finished.connect(self.reddit_thread_finished)
+
+				self.refresh_ui()
+				self.show_chaintipper_tab()
+
+				return True
+			else:
+				self.print_error("reddit.await_reddit_auhtorization() returned False")
+				self.window.show_critical(_("Reddit authorization failed.\n\nDeactivating chaintipper on this wallet.\n\nYou can activate it to try again.\n\n"))
+				return False
+
+
 
 	def deactivate(self):
 		"""
@@ -358,7 +368,8 @@ class ChaintipperButton(StatusBarButton, PrintError):
 		if self.is_active != active:
 			self.is_active = active
 			if self.is_active:
-				self.wallet_ui.activate()
+				if not self.wallet_ui.activate():
+					self.is_active = False
 				self.transition_finished()
 			else:
 				self.wallet_ui.deactivate()
@@ -372,6 +383,7 @@ class ChaintipperButton(StatusBarButton, PrintError):
 	def disconnect_reddit(self):
 		self.wallet_ui.reddit.disconnect()
 		self.set_active(False)
+		self.transition_finished()
 
 
 
@@ -549,7 +561,7 @@ class WalletSettingsDialog(WindowModalDialog, PrintError, MessageBoxMixin):
 		# autopay limit (amount)
 		hbox = QHBoxLayout()
 		vbox.addLayout(hbox)
-		self.autopay_limit_bch_label = QLabel(_('AutoPay Limit (BCH)'))
+		self.autopay_limit_bch_label = QLabel(_('AutoPay Limit (BCH per Tip)'))
 		hbox.addWidget(self.autopay_limit_bch_label, 10, Qt.AlignRight)
 		self.autopay_limit_bch = QLineEdit()
 		self.autopay_limit_bch.setText(read_config(self.wallet, "autopay_limit_bch"))

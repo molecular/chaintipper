@@ -15,9 +15,8 @@ from time import sleep
 from datetime import datetime
 from typing import Union
 
-from PyQt5.QtGui import *
-from PyQt5.QtCore import *
-from PyQt5.QtWidgets import *
+from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import QApplication, QTreeWidgetItem, QAbstractItemView, QMenu
 
 from electroncash.i18n import _
 from electroncash_gui.qt import ElectrumWindow
@@ -177,6 +176,7 @@ class TipListItem(QTreeWidgetItem, PrintError):
 		for idx, value in enumerate(data, start=0):
 			self.setData(idx, Qt.DisplayRole, value)
 			self.setForeground(idx, Qt.gray if self.tip.isFinished() else Qt.black)			
+		QApplication.processEvents() # keep gui alive
 
 
 

@@ -91,6 +91,7 @@ class Reddit(PrintError, QObject):
 	def __init__(self, wallet_ui):
 		QObject.__init__(self)
 		self.wallet_ui = wallet_ui
+		self.reddit_authorized = False
 		self.should_quit = False
 		self.state = None # used in reddit auth flow
 		self.tips_to_refresh_amount = []
@@ -148,6 +149,7 @@ class Reddit(PrintError, QObject):
 		client.close()
 
 	def login(self):
+		self.print_error("reddit login()")
 		#authentication_mode = read_config(self.wallet_ui.wallet, "reddit_authentication_mode", "credentials")
 		authentication_mode = "app"
 		user_agent = c["reddit"]["user_agent"]
@@ -217,6 +219,8 @@ class Reddit(PrintError, QObject):
 
 					webopen(url)
 
+					#self.await_reddit_authorization()
+
 					return True # pretend login was complete and await refresh token in reddit thread
 
 				# test login (provoking exception on fail)
@@ -233,31 +237,45 @@ class Reddit(PrintError, QObject):
 
 	def await_reddit_authorization(self):
 		"""this blocks until users browser redirects to our makeshift server on localhost"""
-		if self.state: 
-			client = self.receive_connection(c["reddit"]["local_auth_server_port"])
-			data = client.recv(1024).decode("utf-8")
-			param_tokens = data.split(" ", 2)[1].split("?", 1)[1].split("&")
-			params = {
-				key: value for (key, value) in [token.split("=") for token in param_tokens]
-			}
+		if self.reddit_authorized:
+			return True
+		if not self.state:
+			return True
+		else:
+			try:
+				client = self.receive_connection(c["reddit"]["local_auth_server_port"])
+				data = client.recv(1024).decode("utf-8")
+				param_tokens = data.split(" ", 2)[1].split("?", 1)[1].split("&")
+				params = {
+					key: value for (key, value) in [token.split("=") for token in param_tokens]
+				}
 
-			if self.state != params["state"]:
-				self.send_message(
-					client,
-					f"State mismatch. Expected: {state} Received: {params['state']}",
-				)
-				return False
-			elif "error" in params:
-				self.send_message(client, f'Authorization failed with "{params["error"]}".<br><br>Chaintipper will deactivate.')
+				if self.state != params["state"]:
+					self.send_message(
+						client,
+						f"State mismatch. Expected: {state} Received: {params['state']}",
+					)
+					self.print_error("state mismatch, returning False")
+					return False
+				elif "error" in params:
+					self.send_message(client, f'Authorization failed with "{params["error"]}".<br><br>Chaintipper will deactivate.')
+					self.print_error("error, returning false")
+					return False
+			except Exception as e:
+				self.print_error("exception")
+				self.print_error("Exception during reddit auth: ", e)
 				return False
 
-			#msgbox.close()
 			refresh_token = self.reddit.auth.authorize(params["code"])
 			self.print_error("refresh_token: ", refresh_token)
 			self.send_message(client, f"Refresh token: {refresh_token}<br><br>Chaintipper should now be connected to your Reddit Account")
 
 			# store refresh token into wallet storage (wonder why praw doesn't call token manager to do this)
 			write_config(self.wallet_ui.wallet, WalletStorageTokenManager.REFRESH_TOKEN_KEY, refresh_token)
+
+			self.reddit_authorized = True
+			self.print_error("await_reddit_authorization() returning True")
+			return True
 
 	p_context = re.compile('(/r.*/\w*/.*/)\w*/\?context=3', re.DOTALL)
 	def getCommentLink(self, comment):

@@ -80,6 +80,7 @@ class Plugin(BasePlugin):
 		# activate chaintipper if desired by user
 		active = read_config(wallet, "activate_on_wallet_open")
 		wallet_ui.sbbtn.set_active(active)
+		wallet_ui.sbbtn.transition_finished()
 
 		#self.wallet_windows[wallet_name] = window
 
