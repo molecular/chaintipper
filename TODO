@@ -8,9 +8,7 @@
 
 	* beta n+1
 
-		* quick deactivate/activate leads to error
 		* activate locks gui for too long if many tips are present
-		* remove anything regarding "activation_time"?
 
 	* beta n+2
 

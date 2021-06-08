@@ -1,9 +1,22 @@
+1.0-beta14:
+
+  * persist list of tips to wallet file
+  * new "import" procedure to initially fill list of tips (if empty or old version)
+  * make activation/reactivation through status bar button more robust (no more crash)
+  * remove all existing "mark read", "mark unread" functions and automatically marking finished tips
+  * new preference "mark read when digested"
+  * changes to autopay logic (more wait periods to wait for blockchain info)
+  * new "remove" function to remove tips from list
+  * new "copy recipient address(es)" function
+
++++
+
 1.0-beta13:
 
   * fix bug with update_checker always thinking there's a new version
   * do not run update_checker before chaintipper activation
 
-+++
+
 
 1.0-beta12:
 

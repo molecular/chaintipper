@@ -83,9 +83,6 @@ class WalletUI(MessageBoxMixin, PrintError, QWidget):
 		vbox.setContentsMargins(0, 0, 0, 0)
 		self.setLayout(vbox)
 
-		# write initial chaintipper_activation_time
-		activation_t = read_config(self.wallet, "activation_time", datetime.utcnow().timestamp())
-
 		# more setup
 		self.setup_button()
 
