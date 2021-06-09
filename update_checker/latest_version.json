@@ -1,10 +1,10 @@
 {
-	"version": "1.0-beta13",
-	"uri": "https://github.com/molecular/chaintipper/releases/tag/1.0-beta13",
-	"zip_filename": "ChainTipper-1.0-beta13.zip",
-	"sha256": "ae61cc12a71533bd1218762f8b081599751589f2743fa9cc754163f4963aad4e",
+	"version": "1.0-beta14",
+	"uri": "https://github.com/molecular/chaintipper/releases/tag/1.0-beta14",
+	"zip_filename": "ChainTipper-1.0-beta14.zip",
+	"sha256": "2d63eae22e982eb30f06e97dd8142d67907ceb3e3a4762ed96f1925737b5c777",
 	"sig_ca": "molecular#123",
 	"sig_addr": "bitcoincash:qzz3zl6sl7zahh00dnzw0vrs0f3rxral9uedywqlfw",
-	"sig": "H6ejId6i69AnxUWV0XHOIoEkcw2lKp0hgRHx1ZvSkSzaOenyhA5GAMZ1+5Mj66Na7kdYGwlghfTQLdR0q+ssA2g=",
-	"sig_of_sha256": "H2DaNo1UoDB9nPMwi7ja2NBj5W1wRAEw8ufKCmzyzkdXQiLJXUIJ8Ug2h+Ja8zxGAkf0UWp5irS9pUJJzjeIyjs="
+	"sig": "H/UjpfuSIV0pwr1YCGDBln6rltizvnqTkVdNep5B0wGaKqxpNeQgPBYL77CAh4lHhzDb4bLIgayHXPNl5IMWDq8=",
+	"sig_of_sha256": "INLO8l3numSOCnpUCiR+eeUivpyEV8seYZD0vBSWZxCFEf4u9LlM3jKpdezS4F0nR4THdbPm6Ww2fhJ3c4SDcjo="
 }
