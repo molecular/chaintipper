@@ -8,6 +8,8 @@
 
 	* beta n+1
 
+		* looks like "has been returned" messages aren't parsed, probably related to:
+		* chaintip comments not being associated correctly to tips (getID() is not tipping_comment_id any more)
 
 	* beta n+2
 
