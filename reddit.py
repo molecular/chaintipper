@@ -362,17 +362,6 @@ class Reddit(PrintError, QObject):
 			self.print_error("marking read items:", self.items_to_mark_read)
 			self.items_to_mark_read = []
 
-	# def mark_read_unassociated_items(self):
-	# 	# mark_read all unassociated items
-	# 	items = \
-	# 		[o["comment"] for o in self.unassociated_chaintip_comments_by_tipping_comment_id.values()]
-	# 	for l in self.unassociated_claim_return_by_tipping_comment_id.values():
-	# 		items += [o["message"] for o in l]
-	# 	self.print_error("unassociated items: ", items)
-	# 	self.mark_read_items(items)
-	# 	self.unassociated_claim_return_by_tipping_comment_id = defaultdict(list)
-	# 	self.unassociated_chaintip_comments_by_tipping_comment_id = {}
-
 	def findTipByReference(self, reference):
 		for tip in self.wallet_ui.tiplist.tips.values():
 			if tip.getReference() == reference:
@@ -477,8 +466,16 @@ class Reddit(PrintError, QObject):
 	p_confirmation_comment_returned = re.compile('.*\[chaintip\].* has \[returned\]\(.*/(bitcoincash:\w*)\).*', re.MULTILINE | re.DOTALL)
 	def parseChaintipComment(self, comment: praw.models.Comment):
 		"""returns True if comment was digested, False otherwise"""
+		self.print_error("parseChaintipComment()")
 		tipping_comment_id = RedditTip.sanitizeID(comment.parent_id)
-		tip = self.wallet_ui.tiplist.tips.get(tipping_comment_id, None)
+		self.print_error("   sanitizedID: ", tipping_comment_id)
+		tip = RedditTip.tips_by_tipping_comment_id[tipping_comment_id]
+		self.print_error("   found tip:", tip)
+		# tip = self.wallet_ui.tiplist.tips.get(tipping_comment_id, None)
+		# if not tip:
+		# 	tip = self.wallet_ui.tiplist.tips.get("t1_" + tipping_comment_id, None)
+
+		self.print_error("   tip:", tip)
 
 		status = None
 
@@ -493,6 +490,8 @@ class Reddit(PrintError, QObject):
 
 		if Reddit.p_confirmation_comment_returned.match(comment.body):
 			status = 'returned'
+
+		self.print_error("   status", status)
 
 		# set data on tip (or defer)
 		if status:
@@ -511,6 +510,7 @@ class Reddit(PrintError, QObject):
 			return False
 
 	def digestItem(self, item):
+		self.print_error("digestItem(", item.fullname, ")")
 		"""returns True if item was digested or deferred, False otherwise"""
 		#self.print_error("digestItem(", item.id, ")")
 
@@ -520,6 +520,7 @@ class Reddit(PrintError, QObject):
 
 		# digest comment
 		elif isinstance(item, praw.models.Comment):
+			self.print_error("digestItem(): is comment")
 			return self.parseChaintipComment(item)
 
 	def digestMessage(self, item):
@@ -592,7 +593,7 @@ class Reddit(PrintError, QObject):
 						self.print_error(f"fetchTippingComments() error: {e}")
 
 	def doImport(self, limit_days = -1):
-		self.print_error(f"Reddit.import(limit_days={limit_days}) called")
+		self.print_error(f"Reddit.doImport(limit_days={limit_days}) called")
 		current_time_utc = int(round(time()))
 		counter = 0
 		for item in self.reddit.inbox.all(limit=None):
@@ -736,6 +737,7 @@ class Reddit(PrintError, QObject):
 class RedditTip(Tip):
 
 	CHAINTIP_TIPPING_COMMENT_LINK_INTRODUCTION_TIME = mktime(date(2021,4,8).timetuple())
+	tips_by_tipping_comment_id = {}
 
 	def sanitizeID(id):
 		if id[0] == "t" and id[2] == "_":
@@ -764,11 +766,17 @@ class RedditTip(Tip):
 		self.tipping_comment_body = ""
 		self.claim_or_returned_message_id = None
 
+	def set_tipping_comment_id(self, tipping_comment_id):
+		if self.tipping_comment_id:
+			del ReddiTip.tips_by_tipping_comment_id[self.tipping_comment_id]
+		self.tipping_comment_id = tipping_comment_id
+		RedditTip.tips_by_tipping_comment_id[self.tipping_comment_id] = self
+
 	# Tip overrides
 
 	def from_dict(self, d: dict):
 		"""used to load from wallet storage"""
-		self.tipping_comment_id = d["tipping_comment_id"]
+		self.set_tipping_comment_id(d["tipping_comment_id"])
 		self.tippee_comment_id = d["tippee_comment_id"]
 		self.tippee_post_id = d["tippee_post_id"]
 		self.acceptance_status = d["acceptance_status"]
@@ -778,7 +786,6 @@ class RedditTip(Tip):
 		self.chaintip_message_created_utc = d["chaintip_message_created_utc"]
 		self.chaintip_message_subject = d["chaintip_message_subject"]
 		self.chaintip_message_author_name = d["chaintip_message_author_name"]
-		self.tipping_comment_id = d["tipping_comment_id"]
 		self.tipping_comment_body = d["tipping_comment_body"]
 		self.tippee_content_link = d["tippee_content_link"]
 		self.tippee_post_id = d["tippee_post_id"]
@@ -787,6 +794,7 @@ class RedditTip(Tip):
 		self.subreddit_str = d["subreddit_str"]
 		self.username = d["username"]
 		self.direction = d["direction"]
+		self.type = d["type"]
 		self.tip_amount_text = d["tip_amount_text"]
 		self.tip_unit = d["tip_unit"]
 		self.tip_quantity = Decimal(d["tip_quantity"]) if len(d["tip_quantity"]) > 0 else None
@@ -811,7 +819,6 @@ class RedditTip(Tip):
 			"chaintip_message_created_utc": self.chaintip_message_created_utc,
 			"chaintip_message_subject": self.chaintip_message_subject,
 			"chaintip_message_author_name": self.chaintip_message_author_name,
-			"tipping_comment_id": self.tipping_comment_id,
 			"tipping_comment_body": self.tipping_comment_body,
 			"tippee_content_link": self.tippee_content_link,
 			"tippee_post_id": self.tippee_post_id,
@@ -820,6 +827,7 @@ class RedditTip(Tip):
 			"subreddit_str": self.subreddit_str,
 			"username": self.username,
 			"direction": self.direction,
+			"type": self.type,
 			"tip_amount_text": self.tip_amount_text,
 			"tip_unit": self.tip_unit,
 			"tip_quantity": str(self.tip_quantity) if self.tip_quantity else "",
@@ -851,10 +859,6 @@ class RedditTip(Tip):
 	def isValid(self):
 		try:
 			return \
-				self.is_chaintip and \
-				self.chaintip_message and \
-				self.chaintip_message.author == 'chaintip' and \
-				self.type == 'send' and \
 				hasattr(self, "recipient_address") and \
 				self.recipient_address and \
 				isinstance(self.recipient_address, Address) 
@@ -890,7 +894,6 @@ class RedditTip(Tip):
 	def parseChaintipMessage(self, message: praw.models.Message):
 		"""returns True if item was digested or deferred, False otherwise"""
 		self.chaintip_message = message
-		self.is_chaintip = False
 		self.type = None
 		self.default_amount_used = False
 		self.tippee_comment_id = None
@@ -908,7 +911,6 @@ class RedditTip(Tip):
 		reference = None
 		if hasattr(self.chaintip_message.author, "name") and self.chaintip_message.author.name == 'chaintip':
 			#self.print_error("--- parsing chaintip message, subject:", self.subject, "---")
-			self.is_chaintip = True
 			#self.print_error(f"parsing chaintip message {message.id}")
 			#self.print_error(self.chaintip_message.body)
 
@@ -941,7 +943,7 @@ class RedditTip(Tip):
 				# match "your tip"
 				m = RedditTip.p_tip_comment.match(self.chaintip_message.body)
 				if m:
-					self.tipping_comment_id = RedditTip.sanitizeID(m.group(1))
+					self.set_tipping_comment_id(RedditTip.sanitizeID(m.group(1)))
 					reference = self.tipping_comment_id
 
 				# match ... has (not) linked ... Bitcoin Cash (BCH) to <address>
