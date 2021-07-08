@@ -466,14 +466,8 @@ class Reddit(PrintError, QObject):
 	p_confirmation_comment_returned = re.compile('.*\[chaintip\].* has \[returned\]\(.*/(bitcoincash:\w*)\).*', re.MULTILINE | re.DOTALL)
 	def parseChaintipComment(self, comment: praw.models.Comment):
 		"""returns True if comment was digested, False otherwise"""
-		self.print_error("parseChaintipComment()")
 		tipping_comment_id = RedditTip.sanitizeID(comment.parent_id)
-		self.print_error("   sanitizedID: ", tipping_comment_id)
 		tip = RedditTip.tips_by_tipping_comment_id[tipping_comment_id]
-		self.print_error("   found tip:", tip)
-		# tip = self.wallet_ui.tiplist.tips.get(tipping_comment_id, None)
-		# if not tip:
-		# 	tip = self.wallet_ui.tiplist.tips.get("t1_" + tipping_comment_id, None)
 
 		self.print_error("   tip:", tip)
 
