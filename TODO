@@ -9,6 +9,10 @@
 	* beta n+1
 
 		* chaintip comments not being associated correctly to tips (getID() is not tipping_comment_id any more)
+		* possibly reddit isn't shut down on wallet close. (use cosigner plugin to turn on request debug, close chaintipper wallet and observe there are still requests)
+		* import ceased working
+		* chaintipper is shown in "optional features", wtf.
+		* tip amount text not shown?
 
 	* beta n+2
 

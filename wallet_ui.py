@@ -9,6 +9,7 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import QApplication
 
+import traceback
 import weakref
 import decimal
 from datetime import datetime
@@ -205,6 +206,12 @@ class WalletUI(MessageBoxMixin, PrintError, QWidget):
 			self.window.tabs.setCurrentIndex(self.previous_tab_index)
 			self.previous_tab_index = None
 
+	def importError(self, stuff):
+		klass, exc, tb = stuff
+		self.print_error("import error:", klass, exc)
+		traceback.print_tb(tb)
+		self.window.show_error(_("Import aborted with error: {klass} {exc}. Please report (more info in output)").format(klass=klass, exc=exc))
+
 	def importTipsFromReddit(self):
 		choice = self.msg_box(
 			icon = QMessageBox.Question,
@@ -227,7 +234,11 @@ class WalletUI(MessageBoxMixin, PrintError, QWidget):
 			#self.reddit.triggerImport(days)
 			
 			# import...
-			dialog = WaitingDialog(self.window, "importing...", lambda: self.reddit.doImport(days), auto_exec=True)
+			try:
+				dialog = WaitingDialog(self.window, "importing...", lambda: self.reddit.doImport(days), auto_exec=True, on_error=self.importError)
+			except Exception as e:
+				traceback.print_exception(e)
+				traceback.print_stack()
 
 	def initializeTipList(self):
 		try:
