@@ -1,5 +1,8 @@
 1.0-beta15:
 
+  * errors during initial import are reported to user and output
+  * chaintip comment association fixed
+
 +++
 
 1.0-beta14:
