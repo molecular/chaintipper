@@ -467,9 +467,9 @@ class Reddit(PrintError, QObject):
 	def parseChaintipComment(self, comment: praw.models.Comment):
 		"""returns True if comment was digested, False otherwise"""
 		tipping_comment_id = RedditTip.sanitizeID(comment.parent_id)
-		tip = RedditTip.tips_by_tipping_comment_id[tipping_comment_id]
-
-		self.print_error("   tip:", tip)
+		tip = None
+		if tipping_comment_id in RedditTip.tips_by_tipping_comment_id.keys():
+			tip = RedditTip.tips_by_tipping_comment_id[tipping_comment_id]
 
 		status = None
 
@@ -484,8 +484,6 @@ class Reddit(PrintError, QObject):
 
 		if Reddit.p_confirmation_comment_returned.match(comment.body):
 			status = 'returned'
-
-		self.print_error("   status", status)
 
 		# set data on tip (or defer)
 		if status:
@@ -514,7 +512,6 @@ class Reddit(PrintError, QObject):
 
 		# digest comment
 		elif isinstance(item, praw.models.Comment):
-			self.print_error("digestItem(): is comment")
 			return self.parseChaintipComment(item)
 
 	def digestMessage(self, item):
