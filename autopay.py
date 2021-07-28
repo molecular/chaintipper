@@ -139,6 +139,9 @@ class AutoPay(TipListener, PrintError):
 			self.print_error("address: ", address, "amount:", amount)
 
 		try:
+			for tip in tips:
+				tip.payment_status = "autopaying..."
+
 			tx = self.wallet.mktx(outputs, password=None, config=get_config())
 
 			self.print_error("txid:", tx.txid())
