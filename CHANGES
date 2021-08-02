@@ -1,10 +1,12 @@
+1.0-beta16:
+
++++
+
 1.0-beta15:
 
   * errors during initial import are reported to user and output to console
   * chaintip comment association fixed
   * new status "autopaying..." to help avoid double-payments
-  
-+++
 
 1.0-beta14:
 
