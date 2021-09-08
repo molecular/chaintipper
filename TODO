@@ -11,6 +11,7 @@
 		* possibly reddit isn't shut down on wallet close. (use cosigner plugin to turn on request debug, close chaintipper wallet and observe there are still requests)
 		* chaintipper is shown in "optional features", wtf.
 		* tip amount text not shown?
+		* looks like uppercase U/chaintip doesn't work
 
 	* beta n+2
 

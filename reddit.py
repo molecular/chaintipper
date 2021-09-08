@@ -698,8 +698,8 @@ class Reddit(PrintError, QObject):
 				self.wallet_ui.persistTipList()
 
 				cycle += 1
-			except prawcore.exceptions.ServerError as e:
-				self.print_error("Reddit ServerError", e, "retrying later...")
+			except prawcore.exceptions.PrawcoreException as e:
+				self.print_error("PrawCore (Reddit Network) Exception: ", e, "retrying later...")
 				sleep(30)
 
 		# --- wind down ----
