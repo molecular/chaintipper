@@ -1010,7 +1010,7 @@ class RedditTip(Tip):
 			self.update()
 
 
-	p_tip_amount_unit = re.compile('.*u/chaintip ((\S*)\s*(\S*))', re.MULTILINE | re.DOTALL)
+	p_tip_amount_unit = re.compile('.*u/chaintip\s*((\S*)\s*(\w*))', re.MULTILINE | re.DOTALL)
 	p_tip_prefix_symbol_decimal = re.compile('.*u/chaintip (.) ?(\d+\.?\d*).*', re.MULTILINE | re.DOTALL)
 	def parseTippingComment(self, comment):
 		#self.print_error("got tipping comment:", comment.body)

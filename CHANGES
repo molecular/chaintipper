@@ -1,7 +1,8 @@
 1.0-beta16:
 
   * better error handling in reddit poll loop (recover from connection issues)
-
+  * improve amount parser ("1 cent." now works, for example)
+  
 +++
 
 1.0-beta15:
