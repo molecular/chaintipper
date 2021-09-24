@@ -14,7 +14,7 @@
 		* looks like uppercase U/chaintip doesn't work
 		* "tip amount text" is empty for "€50"
 		* tip amount text newlines screw up gui (reported by remora around 10.9.2021)
-		* better info when autopay fails on wallets with pw
+		* "ChainTip" column -> "Stealth" column
 
 	* beta n+2
 
