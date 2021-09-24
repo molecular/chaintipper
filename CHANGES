@@ -4,6 +4,7 @@
   * improve amount parser ("1 cent." now works, for example)
   * better info when autopay fails on wallets with pw
   * simplify tiplist (remove unneeded columns)
+  * "tip amount text" fixed for <currency_symbol><decimal> (was empty)
  
 +++
 

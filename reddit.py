@@ -1033,6 +1033,7 @@ class RedditTip(Tip):
 				try:
 					prefix_symbol = m.group(1)
 					amount = m.group(2)
+					self.tip_amount_text = prefix_symbol + amount
 					#self.print_error("parsed <prefix_symbox><decimal>: ", prefix_symbol, amount)
 					self.tip_quantity = Decimal(amount)
 					self.tip_unit = amount_config["prefix_symbols"][prefix_symbol]
