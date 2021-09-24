@@ -171,7 +171,7 @@ class AutoPay(TipListener, PrintError):
 			if isinstance(e, NotEnoughFunds):
 				error = "not enough funds"
 			else:
-				error = "tx create/send error" #: " + str(e)
+				error = "tx create/send error: " + str(e).partition('\n')[0]
 			for tip in tips:
 				tip.payment_status = error
 				self.tiplist.updateTip(tip)

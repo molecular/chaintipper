@@ -1,5 +1,12 @@
 1.0-beta16:
 
+  * better error handling in reddit poll loop (recover from connection issues)
+  * improve amount parser ("1 cent." now works, for example)
+  * better info when autopay fails on wallets with pw
+  * simplify tiplist (remove unneeded columns)
+  * "tip amount text" fixed for <currency_symbol><decimal> (was empty)
+  * "ChainTip" column -> "Stealth" column (only showing "<stealth>" or "")
+ 
 +++
 
 1.0-beta15:

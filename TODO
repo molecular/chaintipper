@@ -9,8 +9,7 @@
 	* beta n+1
 
 		* possibly reddit isn't shut down on wallet close. (use cosigner plugin to turn on request debug, close chaintipper wallet and observe there are still requests)
-		* chaintipper is shown in "optional features", wtf.
-		* tip amount text not shown?
+		* tip amount text newlines screw up gui (reported by remora around 10.9.2021)
 
 	* beta n+2
 

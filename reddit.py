@@ -698,8 +698,8 @@ class Reddit(PrintError, QObject):
 				self.wallet_ui.persistTipList()
 
 				cycle += 1
-			except prawcore.exceptions.ServerError as e:
-				self.print_error("Reddit ServerError", e, "retrying later...")
+			except prawcore.exceptions.PrawcoreException as e:
+				self.print_error("PrawCore (Reddit Network) Exception: ", e, "retrying later...")
 				sleep(30)
 
 		# --- wind down ----
@@ -1010,7 +1010,7 @@ class RedditTip(Tip):
 			self.update()
 
 
-	p_tip_amount_unit = re.compile('.*u/chaintip ((\S*)\s*(\S*))', re.MULTILINE | re.DOTALL)
+	p_tip_amount_unit = re.compile('.*u/chaintip\s*((\S*)\s*(\w*))', re.MULTILINE | re.DOTALL)
 	p_tip_prefix_symbol_decimal = re.compile('.*u/chaintip (.) ?(\d+\.?\d*).*', re.MULTILINE | re.DOTALL)
 	def parseTippingComment(self, comment):
 		#self.print_error("got tipping comment:", comment.body)
@@ -1033,6 +1033,7 @@ class RedditTip(Tip):
 				try:
 					prefix_symbol = m.group(1)
 					amount = m.group(2)
+					self.tip_amount_text = prefix_symbol + amount
 					#self.print_error("parsed <prefix_symbox><decimal>: ", prefix_symbol, amount)
 					self.tip_quantity = Decimal(amount)
 					self.tip_unit = amount_config["prefix_symbols"][prefix_symbol]
