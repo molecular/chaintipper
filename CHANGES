@@ -3,6 +3,7 @@
   * better error handling in reddit poll loop (recover from connection issues)
   * improve amount parser ("1 cent." now works, for example)
   * better info when autopay fails on wallets with pw
+  * simplify tiplist (remove unneeded columns)
  
 +++
 

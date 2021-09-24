@@ -145,7 +145,7 @@ class TipListItem(QTreeWidgetItem, PrintError):
 
 	def getDataArray(self, tip):
 		return [
-			tip.getID(),
+			#tip.getID(),
 			format_time(tip.chaintip_message_created_utc), 
 			tip.acceptance_status,
 			tip.payment_status,
@@ -163,7 +163,7 @@ class TipListItem(QTreeWidgetItem, PrintError):
 			#tip.recipient_address.to_ui_string() if tip.recipient_address else None,
 			#str(tip.tip_quantity),
 			#tip.tip_unit,
-			tip.tipping_comment_id,
+			#tip.tipping_comment_id,
 			#tip.tippee_content_link,
 			#tip.tippee_post_id,
 			#tip.tippee_comment_id,
@@ -201,7 +201,7 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 
 	def get_headers(self):
 		headers = [
-			_('getID()'), 
+			#_('getID()'), 
 			_('Date'),
 			_('Acceptance'),
 			_('Payment'),
@@ -219,7 +219,7 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 			#_('Recipient Address'),
 			#_('Tip Quantity'),
 			#_('Tip Unit'),
-			_('Tip Comment ID'), 
+			#_('Tip Comment ID'), 
 			#_('Tippee Content Link'),
 			#_('Tipee post id'),
 			#_('Tipee comment id'),
