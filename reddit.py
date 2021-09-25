@@ -1050,7 +1050,7 @@ class RedditTip(Tip):
 				if not self.isPaid():
 					self.evaluateAmount()
 			except Exception as e:
-				self.print_error("Error parsing tip amount <prefix_symbol><decimal>: ", repr(e))
+				self.print_error("Failed to parse tip amount <prefix_symbol><decimal>: ", repr(e))
 				#traceback.print_exc()
 
 		# match u/chaintip <amount> <unit>
@@ -1074,7 +1074,7 @@ class RedditTip(Tip):
 						self.evaluateAmount()
 					self.tip_amount_text = m.group(1)
 				except Exception as e:
-					self.print_error("Error parsing tip amount <amount> <unit>: ", repr(e))
+					self.print_error("Failed to parse tip amount <amount> <unit>: ", repr(e))
 					#traceback.print_exc()
 					if not self.isPaid():
 						self.setAmount()
