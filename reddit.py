@@ -392,8 +392,13 @@ class Reddit(PrintError, QObject):
 		m = self.p_claimed_or_returned_message.match(message.body)
 		if m:
 			confirmation_comment_id = m.group(1)
-			tipping_comment_id = RedditTip.sanitizeID(self.reddit.comment(confirmation_comment_id).parent_id)
-			reference = tipping_comment_id
+			try:
+				tipping_comment_id = RedditTip.sanitizeID(self.reddit.comment(confirmation_comment_id).parent_id)
+				reference = tipping_comment_id
+			except praw.exceptions.ClientException as e:
+				print_error(f"exception parsing tipping_comment_id from message {message.id}." )
+				traceback.print_exc()
+
 			amount = m.group(2)
 			claimant = m.group(3)
 			action = m.group(4)
@@ -576,10 +581,17 @@ class Reddit(PrintError, QObject):
 				for info in self.reddit.info(fullnames = tipping_comment_ids):
 					if self.should_quit:
 						break
-					#self.print_error("info", info)
+					tipping_comment_ids.remove(info.fullname)
 					try:
 						tip = self.findTipByReference(info.fullname)
 						tip.parseTippingComment(info)
+					except Exception as e: # possibly tip was removed while we made the request
+						self.print_error(f"fetchTippingComments() error: {e}")
+				for unresolved_tipping_comment_id in tipping_comment_ids:
+					self.print_error("unresolved: ", unresolved_tipping_comment_id)
+					try:
+						tip = self.findTipByReference(unresolved_tipping_comment_id)
+						tip.tipping_comment_id = None
 					except Exception as e: # possibly tip was removed while we made the request
 						self.print_error(f"fetchTippingComments() error: {e}")
 
@@ -872,8 +884,8 @@ class RedditTip(Tip):
 				(self.acceptance_status == "claimed") or \
 				(self.acceptance_status == "returned") or \
 				(self.acceptance_status == "received") or \
-				(self.acceptance_status == "linked" and (is_pre_tclink or (hasattr(self, "chaintip_confirmation_status") and self.chaintip_confirmation_status == "confirmed"))) or \
-				(self.acceptance_status == "not yet linked" and (is_pre_tclink or (hasattr(self, "chaintip_confirmation_status") and self.chaintip_confirmation_status == "returned"))) \
+				(self.acceptance_status == "linked") # and (is_pre_tclink or (hasattr(self, "chaintip_confirmation_status") and self.chaintip_confirmation_status == "confirmed"))) or \
+				# (self.acceptance_status == "not yet linked" and (is_pre_tclink or (hasattr(self, "chaintip_confirmation_status") and self.chaintip_confirmation_status == "returned"))) \
 			)
 
 	p_subject_outgoing_tip = re.compile('Tip (\S*)')
@@ -1024,49 +1036,51 @@ class RedditTip(Tip):
 		self.subreddit_str = "r/" + self.tipping_comment.subreddit.display_name
 		self.tip_unit = ''
 
-		if self.isPaid():
-			self.update() # update subreddit to gui
-		else:
-			# match u/chaintip <prefix_symbol> <decimal>
-			m = RedditTip.p_tip_prefix_symbol_decimal.match(self.tipping_comment.body)
+		# match u/chaintip <prefix_symbol> <decimal>
+		m = RedditTip.p_tip_prefix_symbol_decimal.match(self.tipping_comment.body)
+		if m:
+			try:
+				prefix_symbol = m.group(1)
+				amount = m.group(2)
+				self.tip_amount_text = prefix_symbol + amount
+				#self.print_error("parsed <prefix_symbox><decimal>: ", prefix_symbol, amount)
+				self.tip_quantity = Decimal(amount)
+				self.tip_unit = amount_config["prefix_symbols"][prefix_symbol]
+				if not self.isPaid():
+					self.evaluateAmount()
+			except Exception as e:
+				self.print_error("Failed to parse tip amount <prefix_symbol><decimal>: ", repr(e))
+				#traceback.print_exc()
+
+		# match u/chaintip <amount> <unit>
+		if self.tip_unit == '':
+			m = RedditTip.p_tip_amount_unit.match(self.tipping_comment.body)
 			if m:
 				try:
-					prefix_symbol = m.group(1)
-					amount = m.group(2)
-					self.tip_amount_text = prefix_symbol + amount
-					#self.print_error("parsed <prefix_symbox><decimal>: ", prefix_symbol, amount)
-					self.tip_quantity = Decimal(amount)
-					self.tip_unit = amount_config["prefix_symbols"][prefix_symbol]
-					self.evaluateAmount()
-				except Exception as e:
-					self.print_error("Error parsing tip amount <prefix_symbol><decimal>: ", repr(e))
-					#traceback.print_exc()
-
-			# match u/chaintip <amount> <unit>
-			if self.tip_unit == '':
-				m = RedditTip.p_tip_amount_unit.match(self.tipping_comment.body)
-				if m:
-					try:
-						self.tip_amount_text = m.group(1)
-						if not m.group(3): # <tip_unit>
-							self.tip_unit = m.group(3)
-							self.tip_quantity = Decimal("1")
-						else: # <tip_quantity> <tip_unit>
-							try:
-								self.tip_quantity = amount_config["quantity_aliases"][m.group(2)]
-							except Exception as e:
-								self.tip_quantity = Decimal(m.group(2))
-							self.tip_unit = m.group(3)
-							# <onchain_message>
-							# if m.lastindex >= 3:
-							# 	self.tip_op_return = m.group(3)
+					if not m.group(3): # <tip_unit>
+						self.tip_unit = m.group(3)
+						self.tip_quantity = Decimal("1")
+					else: # <tip_quantity> <tip_unit>
+						try:
+							self.tip_quantity = amount_config["quantity_aliases"][m.group(2)]
+						except Exception as e:
+							self.tip_quantity = Decimal(m.group(2))
+						self.tip_unit = m.group(3)
+						# <onchain_message>
+						# if m.lastindex >= 3:
+						# 	self.tip_op_return = m.group(3)
+					if not self.isPaid():
 						self.evaluateAmount()
-					except Exception as e:
-						self.print_error("Error parsing tip amount <amount> <unit>: ", repr(e))
-						#traceback.print_exc()
+					self.tip_amount_text = m.group(1)
+				except Exception as e:
+					self.print_error("Failed to parse tip amount <amount> <unit>: ", repr(e))
+					#traceback.print_exc()
+					if not self.isPaid():
 						self.setAmount()
-				else: # use default amount
-						self.setAmount()
+			else: # use default amount
+				if not self.isPaid():
+					self.setAmount()
+		self.update()
 
 	def setAmount(self, amount_bch: Decimal = None): 
 		"""
