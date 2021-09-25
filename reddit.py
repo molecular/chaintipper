@@ -1047,7 +1047,8 @@ class RedditTip(Tip):
 				#self.print_error("parsed <prefix_symbox><decimal>: ", prefix_symbol, amount)
 				self.tip_quantity = Decimal(amount)
 				self.tip_unit = amount_config["prefix_symbols"][prefix_symbol]
-				self.evaluateAmount()
+				if not self.isPaid():
+					self.evaluateAmount()
 			except Exception as e:
 				self.print_error("Error parsing tip amount <prefix_symbol><decimal>: ", repr(e))
 				#traceback.print_exc()
@@ -1069,13 +1070,16 @@ class RedditTip(Tip):
 						# <onchain_message>
 						# if m.lastindex >= 3:
 						# 	self.tip_op_return = m.group(3)
-					self.evaluateAmount()
+					if not self.isPaid():
+						self.evaluateAmount()
 					self.tip_amount_text = m.group(1)
 				except Exception as e:
 					self.print_error("Error parsing tip amount <amount> <unit>: ", repr(e))
 					#traceback.print_exc()
-					self.setAmount()
+					if not self.isPaid():
+						self.setAmount()
 			else: # use default amount
+				if not self.isPaid():
 					self.setAmount()
 
 	def setAmount(self, amount_bch: Decimal = None): 
