@@ -4,6 +4,7 @@
   * translate Acceptance column (simplify): "funded" -> "unlinked", "received" -> "linked"
   * bugfix: ignore unresolvable tipping_comment_ids
   * set tip amount text only if parsed correctly
+  * parse tip amount even on paid tips (for example during import process)
 
 +++
 
