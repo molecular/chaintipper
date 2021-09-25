@@ -1,4 +1,6 @@
-1.0-beta17:
+1.0-beta18:
+
++++
 
   * catch and ignore praw.exceptions.ClientException when finding tipping_comment from chaintip message (sometimes it's 4xx)
   * translate Acceptance column (simplify): "funded" -> "unlinked", "received" -> "linked"
@@ -6,8 +8,6 @@
   * set tip amount text only if parsed correctly
   * parse tip amount text even on paid tips (for example during import process), but still do not evaluate amount_bch, amount_usd
   * change isFinished() (greying out) logic to not look at the removed Chaintip column any more
-
-+++
 
 1.0-beta16:
 
