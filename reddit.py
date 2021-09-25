@@ -395,7 +395,6 @@ class Reddit(PrintError, QObject):
 			try:
 				tipping_comment_id = RedditTip.sanitizeID(self.reddit.comment(confirmation_comment_id).parent_id)
 				reference = tipping_comment_id
-				parsed_ok = True
 			except praw.exceptions.ClientException as e:
 				print_error(f"exception parsing tipping_comment_id from message {message.id}." )
 				traceback.print_exc()
@@ -403,6 +402,7 @@ class Reddit(PrintError, QObject):
 			amount = m.group(2)
 			claimant = m.group(3)
 			action = m.group(4)
+			parsed_ok = True
 			# print_error("parsed claimed message", message.id)
 			# print_error("   tipping_comment_id:", tipping_comment_id)
 			# print_error("   amount: ", amount)
@@ -582,10 +582,12 @@ class Reddit(PrintError, QObject):
 					tipping_comment_ids.remove(info.fullname)
 					if self.should_quit:
 						break
-					#self.print_error("info", info)
+					self.print_error("info", info.fullname)
 					try:
 						tip = self.findTipByReference(info.fullname)
+						self.print_error("found tip:", tip)
 						tip.parseTippingComment(info)
+						self.print_error("tip.tipping_comment:", tip.tipping_comment)
 					except Exception as e: # possibly tip was removed while we made the request
 						self.print_error(f"fetchTippingComments() error: {e}")
 				for unresolved_tipping_comment_id in tipping_comment_ids:
