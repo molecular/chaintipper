@@ -579,15 +579,12 @@ class Reddit(PrintError, QObject):
 			if len(tipping_comment_ids) > 0:
 				self.print_error(f"fetchTippingComments(): reddit.info({tipping_comment_ids})")
 				for info in self.reddit.info(fullnames = tipping_comment_ids):
-					tipping_comment_ids.remove(info.fullname)
 					if self.should_quit:
 						break
-					self.print_error("info", info.fullname)
+					tipping_comment_ids.remove(info.fullname)
 					try:
 						tip = self.findTipByReference(info.fullname)
-						self.print_error("found tip:", tip)
 						tip.parseTippingComment(info)
-						self.print_error("tip.tipping_comment:", tip.tipping_comment)
 					except Exception as e: # possibly tip was removed while we made the request
 						self.print_error(f"fetchTippingComments() error: {e}")
 				for unresolved_tipping_comment_id in tipping_comment_ids:
@@ -887,8 +884,8 @@ class RedditTip(Tip):
 				(self.acceptance_status == "claimed") or \
 				(self.acceptance_status == "returned") or \
 				(self.acceptance_status == "received") or \
-				(self.acceptance_status == "linked" and (is_pre_tclink or (hasattr(self, "chaintip_confirmation_status") and self.chaintip_confirmation_status == "confirmed"))) or \
-				(self.acceptance_status == "not yet linked" and (is_pre_tclink or (hasattr(self, "chaintip_confirmation_status") and self.chaintip_confirmation_status == "returned"))) \
+				(self.acceptance_status == "linked") # and (is_pre_tclink or (hasattr(self, "chaintip_confirmation_status") and self.chaintip_confirmation_status == "confirmed"))) or \
+				# (self.acceptance_status == "not yet linked" and (is_pre_tclink or (hasattr(self, "chaintip_confirmation_status") and self.chaintip_confirmation_status == "returned"))) \
 			)
 
 	p_subject_outgoing_tip = re.compile('Tip (\S*)')
