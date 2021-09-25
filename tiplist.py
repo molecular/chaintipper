@@ -147,7 +147,7 @@ class TipListItem(QTreeWidgetItem, PrintError):
 		return [
 			#tip.getID(),
 			format_time(tip.chaintip_message_created_utc), 
-			tip.acceptance_status,
+			#tip.acceptance_status,
 			'linked' if tip.acceptance_status == 'received' else 'not yet linked' if tip.acceptance_status == 'funded' else tip.acceptance_status,
 			#tip.chaintip_confirmation_status if hasattr(tip, "chaintip_confirmation_status") else "",
 			tip.chaintip_confirmation_status if (hasattr(tip, "chaintip_confirmation_status") and tip.chaintip_confirmation_status == "<stealth>") else "",
@@ -205,8 +205,8 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 		headers = [
 			#_('getID()'), 
 			_('Date'),
-			_('Acceptance'),
-			_('Acceptance'),
+			#_('Acceptance'), # original
+			_('Acceptance'), # translated
 			_('Stealth'),
 			_('Payment'),
 			_('Received (BCH)'),
