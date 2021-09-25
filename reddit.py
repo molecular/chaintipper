@@ -1060,7 +1060,6 @@ class RedditTip(Tip):
 				m = RedditTip.p_tip_amount_unit.match(self.tipping_comment.body)
 				if m:
 					try:
-						self.tip_amount_text = m.group(1)
 						if not m.group(3): # <tip_unit>
 							self.tip_unit = m.group(3)
 							self.tip_quantity = Decimal("1")
@@ -1074,6 +1073,7 @@ class RedditTip(Tip):
 							# if m.lastindex >= 3:
 							# 	self.tip_op_return = m.group(3)
 						self.evaluateAmount()
+						self.tip_amount_text = m.group(1)
 					except Exception as e:
 						self.print_error("Error parsing tip amount <amount> <unit>: ", repr(e))
 						#traceback.print_exc()

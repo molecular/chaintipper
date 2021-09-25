@@ -8,7 +8,6 @@
 
 	* beta n
 
-    * tip amount text can contain stuff even if fail to parse moniker
     * tip amount not parsed on import while subreddit is??
 
 	* beta n+1

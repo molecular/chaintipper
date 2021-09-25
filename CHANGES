@@ -3,6 +3,7 @@
   * catch and ignore praw.exceptions.ClientException when finding tipping_comment from chaintip message (sometimes it's 4xx)
   * translate Acceptance column (simplify): "funded" -> "unlinked", "received" -> "linked"
   * bugfix: ignore unresolvable tipping_comment_ids
+  * set tip amount text only if parsed correctly
 
 +++
 
