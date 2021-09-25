@@ -6,6 +6,10 @@
 		* release (trhough github files?), hashes?
 		* LICENSE
 
+	* beta n
+
+    * tip amount text can contain stuff even if fail to parse moniker
+
 	* beta n+1
 
 		* possibly reddit isn't shut down on wallet close. (use cosigner plugin to turn on request debug, close chaintipper wallet and observe there are still requests)

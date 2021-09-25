@@ -1,5 +1,8 @@
 1.0-beta17:
 
+  * catch and ignore praw.exceptions.ClientException when finding tipping_comment from chaintip message (sometimes it's 4xx)
+  * translate Acceptance column (simplify): "funded" -> "unlinked", "received" -> "linked"
+
 +++
 
 1.0-beta16:

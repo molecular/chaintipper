@@ -392,8 +392,13 @@ class Reddit(PrintError, QObject):
 		m = self.p_claimed_or_returned_message.match(message.body)
 		if m:
 			confirmation_comment_id = m.group(1)
-			tipping_comment_id = RedditTip.sanitizeID(self.reddit.comment(confirmation_comment_id).parent_id)
-			reference = tipping_comment_id
+			try:
+				tipping_comment_id = RedditTip.sanitizeID(self.reddit.comment(confirmation_comment_id).parent_id)
+				reference = tipping_comment_id
+			except praw.exceptions.ClientException as e:
+				print_error(f"exception parsing tipping_comment_id from message {message.id}." )
+				traceback.print_exc()
+
 			amount = m.group(2)
 			claimant = m.group(3)
 			action = m.group(4)
