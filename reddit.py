@@ -1081,6 +1081,7 @@ class RedditTip(Tip):
 			else: # use default amount
 				if not self.isPaid():
 					self.setAmount()
+		self.update()
 
 	def setAmount(self, amount_bch: Decimal = None): 
 		"""
