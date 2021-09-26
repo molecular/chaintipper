@@ -1,6 +1,7 @@
 1.0-beta18:
 
   * fix bug with amount_bch being empty in autopay
+  * rename button "import 4/8/21" -> "import all available" and remove the old "import all available" button
 
 +++
 
