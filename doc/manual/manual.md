@@ -92,39 +92,93 @@ Here's a list of the columns and their meaning:
    * **not yet linked**: the tipee has not yet registered their wallet with chaintip. From here the status can transition to
    * **claimed**: the tipee has claimed your tip by registering an address with chaintip (onboarding success)
    * **returned**: the tipee failed to claim your tip and it was returned to the address you registered with chaintip
+ * **Stealth**: indicates wether or not the tip is a stealth tip. Contains either `<stealth>` or is empty
+ * **Payment**: indicates payment status of the tip. This column can have the following values:
+   * unpaid tips can have one of the following states
+     * **autopay disabled**: tip is not paid and autopay is disabled
+     * **amount set**: amount to tip has been set (either by parsing moniker or by using default amount)
+     * **check**: amount is set, waiting for blockchain to give info about potential payment
+     * **ready to pay**: tip is ready to be paid by autopay or manually
+   * after payment attempt, the following states are posible
+     * **invalid recipient address**: the recipient address is not valid
+     * **autopay disabled**: autopay is disabled in settings, pay manually or enable `Autopay` in settings
+     * **autopay disallowed (default amount)**: default amount was used and autopay is disabled in that case
+     * **autopay amount-limited**: the amount to be paid exceeds the autopay amount limit. Pay manually or increase `AutoPay Limit (BCH per tip)` in settings 
+     * **paid**: the tip has been paid
+  * **Received (BCH)**: amount of BCH received on the recipient address (taken from blockchain)
+  * **Subreddit**: subreddit the tipping comment was made in
+  * **Recipient**: username of tipee
+  * **Tip Amount Text**: if amount parser was successful, this contains the text that was detected and used for setting the amount
+  * **Amount (BCH)**: Tip amount to be paid (parsed from tip amount text or default amount) in BCH
+  * **Amount (USD)**: Tip amount to be paid (parsed from tip amount text or default amount) in USD
 
 ### Tip actions
 
 Right-clicking an item in the TipList will bring up a context-menu that allows executing actions on the item. It's also possible to select multiple items (using `shift` and/or `ctrl` modifiers and a left mouse button click)
 
- * **mark read**: marks the corresponding chaintip messages as `read` on reddit. Note that the item(s) will disappear after you've marked them as read in this way.
- * **pay...**: open Send tab with `Pay to` filled out to reflect the currently selected list of items.
- * **open browser to tipping comment**: opens a webprowser to the permlink of your comment that triggered chaintip
+![Tip Context Menu](tip_context_menu.png)
 
-### Specifying an amount in your Tip comment
+  * **open browser to...**: opens your webbrowser to...
+    * **...chaintip message**: ...the chaintip message sent when you made the tip
+    * **...the content that made you tip**: ...the tipping comment's parent comment
+    * **...the tipping comment**: ...the tipping comment (the comment you wrote to initiate the tip)
+    * **...to claimed message: ...the chaintip message that informs about the recipient claiming the tip
+    * **...to returned message: ...to the chaintip message that informs about the tip being returned to you
+  * **open blockexplorer to...**
+    * **...payment tx**: the payment transaction (or one of them you can select if there are multiple payments)
+    * **...recipient address**: the address you are instructed by chaintip to send the tip to
+  * **copy recipient address(es)**: copies recipient address (or addresses if more than one tip was selected) to clipboard
+  * **pay...**: open the electron-cash `Send` tab with amount and recipient (or amounts and recipients if multiple tips were selected) filled out, so you can manually pay the tip(s)
+  * **remove**: removes the tip (or tips, if multiple tips were selected) from the list
 
-ChainTipper looks up your comment that triggered chaintip to send you a message and parses that for something matching the following pattern:
+> Note: operatons that work on multiple tips show the number of tips they will run on in brackets (for example: `remove (6)`). This is useful because only a subset of selected tips might match the criteria for being used with that operation.
+
+### Specifying an amount in your Tip comment (optional)
+
+ChainTipper looks up your comment that triggered chaintip to send you a message (the tipping comment) and parses that for something matching either the following pattern:
 
 ```
-/u/chaintip <amount> <unit>
+u/chaintip <currency_symbol><quantity>
 ```
 
-> Known issue: the leading `/` is currently necessary. Will be fixed soon
+or this pattern:
 
-What exactly you can use for `<amount>` and `<unit>` can be seen by selecting `Show Amount Monikers` in the ChainTip menu.
+```
+u/chaintip <quantity> <unit>
+```
 
+A list of what exactly you can use for `<quantity>`, `<unit>`, `<currency_symbol` can be seen by selecting `Show Amount Monikers` in the ChainTip menu:
 
 #### Parser fail => Default Tip Amount
 
 If the parser fails to find above pattern (for example because you didn't spedify an amount), the `default amount` (configurable in settings, see below) will be used to set the tip amount. 
 
-### AutoTip
+### Paying tips manually
 
-TODO
+Tips can be paid manually by selecting them and the right-clicking on the selection (or a single tip) and choosing the `pay...` menu-item. This will open the Electron Cash `Send` tab with amount(s) and recipient(s) filled out for you, so you only need to hit `Send` to pay the tips.
+
+> Note: you can pay multiple tips in one go using multi-select (Left-Click, Shift-Left-Click or Ctrl-Left-Click) in the Tip List
+
+### AutoPay
+
+If enabled in settings ChainTipper will automatically pay any tips that have `Payment` column set to `ready to pay`
 
 ### Settings
 
-TODO
+The `Wallet-specific Settings` Dialog can be accessed by right-clicking on the ChainTipper Icon in the status bar at the bottom:
+
+![Wallet-specific Settings Dialog](settings.png)
+
+Here's a list of the settings and a description of what they're for:
+
+  * **Behaviour**:
+    * **Activate ChainTipper when wallet 'xyz' is opened**: if checked ChainTipper will automatically activate itself when the wallet it is linked to is opened. Note: you can start Electron Cash from the command-line (from a terminal) and specify the wallet to open on startup using the `-w <wallet file>` option. When unchecked, you have to activate ChainTipper manually by left-clicking it's icon in the status bar.
+    * **Keep my inbox clean by marking messages/comments as read when they are digested**: ChainTipper reads your inbox. When it finds a message/comment from u/chaintip it will digest (parse and incorporate the effects) it. If this option is checked, it will then mark the message/comment as having been read on Reddit. This keeps your inbox free from chaintip messages and lets you see the important stuff more easily.
+  * **Default Tip Amount (used when amount parsing fails)**: when Chaintipper fails to parse a meaningful amount from the text after `u/chaintip` in your tipping comment, this default amount will be used.
+  * **Special Linked Default Tip Amount (used when amount parsing fails and recipient has linked an address)**: If checked, amount parsing fails and the recipient has already registered ("linked") an address with chaintip, this amount will be used. This way you can tip more (or less) to people that are new to chaintip (useful for onboarding)
+  * **AutoPay - Automatically pay unpaid tips**: When AutoPay is checked, ChainTipper will automatically pay any tips with `Payment` set to `ready to pay`. The following specific options can be used to configure this AutoPay feature: 
+    * **Disallow AutoPay when Default Tip Amount is used**: if checked, autopay will only pay tips that have an amount set by parsing your tipping comment.
+    * **Limit AutoPay Amount**: When checked, AutoPay will only pay tips when the amount does not exceed the amount given in `AutoPay Limit (BCH per Tip)`. This helps to protect against mistakes (both fat-finger by you or any amount parser problems) resulting in too much money to be paid.
 
 ### Handling and Reporting Errors
 
