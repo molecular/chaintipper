@@ -184,7 +184,7 @@ Here's a list of the settings and a description of what they're for:
 
 Especially during the beta, getting error reports to the developers is important.
 
-On fatal Exceptions Electron Cash will show a Error Report Dialog saying `Sorry, something went wrong`. Please **DO NOT** currently use the `Send Bug Report` button, because that will result in an issue being openend in the Electron Cash github. I'm trying to find a way to route the reports to me somehow, but for now, just screenshot or copypaste what is shown when you click `show report contents` and send it to the dev.
+On fatal Exceptions Electron Cash will show a Error Report Dialog saying `Sorry, something went wrong`. Please **DO NOT** currently use the `Send Bug Report` button, because that will result in an issue being openend in the Electron Cash github. I'm trying to find a way to route the reports to me somehow, but for now, just screenshot or copypaste what is shown when you click `show report contents` and send it to the developer (for example via the telegram group linked at the end of this document).
 
 Some less fatal errors / problems do not reach this dialog. They can only be seen on the stdout when you start EC from a terminal like described further up in Section "Running with debug output"
 
@@ -195,3 +195,15 @@ Some less fatal errors / problems do not reach this dialog. They can only be see
  * When you "mark unread" a message in reddit, it will be picked up by ChainTipper
  * There is a setting in reddit user preferences to disable automatically marking messages as read when visiting the inbox.
 
+## Links and Resources
+
+  * Documenation
+    * [ChainTip](https://www.chaintip.org/)
+    * [Most Recent version of this manual](https://github.com/molecular/chaintipper/blob/release/doc/manual/manual.md)
+    * [Build and Review Documenation](https://github.com/molecular/chaintipper/blob/release/doc/build_review.md)
+  * Code and Releases
+    * [ChainTipper github project](https://github.com/molecular/chaintipper)
+    * [ChainTipper github releases page](https://github.com/molecular/chaintipper/releases)
+  * Community
+    * [ChainTipper Telegram Channel (invite link)](https://t.me/joinchat/QQi00rchFUc2NTYy)
+    * [ChaintTipper subreddit r/chaintipper](https://www.reddit.com/r/chaintipper/)
