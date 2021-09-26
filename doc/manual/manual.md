@@ -16,7 +16,7 @@ To do this, ChainTipper connects to Reddit (you authorize it to do so) and reads
 
 It then parses any private message authored by `/u/chaintip` to see if it's a message telling you payment details about a tip you made.
 
-ChainTipper will get the linked Tip comment (the one you wrote) and parse a payment amount fromatted `/u/chaintip <amount> <unit>`.
+ChainTipper will get the linked Tip comment (the one you wrote) and parse a payment amount formatted `u/chaintip <amount> <unit>` or `u/chaintip <currency_symbol><amount>`.
 
 ### Installation
 
