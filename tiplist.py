@@ -442,7 +442,7 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 			count_display_string = f" ({len(tips)})"
 
 		unpaid_tips = [tip for tip in tips if tip.isValid() and not tip.isPaid() and tip.amount_bch and isinstance(tip.amount_bch, Decimal)]
-		unpaid_count_display_string = f" ({len(unpaid_tips)})" if len(unpaid_tips)>1 else "" 
+		unpaid_count_display_string = f" ({len(unpaid_tips)})" if len(tips)>1 else "" 
 
 		# create the context menu
 		menu = QMenu()

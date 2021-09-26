@@ -1093,7 +1093,7 @@ class RedditTip(Tip):
 		else:
 			self.default_amount_used = True
 			self.amount_bch = self.getDefaultAmountBCH()
-		if not self.isPaid():
+		if self.amount_bch and not self.isPaid():
 			self.payment_status = 'amount set'
 			self.amount_set_time = time()
 		self.update()

@@ -149,12 +149,12 @@ def amount_config_to_rich_text():
 	ac = amount_config
 	s = "<h4>Amount Format:</h4>"
 
-	s += "<h3>/u/chaintip &lt;currency_symbol&gt;&lt;decimal&gt;</h3>"
+	s += "<h3>u/chaintip &lt;currency_symbol&gt;&lt;decimal&gt;</h3>"
 	s += "<h4>with <bg>&lt;currency_symbol&gt;</b> one of...</h4>"
 	currency_symbols_str = "\n".join(f"  <li><b>{symbol}</b>: {unit}</li>\n" for symbol, unit in ac["prefix_symbols"].items())
 	s += "<ul>\n" + currency_symbols_str + "</ul>\n" 
 
-	s += "<h3>/u/chaintip &lt;quantity&gt; &lt;unit&gt;</h3>"
+	s += "<h3>u/chaintip &lt;quantity&gt; &lt;unit&gt;</h3>"
 	s += "<h4>with <bg>&lt;quantity&gt;</b> one of...</h4>"
 	quantity_aliases_str = "<li><b>&lt;decimal number&gt;</b></li>\n"
 	quantity_aliases_str += "\n".join(f"	<li><b>{alias}</b>: {amount}</li>\n" for alias, amount in ac["quantity_aliases"].items())

@@ -224,12 +224,12 @@ class WalletUI(MessageBoxMixin, PrintError, QWidget):
 				_("You can 'import' tips (i.e. read inbox items authored by u/chaintip) from reddit... either all available items, 10 days worth of items or only items that are currently marked 'unread'."), "<br><br>",
 				_("After this initial import, new items coming into your inbox will be automatically read and digested into the list of tips according to their meaning."), "<br><br>"
 			]),
-			buttons = (_("Import all available"), _("Import from 4/8/2021"), _("Import 10 days worth"), _("Import nothing")),
-			defaultButton = _("Import all available"),
-			escapeButton = _("Import nothing additional"),
+			buttons = (_("Import all available"), _("Import 10 days worth"), _("Import nothing")),
+			defaultButton = _("Import 10 days worth"),
+			escapeButton = _("Import nothing"),
 		)
-		if choice in (0, 1, 2): # import messages from reddit
-			days = (-1, -2, 10)[choice]
+		if choice in (0, 1): # import messages from reddit
+			days = (-2, 10)[choice]
 			#self.reddit.triggerMarkChaintipMessagesUnread(days)
 			#self.reddit.triggerImport(days)
 			
