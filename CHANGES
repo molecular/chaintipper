@@ -1,5 +1,7 @@
 1.0-beta18:
 
+  * fix bug with amount_bch being empty in autopay
+
 +++
 
   * catch and ignore praw.exceptions.ClientException when finding tipping_comment from chaintip message (sometimes it's 4xx)
