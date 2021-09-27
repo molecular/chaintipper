@@ -16,11 +16,13 @@ To do this, ChainTipper connects to Reddit (you authorize it to do so) and reads
 
 It then parses any private message authored by `/u/chaintip` to see if it's a message telling you payment details about a tip you made.
 
-ChainTipper will get the linked Tip comment (the one you wrote) and parse a payment amount fromatted `/u/chaintip <amount> <unit>`.
+ChainTipper will get the linked Tip comment (the one you wrote) and parse a payment amount formatted `u/chaintip <amount> <unit>` or `u/chaintip <currency_symbol><amount>`.
 
-### Installation
+### Download and Installation
 
-ChainTipper is an external Electron-Cash Plugin.
+ChainTipper is an external Electron-Cash Plugin. 
+
+It takes the form of a ZIP-File you can find on [https://github.com/molecular/chaintipper/releases](https://github.com/molecular/chaintipper/releases)
 
 To install it, start Electron Cash, then go to `Tools` -> `Installed Plugins`. Use the `Add Plugin` button and locate ChainTipper-x.y-z.zip from your filesystem.
 
@@ -184,9 +186,14 @@ Here's a list of the settings and a description of what they're for:
 
 Especially during the beta, getting error reports to the developers is important.
 
-On fatal Exceptions Electron Cash will show a Error Report Dialog saying `Sorry, something went wrong`. Please **DO NOT** currently use the `Send Bug Report` button, because that will result in an issue being openend in the Electron Cash github. I'm trying to find a way to route the reports to me somehow, but for now, just screenshot or copypaste what is shown when you click `show report contents` and send it to the developer (for example via the telegram group linked at the end of this document).
+On fatal Exceptions Electron Cash will show a Error Report Dialog saying `Sorry, something went wrong`. Please **DO NOT** currently use the `Send Bug Report` button, because that will result in an issue being openend in the Electron Cash github. I'm trying to find a way to route the reports to me somehow, but for now, just screenshot or copypaste what is shown when you click `show report contents` and send it to the developer or make an issue on github.
 
 Some less fatal errors / problems do not reach this dialog. They can only be seen on the stdout when you start EC from a terminal like described further up in Section "Running with debug output"
+
+drop your reports here:
+
+ * [Github Issues](https://github.com/molecular/chaintipper/issues)
+ * Telegram Group linked at end of this document
 
 ![example error report content](example_error_content.png)
 
@@ -205,5 +212,6 @@ Some less fatal errors / problems do not reach this dialog. They can only be see
     * [ChainTipper github project](https://github.com/molecular/chaintipper)
     * [ChainTipper github releases page](https://github.com/molecular/chaintipper/releases)
   * Community
-    * [ChainTipper Telegram Channel (invite link)](https://t.me/joinchat/QQi00rchFUc2NTYy)
-    * [ChaintTipper subreddit r/chaintipper](https://www.reddit.com/r/chaintipper/)
+    * [ChainTipper Telegram Channel (invite link)](https://t.me/chaintipper)
+    * [ChainTipper subreddit r/chaintipper](https://www.reddit.com/r/chaintipper/)
+    * [Github Issues](https://github.com/molecular/chaintipper/issues)
