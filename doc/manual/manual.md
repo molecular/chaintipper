@@ -18,9 +18,11 @@ It then parses any private message authored by `/u/chaintip` to see if it's a me
 
 ChainTipper will get the linked Tip comment (the one you wrote) and parse a payment amount formatted `u/chaintip <amount> <unit>` or `u/chaintip <currency_symbol><amount>`.
 
-### Installation
+### Download and Installation
 
-ChainTipper is an external Electron-Cash Plugin.
+ChainTipper is an external Electron-Cash Plugin. 
+
+It takes the form of a ZIP-File you can find on [https://github.com/molecular/chaintipper/releases](https://github.com/molecular/chaintipper/releases)
 
 To install it, start Electron Cash, then go to `Tools` -> `Installed Plugins`. Use the `Add Plugin` button and locate ChainTipper-x.y-z.zip from your filesystem.
 
@@ -210,6 +212,6 @@ drop your reports here:
     * [ChainTipper github project](https://github.com/molecular/chaintipper)
     * [ChainTipper github releases page](https://github.com/molecular/chaintipper/releases)
   * Community
-    * [ChainTipper Telegram Channel (invite link)](https://t.me/joinchat/QQi00rchFUc2NTYy)
+    * [ChainTipper Telegram Channel (invite link)](https://t.me/chaintipper)
     * [ChainTipper subreddit r/chaintipper](https://www.reddit.com/r/chaintipper/)
-     * [Github Issues](https://github.com/molecular/chaintipper/issues)
+    * [Github Issues](https://github.com/molecular/chaintipper/issues)
