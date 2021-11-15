@@ -598,7 +598,7 @@ class Reddit(PrintError, QObject):
 					except Exception as e: # possibly tip was removed while we made the request
 						self.print_error(f"fetchTippingComments() error: {e}")
 
-	def doImport(self, limit_days = -1):
+	def doImport(self, limit_days = -1, start_date_utc = None):
 		self.print_error(f"Reddit.doImport(limit_days={limit_days}) called")
 		current_time_utc = int(round(time()))
 		counter = 0
@@ -613,6 +613,9 @@ class Reddit(PrintError, QObject):
 				if limit_days == -2:
 					if item.created_utc < RedditTip.CHAINTIP_TIPPING_COMMENT_LINK_INTRODUCTION_TIME:
 						self.print_error("break, CHAINTIP_TIPPING_COMMENT_LINK_INTRODUCTION_TIME reached")
+						break
+				if limit_days == -3:
+					if item.created_utc < start_date_utc:
 						break
 			if item.author != 'chaintip': 
 				continue
