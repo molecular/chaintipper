@@ -170,7 +170,8 @@ class TipListItem(QTreeWidgetItem, PrintError):
 			#tip.tippee_content_link,
 			#tip.tippee_post_id,
 			#tip.tippee_comment_id,
-			#tip.tipping_comment.body.partition('\n')[0] if hasattr(tip, "tipping_comment") else ""
+			#tip.tipping_comment.body.partition('\n')[0] if hasattr(tip, "tipping_comment") else "",
+			#tip.claim_return_txid if hasattr(tip, "claim_return_txid") and tip.claim_return_txid else ""
 		]
 
 	def refreshData(self):
@@ -229,6 +230,7 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 			#_('Tipee post id'),
 			#_('Tipee comment id'),
 			#_('Tip Comment body')
+			#_('Claim/Return txid')
 		]
 		fx = self.window.fx
 		
@@ -464,6 +466,8 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 				menu.addAction(_('open browser to "{type}" message').format(type="funded" if hasattr(tip, "chaintip_confirmation_status") and tip.chaintip_confirmation_status == "funded" else tip.acceptance_status), lambda: doOpenBrowserToMessage(tip.claim_or_returned_message_id))
 			
 			# open blockexplorer...
+
+			# ... to payment tx
 			menu.addSeparator()
 			payment_count = len(tip.payments_by_txhash)
 			if payment_count == 1:
@@ -475,6 +479,11 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 						menu.addAction(_("{count} more tx not shown").format(count=payment_count-5))
 				menu.addSeparator()
 
+			# ... to claimed/returned tx
+			if hasattr(tip, "claim_return_txid") and tip.claim_return_txid:
+				menu.addAction(_("open blockexplorer to {acceptance_status} tx").format(acceptance_status=tip.acceptance_status), lambda: doOpenBlockExplorerTX(tip.claim_return_txid))
+
+			# ... to recipient address
 			if hasattr(tip, "recipient_address") and tip.recipient_address:
 				menu.addAction(_(f"open blockexplorer to recipient address"), lambda: doOpenBlockExplorerAddress(tip.recipient_address))
 

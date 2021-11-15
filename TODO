@@ -12,6 +12,22 @@
 		
 	* beta n+1
 
+		* this crap:
+			|1009729.582| |66| [Reddit] fetchTippingComments(): reddit.info(['t1_h59tenp', 't1_h3ks7eg'])
+			|1009730.593| |66| [RedditTip] Failed to parse tip amount <amount> <unit>:  InvalidOperation([<class 'decimal.ConversionSyntax'>])
+			|1009733.280| |66| [Reddit] fetchTippingComments(): reddit.info(['t1_h59tenp', 't1_h3ks7eg'])
+			|1009734.788| |66| [RedditTip] Failed to parse tip amount <amount> <unit>:  InvalidOperation([<class 'decimal.ConversionSyntax'>])
+			|1009737.505| |66| [Reddit] fetchTippingComments(): reddit.info(['t1_h59tenp', 't1_h3ks7eg'])
+			|1009738.503| |66| [RedditTip] Failed to parse tip amount <amount> <unit>:  InvalidOperation([<class 'decimal.ConversionSyntax'>])
+			|1009742.277| |66| [Reddit] fetchTippingComments(): reddit.info(['t1_h59tenp', 't1_h3ks7eg'])
+			|1009742.787| |66| [RedditTip] Failed to parse tip amount <amount> <unit>:  InvalidOperation([<class 'decimal.ConversionSyntax'>])
+			|1009745.469| |66| [Reddit] fetchTippingComments(): reddit.info(['t1_h59tenp', 't1_h3ks7eg'])
+			|1009746.453| |66| [RedditTip] Failed to parse tip amount <amount> <unit>:  InvalidOperation([<class 'decimal.ConversionSyntax'>])
+			|1009749.167| |66| [Reddit] fetchTippingComments(): reddit.info(['t1_h59tenp', 't1_h3ks7eg'])
+			|1009750.676| |66| [RedditTip] Failed to parse tip amount <amount> <unit>:  InvalidOperation([<class 'decimal.ConversionSyntax'>])
+			|1009753.394| |66| [Reddit] fetchTippingComments(): reddit.info(['t1_h59tenp', 't1_h3ks7eg'])
+			|1009754.415| |66| [RedditTip] Failed to parse tip amount <amount> <unit>:  InvalidOperation([<class 'decimal.ConversionSyntax'>])		
+
 		* possibly reddit isn't shut down on wallet close. (use cosigner plugin to turn on request debug, close chaintipper wallet and observe there are still requests)
 		* tip amount text newlines screw up gui (reported by remora around 10.9.2021)
 

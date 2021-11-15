@@ -1,6 +1,6 @@
 {
     "display_name": "ChainTipper",
-    "version": "1.0-beta18",
+    "version": "1.0-beta19",
     "description": "Parses your Reddit chaintip comments and (semi-)automatically pays them.",
     "project_url": "https://github.com/molecular/chaintipper/releases",
     "minimum_ec_version": "4.0",
