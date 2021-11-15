@@ -1,18 +1,14 @@
 
-	* for any semi-public release
-
-		* readme.md for github (linking to manual.md, build_and_review.md)
-		* rebase and push to github once code is de-cluttered
-		* release (trhough github files?), hashes?
-		* LICENSE
-
 	* beta n
 
+		* maybe update readme.md
+		* write build_and_review.md
+		* LICENSE
 		* include manual in release assets?
 		
 	* beta n+1
 
-		* this crap:
+		*	after fresh import (goes away after restart):
 			|1009729.582| |66| [Reddit] fetchTippingComments(): reddit.info(['t1_h59tenp', 't1_h3ks7eg'])
 			|1009730.593| |66| [RedditTip] Failed to parse tip amount <amount> <unit>:  InvalidOperation([<class 'decimal.ConversionSyntax'>])
 			|1009733.280| |66| [Reddit] fetchTippingComments(): reddit.info(['t1_h59tenp', 't1_h3ks7eg'])
@@ -43,8 +39,6 @@
 		* menu-item "set amount" with a dialog
 
 		* about box (see main_window:772)
-
-		* have praw devs considered this issue: https://github.com/praw-dev/praw/issues/1732 ? if so, update praw and our patch
 
 	* consider it
 

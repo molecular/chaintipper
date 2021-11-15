@@ -128,6 +128,7 @@ Right-clicking an item in the TipList will bring up a context-menu that allows e
     * **...to returned message: ...to the chaintip message that informs about the tip being returned to you
   * **open blockexplorer to...**
     * **...payment tx**: the payment transaction (or one of them you can select if there are multiple payments)
+    * **...claimed/returned tx**: the chaintip claim or return transaction (transferring the amount either to the tippee (when he claimed) or back to you (on timeout))
     * **...recipient address**: the address you are instructed by chaintip to send the tip to
   * **copy recipient address(es)**: copies recipient address (or addresses if more than one tip was selected) to clipboard
   * **pay...**: open the electron-cash `Send` tab with amount and recipient (or amounts and recipients if multiple tips were selected) filled out, so you can manually pay the tip(s)
