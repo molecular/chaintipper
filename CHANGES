@@ -1,6 +1,7 @@
 1.0-beta19:
 
   * parse claimed/returned tx id, include in data and add "open blockexplorer to claimed/returned tx" menuitem
+  * Tip amount_text now set to <amount> <unit> instead of taken verbatim from message. Fixes: tip amount text newlines screw up gui (reported by remora around 10.9.2021). 
 
 +++
 

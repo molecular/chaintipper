@@ -1078,7 +1078,7 @@ class RedditTip(Tip):
 						# 	self.tip_op_return = m.group(3)
 					if not self.isPaid():
 						self.evaluateAmount()
-					self.tip_amount_text = m.group(1)
+					self.tip_amount_text = f"{self.tip_quantity} {self.tip_unit}"
 				except Exception as e:
 					self.print_error("Failed to parse tip amount <amount> <unit>: ", repr(e))
 					#traceback.print_exc()
