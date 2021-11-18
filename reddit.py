@@ -371,7 +371,7 @@ class Reddit(PrintError, QObject):
 	p_claimed_subject = re.compile('Tip claimed.')
 	p_returned_subject = re.compile('Tip returned to you.')
 	p_funded_subject = re.compile('Tip funded.')
-	p_claimed_or_returned_message = re.compile('Your \[tip\]\(.*_/(\S*)\) of (\d*\.\d*) Bitcoin Cash.*to u/(\S*).* has \[been (\S*)\].*', re.MULTILINE | re.DOTALL)
+	p_claimed_or_returned_message = re.compile('Your \[tip\]\(.*_/(\S*)\) of (\d*\.\d*) Bitcoin Cash.*to u/(\S*).* has \[been (\S*)\]\(.*/(\w*)\).*', re.MULTILINE | re.DOTALL)
 	p_various_messages = re.compile('Your tip to u/(\S*) for their \[(.*)\]\(.*/(\w*)/(\w*)/\).*of (\d*\.\d*) Bitcoin Cash.*has \[been (\S*)\].*', re.MULTILINE | re.DOTALL)
 	def parseClaimedOrReturnedMessage(self, message: praw.models.Message):
 		#print_error("checking if message is claim/returned, subject", message.subject)
@@ -387,6 +387,7 @@ class Reddit(PrintError, QObject):
 		tipping_comment_id = None
 		reference = None # can be tipping_comment id or tippee_post_id or tippee_comment_id
 		post_or_comment = None # initialize for debugging output below
+		claim_return_txid = None
 
 		#print_error("detected claimed/returned message, body", message.body)
 		m = self.p_claimed_or_returned_message.match(message.body)
@@ -402,6 +403,7 @@ class Reddit(PrintError, QObject):
 			amount = m.group(2)
 			claimant = m.group(3)
 			action = m.group(4)
+			claim_return_txid = m.group(5)
 			parsed_ok = True
 			# print_error("parsed claimed message", message.id)
 			# print_error("   tipping_comment_id:", tipping_comment_id)
@@ -450,11 +452,12 @@ class Reddit(PrintError, QObject):
 			try:
 				tip = self.findTipByReference(reference)
 				#self.print_error(f"when parsing claim/returned message {message.id}: found matching tip (for claim)", tip)
-				tip.setAcceptanceOrConfirmationStatus(message, action)
+				tip.setAcceptanceOrConfirmationStatus(message, action, claim_return_txid)
 			except: 
 				self.unassociated_claim_return_by_tipping_comment_id[reference].append({
 					"message": message,
-					"action": action
+					"action": action,
+					"claim_return_txid": claim_return_txid
 				})
 				#self.print_error(f"when parsing claim/returned message {message.id}: tip with reference {reference} not found. Not registering '{action}' status.")
 
@@ -595,7 +598,7 @@ class Reddit(PrintError, QObject):
 					except Exception as e: # possibly tip was removed while we made the request
 						self.print_error(f"fetchTippingComments() error: {e}")
 
-	def doImport(self, limit_days = -1):
+	def doImport(self, limit_days = -1, start_date_utc = None):
 		self.print_error(f"Reddit.doImport(limit_days={limit_days}) called")
 		current_time_utc = int(round(time()))
 		counter = 0
@@ -610,6 +613,9 @@ class Reddit(PrintError, QObject):
 				if limit_days == -2:
 					if item.created_utc < RedditTip.CHAINTIP_TIPPING_COMMENT_LINK_INTRODUCTION_TIME:
 						self.print_error("break, CHAINTIP_TIPPING_COMMENT_LINK_INTRODUCTION_TIME reached")
+						break
+				if limit_days == -3:
+					if item.created_utc < start_date_utc:
 						break
 			if item.author != 'chaintip': 
 				continue
@@ -768,6 +774,7 @@ class RedditTip(Tip):
 		self.chaintip_confirmation_status = ""
 		self.tipping_comment_body = ""
 		self.claim_or_returned_message_id = None
+		self.claim_return_txid = ""
 
 	def set_tipping_comment_id(self, tipping_comment_id):
 		if self.tipping_comment_id:
@@ -786,7 +793,7 @@ class RedditTip(Tip):
 		self.payment_status = d["payment_status"]
 		self.chaintip_confirmation_status = d["chaintip_confirmation_status"]
 		self.chaintip_message_id = d["chaintip_message_id"]
-		self.chaintip_message_created_utc = d["chaintip_message_created_utc"]
+		self.chaintip_message_created_utc = int(d["chaintip_message_created_utc"])
 		self.chaintip_message_subject = d["chaintip_message_subject"]
 		self.chaintip_message_author_name = d["chaintip_message_author_name"]
 		self.tipping_comment_body = d["tipping_comment_body"]
@@ -806,6 +813,7 @@ class RedditTip(Tip):
 		self.fiat_currency = d["fiat_currency"]
 		self.recipient_address = Address.from_cashaddr_string(d["recipient_address"]) if d["recipient_address"] and len(d["recipient_address"]) > 0 else None
 		self.direction = d["direction"]
+		self.claim_return_txid = d["claim_return_txid"] if len(d["claim_return_txid"]) > 0 else None
 
 		#	tip.payment_status,
 		#	"{0:.8f}".format(tip.amount_received_bch) if isinstance(tip.amount_received_bch, Decimal) else "",
@@ -838,6 +846,7 @@ class RedditTip(Tip):
 			"amount_fiat": str(self.amount_fiat) if self.amount_fiat else "",
 			"fiat_currency": self.fiat_currency if self.fiat_currency else "",
 			"recipient_address": self.recipient_address.to_cashaddr() if self.recipient_address else "",
+			"claim_return_txid": self.claim_return_txid if self.claim_return_txid else "",
 		}
 
 	def getReference(self):
@@ -985,7 +994,7 @@ class RedditTip(Tip):
 				claim_return_list = self.reddit.unassociated_claim_return_by_tipping_comment_id[reference]
 				if len(claim_return_list) > 0:
 					for claim_return in claim_return_list:
-						self.setAcceptanceOrConfirmationStatus(claim_return["message"], claim_return["action"])
+						self.setAcceptanceOrConfirmationStatus(claim_return["message"], claim_return["action"], claim_return["claim_return_txid"])
 
 				# associate possible confirmation comment
 				confirmation = self.reddit.unassociated_chaintip_comments_by_tipping_comment_id.pop(self.tipping_comment_id, None)
@@ -995,13 +1004,13 @@ class RedditTip(Tip):
 
 			# copy values to top level
 			self.chaintip_message_id = self.chaintip_message.id
-			self.chaintip_message_created_utc = self.chaintip_message.created_utc
+			self.chaintip_message_created_utc = int(self.chaintip_message.created_utc)
 			self.chaintip_message_author_name = self.chaintip_message.author.name
 			self.chaintip_message_subject = self.chaintip_message.subject
 
 			return True
 
-	def setAcceptanceOrConfirmationStatus(self, claim_or_returned_message, action):
+	def setAcceptanceOrConfirmationStatus(self, claim_or_returned_message, action, claim_return_txid):
 		if self.acceptance_status in ("received", "claimed", "returned"):
 			self.update()
 			return
@@ -1011,6 +1020,7 @@ class RedditTip(Tip):
 		self.acceptance_status = action
 		self.claim_or_returned_message = claim_or_returned_message
 		self.claim_or_returned_message_id = claim_or_returned_message.id
+		self.claim_return_txid = claim_return_txid
 		self.update()
 
 
@@ -1071,7 +1081,7 @@ class RedditTip(Tip):
 						# 	self.tip_op_return = m.group(3)
 					if not self.isPaid():
 						self.evaluateAmount()
-					self.tip_amount_text = m.group(1)
+					self.tip_amount_text = f"{self.tip_quantity} {self.tip_unit}"
 				except Exception as e:
 					self.print_error("Failed to parse tip amount <amount> <unit>: ", repr(e))
 					#traceback.print_exc()

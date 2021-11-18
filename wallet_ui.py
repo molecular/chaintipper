@@ -23,7 +23,7 @@ from electroncash_gui.qt.util import (
 )
 from electroncash_gui.qt.amountedit import BTCAmountEdit
 from electroncash_gui.qt.main_window import StatusBarButton
-from electroncash.util import finalization_print_error, inv_dict
+from electroncash.util import finalization_print_error, inv_dict, format_time
 from electroncash.util import PrintError
 from electroncash.wallet import Abstract_Wallet
 
@@ -185,7 +185,7 @@ class WalletUI(MessageBoxMixin, PrintError, QWidget):
 	def reddit_thread_finished(self):
 		self.remove_ui()
 		self.show_previous_tab()
-		if self.reddit:
+		if self.reddit and hasattr(self.reddit, "dathread"):
 			try: 
 				self.reddit.dathread.finished.disconnect(self.reddit_thread_finished)
 			except TypeError as e:
@@ -235,14 +235,30 @@ class WalletUI(MessageBoxMixin, PrintError, QWidget):
 			
 			# import...
 			try:
-				dialog = WaitingDialog(self.window, "importing...", lambda: self.reddit.doImport(days), auto_exec=True, on_error=self.importError)
+				dialog = WaitingDialog(self.window, "importing from Reddit...", lambda: self.reddit.doImport(days), auto_exec=True, on_error=self.importError)
 			except Exception as e:
-				traceback.print_exception(e)
+				traceback.print_exc()
+				traceback.print_stack()
+
+	def importRecentTipsFromReddit(self):
+		dates = []
+		for tip in self.tiplist.tips.values():
+			if hasattr(tip, "chaintip_message_created_utc"):
+				dates.append(int(tip.chaintip_message_created_utc))
+		if len(dates) > 0:
+			dates = sorted(dates)
+			self.print_error(f"importRecentTipsFromReddit(): latest tip date: {dates[-1]} = {format_time(dates[-1])}, importing...")
+			# import...
+			try:
+				dialog = WaitingDialog(self.window, _("importing from Reddit (starting {d})...").format(d=format_time(dates[-1])), lambda: self.reddit.doImport(-3, dates[-1]), auto_exec=True, on_error=self.importError)
+			except Exception as e:
+				traceback.print_exc()
 				traceback.print_stack()
 
 	def initializeTipList(self):
 		try:
 			self.tiplist.read(self.wallet.storage)
+			self.importRecentTipsFromReddit()
 		except StorageVersionMismatchException as e:
 			self.print_error("error loading tips from wallet file: ", e)
 			self.importTipsFromReddit()

@@ -64,4 +64,4 @@ fi
 cat SHA256.ChainTipper.txt | tail -n 1
 
 echo "as a last step, to activate update_checker, merge develop -> release, then push"
-echo "and finally bump version in manifest.json and checkout develop branch again"
+echo "and finally bump version in manifest.json, adjust CHANGES and checkout develop branch again"

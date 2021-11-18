@@ -1,10 +1,19 @@
+1.0-beta19:
+
+  * parse claimed/returned tx id, include in data and add "open blockexplorer to claimed/returned tx" menuitem
+  * Tip amount_text now set to <amount> <unit> instead of taken verbatim from message. Fixes: tip amount text newlines screw up gui (reported by remora around 10.9.2021). 
+  * auto-import from reddit on startup (starting at max(date) of stored tips)
+  * new functionality to export tip list to csv or json file (in tip context menu)
+
++++
+
 1.0-beta18:
 
   * fix bug with amount_bch being empty in autopay
   * rename button "import 4/8/21" -> "import all available" and remove the old "import all available" button
   * minor cosmetic changes
   
-+++
+1.0-beta17:
 
   * catch and ignore praw.exceptions.ClientException when finding tipping_comment from chaintip message (sometimes it's 4xx)
   * translate Acceptance column (simplify): "funded" -> "unlinked", "received" -> "linked"
