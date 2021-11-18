@@ -793,7 +793,7 @@ class RedditTip(Tip):
 		self.payment_status = d["payment_status"]
 		self.chaintip_confirmation_status = d["chaintip_confirmation_status"]
 		self.chaintip_message_id = d["chaintip_message_id"]
-		self.chaintip_message_created_utc = d["chaintip_message_created_utc"]
+		self.chaintip_message_created_utc = int(d["chaintip_message_created_utc"])
 		self.chaintip_message_subject = d["chaintip_message_subject"]
 		self.chaintip_message_author_name = d["chaintip_message_author_name"]
 		self.tipping_comment_body = d["tipping_comment_body"]
@@ -1004,7 +1004,7 @@ class RedditTip(Tip):
 
 			# copy values to top level
 			self.chaintip_message_id = self.chaintip_message.id
-			self.chaintip_message_created_utc = self.chaintip_message.created_utc
+			self.chaintip_message_created_utc = int(self.chaintip_message.created_utc)
 			self.chaintip_message_author_name = self.chaintip_message.author.name
 			self.chaintip_message_subject = self.chaintip_message.subject
 

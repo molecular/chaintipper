@@ -8,6 +8,7 @@ import time
 import traceback
 import sys
 import re
+import json
 
 from enum import IntEnum
 from decimal import Decimal
@@ -16,7 +17,9 @@ from datetime import datetime
 from typing import Union
 
 from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QApplication, QTreeWidgetItem, QAbstractItemView, QMenu
+from PyQt5.QtWidgets import QApplication, QTreeWidgetItem, QAbstractItemView, QMenu, QVBoxLayout
+from electroncash_gui.qt.util import WindowModalDialog, filename_field, Buttons, CancelButton, OkButton
+from electroncash.plugins import run_hook
 
 from electroncash.i18n import _
 from electroncash_gui.qt import ElectrumWindow
@@ -368,6 +371,90 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 				self.updated_tips.append(tip)
 				#self.print_error("trying to update tip without tiplistitem: ", tip, ", re-adding to updated_tips list")
 
+	def do_export_history(self, filename):
+		self.print_error(f"do_export_history({filename})")
+
+		def csv_encode(s):
+			if s is None or len(str(s)) == 0: return ""
+			return '"' + str(s).replace('"', '\'') + '"'
+
+		# prepare export_data list
+		# export_data = [tip.to_dict() for tip in self.tiplist.tips.values()]
+		export_data = []
+		for tip in self.tiplist.tips.values():
+			d = tip.to_dict()
+			d = {**{
+				"wallet": self.wallet.basename(),
+				"payments": [{
+					"txid": txid,
+					"amount_bch": str(tip.payments_by_txhash[txid])
+				} for txid in tip.payments_by_txhash.keys()]
+			}, **d}
+			export_data.append(d)
+
+		# write json
+		if filename.endswith(".json"):
+			with open(filename, "w+", encoding='utf-8') as f:	
+				f.write(json.dumps(export_data, indent=4))
+			return True
+
+		# write csv
+		elif filename.endswith(".csv"):
+			for d in export_data:
+				self.print_error("dpam", d["payments"])
+				d["payments"] = ",".join([p["txid"] for p in d["payments"]])
+				self.print_error("d2", d)
+			with open(filename, "w+", encoding='utf-8') as f:	
+				f.write(",".join([csv_encode(d) for d in export_data[0].keys()]) + '\n')
+				for data in export_data:
+					f.write(",".join(csv_encode(d) for d in data.values()) + '\n')
+			return True
+
+		# extension detection fail
+		self.print_error("failed to detect desired file format from extension. Aborting tip export.")
+		return False
+
+	def export_dialog(self, tips: list):
+		d = WindowModalDialog(self.parent, _('Export {c} Tips').format(c=len(tips)))
+		d.setMinimumSize(400, 200)
+		vbox = QVBoxLayout(d)
+		defaultname = os.path.expanduser(read_config(self.wallet, 'export_history_filename', f"~/ChainTipper tips - wallet {self.wallet.basename()}.csv"))
+		select_msg = _('Select file to export your tips to')
+
+		box, filename_e, csv_button = filename_field(self.config, defaultname, select_msg)
+
+		vbox.addWidget(box)
+		vbox.addStretch(1)
+		hbox = Buttons(CancelButton(d), OkButton(d, _('Export')))
+		vbox.addLayout(hbox)
+
+		#run_hook('export_history_dialog', self, hbox)
+
+		#self.update()
+		res = d.exec_()
+		d.setParent(None) # for python GC
+		if not res:
+			return
+		filename = filename_e.text()
+		write_config(self.wallet, 'export_history_filename', filename)
+		if not filename:
+			return
+		success = False
+		try:
+			# minimum 10s time for calc. fees, etc
+			success = self.do_export_history(filename)
+		except Exception as reason:
+			traceback.print_exc(file=sys.stderr)
+			export_error_label = _("Error exporting tips")
+			self.parent.show_critical(export_error_label + "\n" + str(reason), title=_("Unable to export tips"))
+		else:
+			if success:
+				self.parent.show_message(_("{l} Tips successfully exported to {filename}").format(l=len(tips), filename=filename))
+			else:
+				self.parent.show_message(_("Exporting tips to {filename} failed. More detail might be seen in terminal output.").format(filename=filename))
+
+
+
 	#
 
 	def create_menu(self, position):
@@ -434,6 +521,9 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 				tip.remove()
 				del tip
 
+		def doExport(tips: list):
+			self.export_dialog(tips)
+
 		col = self.currentColumn()
 		column_title = self.headerItem().text(col)
 
@@ -441,7 +531,10 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 		count_display_string = ""
 		tips = [s.tip for s in self.selectedItems()]
 		if len(self.selectedItems()) > 1:
-			count_display_string = f" ({len(tips)})"
+			if len(self.selectedItems()) == len(self.tiplist.tips.items()):
+				count_display_string = f" (all {len(tips)})"
+			else:
+				count_display_string = f" ({len(tips)})"
 
 		unpaid_tips = [tip for tip in tips if tip.isValid() and not tip.isPaid() and tip.amount_bch and isinstance(tip.amount_bch, Decimal)]
 		unpaid_count_display_string = f" ({len(unpaid_tips)})" if len(tips)>1 else "" 
@@ -495,11 +588,16 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 			menu.addSeparator()
 			menu.addAction(_(f"pay{unpaid_count_display_string}..."), lambda: doPay(unpaid_tips))
 
+		# export
+		menu.addSeparator()
+		menu.addAction(_("export{}...").format(count_display_string), lambda: doExport(tips))
+		if len(self.selectedItems()) == 1 and len(self.tiplist.tips.items()) > 1:
+			menu.addAction(_("export (all {})...").format(len(self.tiplist.tips.items())), lambda: doExport(self.tiplist.tips.items()))
+
 		# remove
 		if len(tips) > 0:
 			menu.addSeparator()
 			menu.addAction(_("remove{}").format(count_display_string), lambda: doRemove(tips))
-
 		
 		menu.exec_(self.viewport().mapToGlobal(position))
 

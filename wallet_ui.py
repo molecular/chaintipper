@@ -185,7 +185,7 @@ class WalletUI(MessageBoxMixin, PrintError, QWidget):
 	def reddit_thread_finished(self):
 		self.remove_ui()
 		self.show_previous_tab()
-		if self.reddit:
+		if self.reddit and hasattr(self.reddit, "dathread"):
 			try: 
 				self.reddit.dathread.finished.disconnect(self.reddit_thread_finished)
 			except TypeError as e:
