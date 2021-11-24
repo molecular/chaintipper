@@ -24,6 +24,8 @@
 			|1009753.394| |66| [Reddit] fetchTippingComments(): reddit.info(['t1_h59tenp', 't1_h3ks7eg'])
 			|1009754.415| |66| [RedditTip] Failed to parse tip amount <amount> <unit>:  InvalidOperation([<class 'decimal.ConversionSyntax'>])		
 
+		* document export feature
+
 	* beta n+2
 
 		* calin on signalling: if you wanted to delete the signal you could call util.do_in_main_thread (util lives in the electroncash module)
