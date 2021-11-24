@@ -813,7 +813,7 @@ class RedditTip(Tip):
 		self.fiat_currency = d["fiat_currency"]
 		self.recipient_address = Address.from_cashaddr_string(d["recipient_address"]) if d["recipient_address"] and len(d["recipient_address"]) > 0 else None
 		self.direction = d["direction"]
-		self.claim_return_txid = d["claim_return_txid"] if len(d["claim_return_txid"]) > 0 else None
+		self.claim_return_txid = d["claim_return_txid"] if "claim_return_txid" in d and len(d["claim_return_txid"]) > 0 else None
 
 		#	tip.payment_status,
 		#	"{0:.8f}".format(tip.amount_received_bch) if isinstance(tip.amount_received_bch, Decimal) else "",

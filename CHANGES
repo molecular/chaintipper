@@ -1,5 +1,7 @@
 1.0-beta20:
 
+  * fix crash when loading tips from storage
+  
 +++
 
 1.0-beta19:
