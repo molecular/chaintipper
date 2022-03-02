@@ -37,11 +37,10 @@ from .util import read_config, write_config, commit_config
 from .config import c, amount_config_to_rich_text
 from .blockchain_watcher import BlockchainWatcher
 from .autopay import AutoPay
+from .raintipper import RaintipperInitDialog
 
 icon_chaintip = QtGui.QIcon(":icons/chaintip.svg")
 icon_chaintip_gray = QtGui.QIcon(":icons/chaintip_gray.svg")
-
-
 
 
 ###################################################################################
@@ -267,6 +266,7 @@ class WalletUI(MessageBoxMixin, PrintError, QWidget):
 		"""construct TipList, and a tab with tiplist widget and add it to window"""
 		self.tiplist = PersistentTipList(self)
 		self.autopay = AutoPay(self.wallet, self.tiplist)
+		self.reddit.addWorker(self.autopay)
 		self.blockchain_watcher = BlockchainWatcher(self.wallet, self.tiplist)
 		self.tiplist_widget = TipListWidget(self, self.window, self.wallet, self.tiplist, self.reddit)
 		self.vbox.addWidget(self.tiplist_widget)
@@ -277,6 +277,7 @@ class WalletUI(MessageBoxMixin, PrintError, QWidget):
 	def remove_ui(self):
 		"""deconstruct the UI created in add_ui(), leaving self.vbox"""
 		if hasattr(self, "autopay") and self.autopay:
+			self.reddit.removeWorker(self.autopay)
 			del self.autopay
 		if hasattr(self, "blockchain_watcher") and self.blockchain_watcher:
 			del self.blockchain_watcher
@@ -309,6 +310,14 @@ class WalletUI(MessageBoxMixin, PrintError, QWidget):
 		win.show()
 		win.raise_()
 
+	def show_raintipper_init_dialog(self):
+		raintipper_init_dialog = getattr(self.wallet, '_raintipper_init_dialog', None)
+		if not raintipper_init_dialog:
+			#win = WalletSettingsDialog(self, ChaintipperButton.get_suitable_dialog_window_parent(self.wallet))
+			raintipper_init_dialog = RaintipperInitDialog(self, self.window)
+			self.widgets.add(self.window)  # adding to widgets list ensures if plugin is unloaded while dialog is up, that the dialog will be killed.
+		raintipper_init_dialog.show()
+		raintipper_init_dialog.raise_()
 
 
 ########################################################################
@@ -338,7 +347,8 @@ class ChaintipperButton(StatusBarButton, PrintError):
 		self.action_toggle.setCheckable(True)
 		self.action_toggle.triggered.connect(self.toggle_active)
 
-		action_separator1 = QAction(self); action_separator1.setSeparator(True)
+		action_separator1 = QAction(self); 
+		action_separator1.setSeparator(True)
 
 		action_wsettings = QAction(_("Wallet-specific Settings..."), self)
 		action_wsettings.triggered.connect(self.wallet_ui.show_wallet_settings)
@@ -346,10 +356,8 @@ class ChaintipperButton(StatusBarButton, PrintError):
 		action_settings = QAction(_("Forget Reddit Authorization (e.g. to switch reddit account)"), self)
 		action_settings.triggered.connect(self.disconnect_reddit)
 
-		# action_settings = QAction(_("Global Settings..."), self)
-		# action_settings.triggered.connect(self.wallet_ui.plugin.show_settings_dialog)
-
-		action_separator2 = QAction(self); action_separator2.setSeparator(True)
+		action_separator2 = QAction(self); 
+		action_separator2.setSeparator(True)
 
 		show_monikers = QAction(_("Show Amount Monikers"), self)
 		show_monikers.triggered.connect(self.showMonikers)
@@ -361,6 +369,13 @@ class ChaintipperButton(StatusBarButton, PrintError):
 			action_settings,
 			show_monikers
 		])
+
+		if read_config(self.wallet_ui.wallet, "enable_raintipper", False):
+			action_raintipper_init = QAction(_("Initiate a RainTipper instance..."), self)
+			action_raintipper_init.triggered.connect(self.wallet_ui.show_raintipper_init_dialog)
+			action_separator3 = QAction(self); 
+			action_separator3.setSeparator(True)
+			self.addActions([action_separator3, action_raintipper_init])
 
 		self.setContextMenuPolicy(Qt.ActionsContextMenu)
 
@@ -437,8 +452,9 @@ class WalletSettingsDialog(WindowModalDialog, PrintError, MessageBoxMixin):
 		self.wallet_ui = wallet_ui
 		self.wallet = self.wallet_ui.wallet # TODO: remove and refactor to increase code clarity?
 
-		self.idx2confkey = dict()   # int -> 'normal', 'consolidate', etc..
-		self.confkey2idx = dict()   # str 'normal', 'consolidate', etc -> int
+		# what is this crap? commenting it out
+		# self.idx2confkey = dict()   # int -> 'normal', 'consolidate', etc..
+		# self.confkey2idx = dict()   # str 'normal', 'consolidate', etc -> int
 
 		assert not hasattr(self.wallet, '_chaintipper_settings_window')
 		main_window = self.wallet.weak_window()

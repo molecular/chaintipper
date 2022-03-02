@@ -66,8 +66,6 @@ class WalletStorageTokenManager(praw.util.token_manager.BaseTokenManager, PrintE
 		return has_config(self.wallet, WalletStorageTokenManager.REFRESH_TOKEN_KEY)
 
 
-
-
 ##################################################################
 #                                                                #
 #    88888888ba                     88          88 88            #
@@ -99,6 +97,7 @@ class Reddit(PrintError, QObject):
 		self.unassociated_chaintip_comments_by_tipping_comment_id = {} # store chaintip comments for later association with a tip
 		self.items_by_fullname = {}
 		self.items_to_mark_read = []
+		self.workers = []
 
 	def debug_stats(self):
 		return f"\
@@ -701,9 +700,10 @@ class Reddit(PrintError, QObject):
 				# payment readiness check and autopay
 				if flow_debug: self.print_error("payment_state_transitions")
 				self.payment_state_transitions()
-				if hasattr(self.wallet_ui, "autopay") and self.wallet_ui.autopay:
-					self.wallet_ui.autopay.do_work()
+				#if hasattr(self.wallet_ui, "autopay") and self.wallet_ui.autopay:
+				#	self.wallet_ui.autopay.do_work()
 
+				# debug-print unassociated info
 				if False and items_this_cycle > 0:
 					# print unassociated infos:
 					for k, crl in self.unassociated_claim_return_by_tipping_comment_id.items():
@@ -715,6 +715,10 @@ class Reddit(PrintError, QObject):
 				if flow_debug: self.print_error("persistTipList")
 				self.wallet_ui.persistTipList()
 
+				# worker
+				for worker in self.workers:
+					worker.do_work()
+
 				cycle += 1
 			except prawcore.exceptions.PrawcoreException as e:
 				self.print_error("PrawCore (Reddit Network) Exception: ", e, "retrying later...")
@@ -725,6 +729,38 @@ class Reddit(PrintError, QObject):
 		self.print_error("exited reddit inbox streaming")
 
 		self.dathread.quit()
+
+	def addWorker(self, worker):
+		if not worker in self.workers:
+			self.workers.append(worker)
+
+	def removeWorker(self, worker):
+		self.workers.remove(worker)
+
+
+############################################################################################################################################
+#                                                                                                                                          #
+#    88888888ba                     88          88 88       I8,        8        ,8I                      88                                #
+#    88      "8b                    88          88 ""   ,d  `8b       d8b       d8'                      88                                #
+#    88      ,8P                    88          88      88   "8,     ,8"8,     ,8"                       88                                #
+#    88aaaaaa8P' ,adPPYba,  ,adPPYb,88  ,adPPYb,88 88 MM88MMM Y8     8P Y8     8P  ,adPPYba,  8b,dPPYba, 88   ,d8  ,adPPYba, 8b,dPPYba,    #
+#    88""""88'  a8P_____88 a8"    `Y88 a8"    `Y88 88   88    `8b   d8' `8b   d8' a8"     "8a 88P'   "Y8 88 ,a8"  a8P_____88 88P'   "Y8    #
+#    88    `8b  8PP""""""" 8b       88 8b       88 88   88     `8a a8'   `8a a8'  8b       d8 88         8888[    8PP""""""" 88            #
+#    88     `8b "8b,   ,aa "8a,   ,d88 "8a,   ,d88 88   88,     `8a8'     `8a8'   "8a,   ,a8" 88         88`"Yba, "8b,   ,aa 88            #
+#    88      `8b `"Ybbd8"'  `"8bbdP"Y8  `"8bbdP"Y8 88   "Y888    `8'       `8'     `"YbbdP"'  88         88   `Y8a `"Ybbd8"' 88            #
+#                                                                                                                                          #
+#                                                                                                                                          #
+############################################################################################################################################
+
+class RedditWorker(PrintError):
+	"""a RedditWorker can be added to Reddit and will have its do_work() function called periodically"""
+
+	def __init__(self, reddit: Reddit):
+		self.reddit = reddit
+
+	def do_work():
+		self.print_error("baseclass RedditWorker.do_work() called.")
+
 
 
 
