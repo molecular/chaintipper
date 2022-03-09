@@ -65,7 +65,7 @@ class Tip(PrintError):
 
 
 class TipList(PrintError, QObject):
-	update_signal = pyqtSignal()
+	update_signal = pyqtSignal() # shouldn't these be instance variables?
 	added_signal = pyqtSignal()
 
 	def __init__(self):

@@ -700,8 +700,6 @@ class Reddit(PrintError, QObject):
 				# payment readiness check and autopay
 				if flow_debug: self.print_error("payment_state_transitions")
 				self.payment_state_transitions()
-				#if hasattr(self.wallet_ui, "autopay") and self.wallet_ui.autopay:
-				#	self.wallet_ui.autopay.do_work()
 
 				# debug-print unassociated info
 				if False and items_this_cycle > 0:
@@ -717,7 +715,7 @@ class Reddit(PrintError, QObject):
 
 				# worker
 				for worker in self.workers:
-					worker.do_work()
+					worker.trigger_do_work()
 
 				cycle += 1
 			except prawcore.exceptions.PrawcoreException as e:
@@ -755,10 +753,17 @@ class Reddit(PrintError, QObject):
 class RedditWorker(PrintError):
 	"""a RedditWorker can be added to Reddit and will have its do_work() function called periodically"""
 
-	def __init__(self, reddit: Reddit):
-		self.reddit = reddit
+	def __init__(self):
+		self.desired_interval_secs = 0
+		self.last_do_work_time = time() - self.desired_interval_secs # first invocation directly at start
 
-	def do_work():
+	def trigger_do_work(self):
+		time_ago = time() - self.last_do_work_time
+		if time_ago > self.desired_interval_secs:
+			self.last_do_work_time = time()
+			self.do_work()
+
+	def do_work(self):
 		self.print_error("baseclass RedditWorker.do_work() called.")
 
 

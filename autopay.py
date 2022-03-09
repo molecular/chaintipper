@@ -12,14 +12,16 @@ from electroncash.bitcoin import COIN, TYPE_ADDRESS
 from .model import TipListener
 from .util import read_config
 from .config import c
+from .reddit import RedditWorker
 
-class AutoPay(TipListener, PrintError):
+class AutoPay(TipListener, RedditWorker):
 	"""
 		AutoPay 
 		listens for tips matching autopay condition and pays them (in rate-throttled batches)
 	""" 
 
 	def __init__(self, wallet, tiplist):
+		super(AutoPay, self).__init__()
 		self.wallet = wallet
 		self.network = self.wallet.weak_window().network
 		self.tiplist = tiplist
