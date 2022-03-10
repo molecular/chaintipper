@@ -2,7 +2,15 @@
 
 		* only add "instantiate raintipper" entry to chaintipper menu on reddit connect, remove entry on reddit disconnect
 		* locate_root_object: currently looking only for Submission and only by url. Also look for Comment and also by name/id
-		
+
+		* changes to chaintipper that make sense for raintipper
+			* column "onboarding" ("success", "fail")
+			* color tips (light green, light red) for onboarding success/fail
+
+	* bugs
+
+		* tip amount text = "1" when using default ("/u/chaintip" only)
+
 	* beta n
 
 		* maybe update readme.md

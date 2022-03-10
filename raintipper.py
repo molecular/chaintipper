@@ -7,7 +7,7 @@ from PyQt5.QtWidgets import (
 	QSizePolicy, QLineEdit
 )
 from PyQt5.QtCore import Qt, QObject, pyqtSignal
-from PyQt5.QtWidgets import QApplication
+from PyQt5.QtWidgets import QApplication, QTreeWidgetItem, QAbstractItemView, QMenu, QVBoxLayout
 
 from electroncash.i18n import _
 from electroncash_gui.qt import ElectrumWindow
@@ -65,12 +65,37 @@ class Raintipper(RedditWorker, QWidget):
 		self.desired_interval_secs = 0
 
 	def createTab(self):
+		# raintip_list
+		self.raintip_list = RaintipList(self)
+
+		# layout
+		self.vbox = vbox = QVBoxLayout()
+		vbox.setContentsMargins(0, 0, 0, 0)
+		self.setLayout(vbox)
+
+		# add raintip_list_widget
+		self.raintip_list_widget = RaintipListWidget(self.wallet_ui, self.window, self.raintip_list, self.reddit)
+		self.vbox.addWidget(self.raintip_list_widget)
+
+		# create tab
 		if self.tab:
 			self.destroyTab()
 		self.tab = self.window.create_list_tab(self)
 		self.window.tabs.addTab(self.tab, icon_chaintip, 'Rain_' + self.root_object.id)
 
-	def destroyTab(self, name):
+	def remove_ui(self):
+		"""deconstruct the UI created in add_ui(), leaving self.vbox"""
+		if hasattr(self, "tab") and self.tab:
+			self.window.tabs.removeTab(self.window.tabs.indexOf(self.tab))
+			#self.tab.deleteLater()
+		self.tab = None
+
+
+	def destroyTab(self):
+		if hasattr(self, "raintip_list_widget") and self.raintip_list_widget:
+			del self.raintip_list_widget
+		if hasattr(self, "raintip_list") and self.raintip_list:
+			del self.raintip_list
 		if self.tab:
 			self.window.tabs.removeTab(self.window.tabs.indexOf(self.tab))
 		self.tab = None
@@ -225,22 +250,24 @@ class RaintipListWidget(PrintError, MyTreeWidget):
 			_('ID'), 
 			_('Author'),
 		]
-		fx = self.window.fx
 		
 		return headers
 
-	def __init__(self, wallet_ui, window: ElectrumWindow, raintiplist: RaintipList, reddit: Reddit):
+	def __init__(self, wallet_ui, window: ElectrumWindow, raintip_list: RaintipList, reddit: Reddit):
+		PrintError.__init__(self)
+		# MyTreeWidget.__init__(self, window, self.create_menu, self.get_headers(), 10, [],  # headers, stretch_column, editable_columns
+		# 	deferred_updates=True, save_sort_settings=True)
+		MyTreeWidget.__init__(self, window, self.create_menu, self.get_headers(), 10, [],  # headers, stretch_column, editable_columns
+			deferred_updates=True, save_sort_settings=True)
 		self.wallet_ui = wallet_ui
 		self.window = window
 		self.reddit = reddit
 
-		MyTreeWidget.__init__(self, window, self.create_menu, self.get_headers(), 10, [],  # headers, stretch_column, editable_columns
-							deferred_updates=True, save_sort_settings=True)
 
 		self.updated_raintips = []
 		self.added_raintips = []
 
-		self.setRaintiplist(raintiplist)
+		self.setRaintiplist(raintip_list)
 
 		if self.reddit == None:
 			raise Exception("no reddit")
@@ -250,12 +277,12 @@ class RaintipListWidget(PrintError, MyTreeWidget):
 		self.setSortingEnabled(True)
 		self.setIndentation(0)
 
-	def setRaintiplist(self, raintiplist):
-		# if hasattr(self, "raintiplist") and self.raiontiplist:
+	def setRaintiplist(self, raintip_list):
+		# if hasattr(self, "root_object") and self.raiontiplist:
 		# 	self.tiplist.unregistertipListener(self)
 
 		self.tips_by_address = dict()
-		self.raintiplist = raintiplist
+		self.raintip_list = raintip_list
 
 		# connect to tiplist added and update signals
 		# self.tiplist.update_signal.connect(self.digestTipUpdates)
@@ -263,6 +290,16 @@ class RaintipListWidget(PrintError, MyTreeWidget):
 
 		# # register as TipListener
 		# self.tiplist.registerTipListener(self)
+
+	def create_menu(self, position):
+		"""creates context-menu for single or multiply selected items"""
+
+		col = self.currentColumn()
+		column_title = self.headerItem().text(col)
+
+		# create the context menu
+		menu = QMenu()
+
 
 
 	'''
@@ -437,150 +474,6 @@ class RaintipListWidget(PrintError, MyTreeWidget):
 
 	#
 
-	def create_menu(self, position):
-		"""creates context-menu for single or multiply selected items"""
-
-		def doPay(tips: list):
-			"""Start semi-automatic payment of a list of tips using the payto dialog ('send' tab)"""
-			self.print_error("paying tips: ", [t.getID() for t in tips])
-			w = self.parent # main_window
-
-			valid_tips = [tip for tip in tips if tip.isValid() and not tip.isPaid() and tip.amount_bch and isinstance(tip.amount_bch, Decimal)]
-
-			# calc description
-			desc, desc_separator = ("chaintip ", "")
-			for tip in valid_tips:
-				desc += f"{desc_separator}{tip.amount_bch} BCH to u/{tip.username} ({tip.chaintip_message_id})"
-				desc_separator = ", "
-
-			# calc payto
-			(payto, payto_separator) = ("", "")
-			if len(valid_tips) > 1:
-				for tip in valid_tips:
-					payto += payto_separator + tip.recipient_address.to_string(Address.FMT_CASHADDR) + ', ' + str(tip.amount_bch)
-					payto_separator = "\n"
-			else:
-				payto = valid_tips[0].recipient_address.to_string(Address.FMT_CASHADDR)
-				w.amount_e.setText(str(valid_tips[0].amount_bch))
-
-			self.print_error("  desc:", desc)
-			self.print_error("  payto:", payto)
-			w.payto_e.setText(payto)
-			w.message_e.setText(desc)
-			w.show_send_tab()
-
-		def doOpenBrowser(path):
-			webopen(c["reddit"]["url_prefix"] + path)
-
-		def doOpenBrowserToMessage(message_or_message_id: Union[praw.models.Message, str]):
-			if isinstance(message_or_message_id, praw.models.Message):
-				message_id = message_or_message_id.id
-			else:
-				message_id = message_or_message_id
-			webopen(c["reddit"]["url_prefix"] + "/message/messages/" + message_id)
-
-		def doOpenBrowserToTippingComment(tip):
-			if not hasattr(tip, "tipping_comment"):
-				tip.fetchTippingComment()
-			self.print_error("tipping comment permalink: ", tip.tipping_comment.permalink)
-			doOpenBrowser(tip.tipping_comment.permalink)
-
-		def doOpenBlockExplorerTX(txid: str):
-			URL = web.BE_URL(self.config, 'tx', txid)
-			webopen(URL)
-
-		def doOpenBlockExplorerAddress(address: Address):
-			URL = web.BE_URL(self.config, 'addr', address)
-			webopen(URL)
-
-		def doMarkRead(tips: list, include_associated_items: bool = False, unread: bool = False):
-			self.reddit.mark_read_tips(tips, include_associated_items, unread)
-
-		def doRemove(tips: list):
-			for tip in tips:
-				tip.remove()
-				del tip
-
-		def doExport(tips: list):
-			self.export_dialog(tips)
-
-		col = self.currentColumn()
-		column_title = self.headerItem().text(col)
-
-		# put tips into array (single or multiple if selection)
-		count_display_string = ""
-		tips = [s.tip for s in self.selectedItems()]
-		if len(self.selectedItems()) > 1:
-			if len(self.selectedItems()) == len(self.tiplist.tips.items()):
-				count_display_string = f" (all {len(tips)})"
-			else:
-				count_display_string = f" ({len(tips)})"
-
-		unpaid_tips = [tip for tip in tips if tip.isValid() and not tip.isPaid() and tip.amount_bch and isinstance(tip.amount_bch, Decimal)]
-		unpaid_count_display_string = f" ({len(unpaid_tips)})" if len(tips)>1 else "" 
-
-		# create the context menu
-		menu = QMenu()
-
-		if len(tips) == 1:
-			tip = tips[0]
-
-			if tip.chaintip_message_id:
-				menu.addAction(_("open browser to chaintip message"), lambda: doOpenBrowser("/message/messages/" + tip.chaintip_message_id))
-
-			# open browser...			
-			if tip.tippee_content_link:
-				menu.addAction(_("open browser to the content that made you tip"), lambda: doOpenBrowser(tip.tippee_content_link))
-			if tip.tipping_comment_id:
-				menu.addAction(_("open browser to tipping comment"), lambda: doOpenBrowserToTippingComment(tip))
-			if hasattr(tip, "chaintip_confirmation_comment") and tip.chaintip_confirmation_comment:
-				menu.addAction(_("open browser to chaintip confirmation comment"), lambda: doOpenBrowser(self.reddit.getCommentLink(tip.chaintip_confirmation_comment)))
-			if hasattr(tip, "claim_or_returned_message_id") and tip.claim_or_returned_message_id:
-				menu.addAction(_('open browser to "{type}" message').format(type="funded" if hasattr(tip, "chaintip_confirmation_status") and tip.chaintip_confirmation_status == "funded" else tip.acceptance_status), lambda: doOpenBrowserToMessage(tip.claim_or_returned_message_id))
-			
-			# open blockexplorer...
-
-			# ... to payment tx
-			menu.addSeparator()
-			payment_count = len(tip.payments_by_txhash)
-			if payment_count == 1:
-				menu.addAction(_("open blockexplorer to payment tx"), lambda: doOpenBlockExplorerTX(list(tip.payments_by_txhash.keys())[0]))
-			elif payment_count > 1:
-				for tx_hash, amount in list(tip.payments_by_txhash.items())[:5]:
-					menu.addAction(_("open blockexplorer to payment tx {tx_hash_short} ({amount} BCH)").format(tx_hash_short=tx_hash[:4]+"..."+tx_hash[-4:], amount=amount), lambda: doOpenBlockExplorerTX(tx_hash))
-				if payment_count > 5:
-						menu.addAction(_("{count} more tx not shown").format(count=payment_count-5))
-				menu.addSeparator()
-
-			# ... to claimed/returned tx
-			if hasattr(tip, "claim_return_txid") and tip.claim_return_txid:
-				menu.addAction(_("open blockexplorer to {acceptance_status} tx").format(acceptance_status=tip.acceptance_status), lambda: doOpenBlockExplorerTX(tip.claim_return_txid))
-
-			# ... to recipient address
-			if hasattr(tip, "recipient_address") and tip.recipient_address:
-				menu.addAction(_(f"open blockexplorer to recipient address"), lambda: doOpenBlockExplorerAddress(tip.recipient_address))
-
-		menu.addAction(_("copy recipient address(es)"), lambda: self.wallet_ui.window.app.clipboard().setText("\n".join([tip.recipient_address.to_cashaddr() for tip in tips])))
-
-
-		# pay...
-		if len(unpaid_tips) > 0:
-			menu.addSeparator()
-			menu.addAction(_(f"pay{unpaid_count_display_string}..."), lambda: doPay(unpaid_tips))
-
-		# export
-		menu.addSeparator()
-		menu.addAction(_("export{}...").format(count_display_string), lambda: doExport(tips))
-		if len(self.selectedItems()) == 1 and len(self.tiplist.tips.items()) > 1:
-			menu.addAction(_("export (all {})...").format(len(self.tiplist.tips.items())), lambda: doExport(self.tiplist.tips.items()))
-
-		# remove
-		if len(tips) > 0:
-			menu.addSeparator()
-			menu.addAction(_("remove{}").format(count_display_string), lambda: doRemove(tips))
-		
-		menu.exec_(self.viewport().mapToGlobal(position))
-
 	'''
 
 
@@ -648,7 +541,6 @@ class RaintipperInitDialog(WindowModalDialog, PrintError, MessageBoxMixin):
 		def on_root_object_entered(): # used lambda for cleaner code
 			self.raintipper.locateRootObject(self.root_object.text())
 			self.root_object_found_label.setText(_("<looking up reddit object>"))
-			#self.raintipper.destroyTab() # destroy tab
 		self.root_object.editingFinished.connect(on_root_object_entered)
 		grid.addWidget(self.root_object, 0, 2)
 
