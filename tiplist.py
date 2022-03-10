@@ -17,6 +17,7 @@ from datetime import datetime
 from typing import Union
 
 from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QApplication, QTreeWidgetItem, QAbstractItemView, QMenu, QVBoxLayout
 from electroncash_gui.qt.util import WindowModalDialog, filename_field, Buttons, CancelButton, OkButton
 from electroncash.plugins import run_hook
@@ -182,7 +183,12 @@ class TipListItem(QTreeWidgetItem, PrintError):
 		data = self.getDataArray(self.tip)
 		for idx, value in enumerate(data, start=0):
 			self.setData(idx, Qt.DisplayRole, value)
-			self.setForeground(idx, Qt.gray if self.tip.isFinished() else Qt.black)			
+			color = Qt.black
+			if self.tip.isFinished():
+				color = Qt.gray
+				if self.tip.acceptance_status == 'claimed': color = QColor(120, 180, 120)
+				if self.tip.acceptance_status == 'returned': color = QColor(180, 120, 120)
+			self.setForeground(idx, color)			
 		QApplication.processEvents() # keep gui alive
 
 
