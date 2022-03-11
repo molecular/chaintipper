@@ -929,7 +929,7 @@ class RedditTip(Tip):
 		except Exception as e:
 			self.print_error("self.chaintip_message_created_utc", self.chaintip_message_created_utc, "CHAINTIP_TIPPING_COMMENT_LINK_INTRODUCTION_TIME", RedditTip.CHAINTIP_TIPPING_COMMENT_LINK_INTRODUCTION_TIME)
 			raise e
-		return self.isPaid() \
+		return (self.isPaid() or self.amount_bch == 0) \
 			and hasattr(self, "acceptance_status") and ( \
 				(self.acceptance_status == "claimed") or \
 				(self.acceptance_status == "returned") or \
@@ -1147,6 +1147,8 @@ class RedditTip(Tip):
 		if self.amount_bch and not self.isPaid():
 			self.payment_status = 'amount set'
 			self.amount_set_time = time()
+		if self.amount_bch == 0:
+			self.payment_status = 'wont pay 0'
 		self.update()
 
 	def evaluateAmount(self):
