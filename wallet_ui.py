@@ -568,6 +568,15 @@ class WalletSettingsDialog(WindowModalDialog, PrintError, MessageBoxMixin):
 		self.default_linked_amount_currency.currentIndexChanged.connect(on_default_linked_amount_currency)
 		grid.addWidget(self.default_linked_amount_currency, 1, 2)
 
+		# set amount to 0 for stealth tips 
+		self.cb_set_amount_to_zero_for_stealth_tips = QCheckBox()
+		self.cb_set_amount_to_zero_for_stealth_tips.setChecked(read_config(self.wallet, "set_amount_to_zero_for_stealth_tips"))
+		def on_cb_set_amount_to_zero_for_stealth_tips():
+			write_config(self.wallet, "set_amount_to_zero_for_stealth_tips", self.cb_set_amount_to_zero_for_stealth_tips.isChecked())
+		self.cb_set_amount_to_zero_for_stealth_tips.stateChanged.connect(on_cb_set_amount_to_zero_for_stealth_tips)
+		grid.addWidget(self.cb_set_amount_to_zero_for_stealth_tips, 2, 1, Qt.AlignRight)
+		grid.addWidget(QLabel(_("Set amount to 0 for stealth tips")), 2, 2)
+
 
 		# --- group autopay ---------------------------------------------------------------------------------------------------
 

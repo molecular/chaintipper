@@ -4,8 +4,8 @@
 		* locate_root_object: currently looking only for Submission and only by url. Also look for Comment and also by name/id
 
 		* changes to chaintipper that make sense for raintipper
-			* column "onboarding" ("success", "fail")
-			* color tips (light green, light red) for onboarding success/fail
+			* option (in default for unlinked users): [ ] do not tip unlinked users at all if tip was done in stealth-mode (by PM to chaintip)
+			* mark tips with amount "0" as finished somehow? 
 
 	* bugs
 

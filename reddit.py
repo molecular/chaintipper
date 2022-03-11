@@ -901,7 +901,7 @@ class RedditTip(Tip):
 			return RedditTip.sanitizeID("t4_" + self.chaintip_message_id)
 
 	def refreshAmount(self):
-		if not self.isPaid():
+		if not self.isPaid() and not self.isFinished(): 
 			if not hasattr(self, "tip_unit") or not self.tip_unit or len(self.tip_unit) == 0 or not hasattr(self, "tip_quantity") or type(self.tip_quantity) != Decimal:
 				self.setAmount() # update default amount
 			else:
@@ -929,13 +929,15 @@ class RedditTip(Tip):
 		except Exception as e:
 			self.print_error("self.chaintip_message_created_utc", self.chaintip_message_created_utc, "CHAINTIP_TIPPING_COMMENT_LINK_INTRODUCTION_TIME", RedditTip.CHAINTIP_TIPPING_COMMENT_LINK_INTRODUCTION_TIME)
 			raise e
-		return (self.isPaid() or self.amount_bch == 0) \
-			and hasattr(self, "acceptance_status") and ( \
-				(self.acceptance_status == "claimed") or \
-				(self.acceptance_status == "returned") or \
-				(self.acceptance_status == "received") or \
-				(self.acceptance_status == "linked") # and (is_pre_tclink or (hasattr(self, "chaintip_confirmation_status") and self.chaintip_confirmation_status == "confirmed"))) or \
-				# (self.acceptance_status == "not yet linked" and (is_pre_tclink or (hasattr(self, "chaintip_confirmation_status") and self.chaintip_confirmation_status == "returned"))) \
+		return self.amount_bch == 0 or self.payment_status == 'wont pay 0' or ( \
+				self.isPaid() \
+				and hasattr(self, "acceptance_status") and ( \
+					(self.acceptance_status == "claimed") or \
+					(self.acceptance_status == "returned") or \
+					(self.acceptance_status == "received") or \
+					(self.acceptance_status == "linked") # and (is_pre_tclink or (hasattr(self, "chaintip_confirmation_status") and self.chaintip_confirmation_status == "confirmed"))) or \
+					# (self.acceptance_status == "not yet linked" and (is_pre_tclink or (hasattr(self, "chaintip_confirmation_status") and self.chaintip_confirmation_status == "returned"))) \
+				)
 			)
 
 	p_subject_outgoing_tip = re.compile('Tip (\S*)')
@@ -1012,8 +1014,8 @@ class RedditTip(Tip):
 				# stealth: match "for their <post|comment> (...)"
 				m = RedditTip.p_stealth.match(self.chaintip_message.body)
 				if m:
-					self.setAmount()
 					self.chaintip_confirmation_status = '<stealth>'
+					self.setAmount()
 					post_or_comment = m.group(1)
 					self.subreddit_str = m.group(3)
 					self.tippee_content_link = m.group(2)
@@ -1170,6 +1172,11 @@ class RedditTip(Tip):
 			
 	def getDefaultAmountBCH(self):
 		wallet = self.reddit.wallet_ui.wallet
+		# set to 0 for stealth tips if configured to do that
+		if read_config(wallet, "set_amount_to_zero_for_stealth_tips") and hasattr(self, "chaintip_confirmation_status") and self.chaintip_confirmation_status == "<stealth>":
+			return 0
+
+		# determine default amount from settings
 		(amount_key, currency_key) = ("default_amount", "default_amount_currency")
 		if read_config(wallet, "use_linked_amount") and (self.acceptance_status == "linked" or self.acceptance_status == "claimed"):
 			(amount_key, currency_key) = ("default_linked_amount", "default_linked_amount_currency")

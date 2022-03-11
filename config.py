@@ -21,6 +21,7 @@ c = {
 		"default_use_linked_amount": False,
 		"default_default_linked_amount": "0.01",
 		"default_default_linked_amount_currency": "USD",
+		"default_set_amount_to_zero_for_stealth_tips": False,
 
 		"default_activate_on_wallet_open": False,
 		"default_mark_read_digested_tips": True,
