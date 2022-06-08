@@ -63,6 +63,19 @@ class Tip(PrintError):
 			self.update()
 
 
+######################################################################
+#                                                                    #
+#    888888888888 88             88          88                      #
+#         88      ""             88          ""             ,d       #
+#         88                     88                         88       #
+#         88      88 8b,dPPYba,  88          88 ,adPPYba, MM88MMM    #
+#         88      88 88P'    "8a 88          88 I8[    ""   88       #
+#         88      88 88       d8 88          88  `"Y8ba,    88       #
+#         88      88 88b,   ,a8" 88          88 aa    ]8I   88,      #
+#         88      88 88`YbbdP"'  88888888888 88 `"YbbdP"'   "Y888    #
+#                    88                                              #
+#                    88                                              #
+######################################################################
 
 class TipList(PrintError, QObject):
 	update_signal = pyqtSignal() # shouldn't these be instance variables?

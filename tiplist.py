@@ -318,7 +318,6 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 
 	# TipListener implementation
 
-
 	def tipAdded(self, tip):
 		"""store added tip to local list for later digestion in gui thread"""
 		self.added_tips.append(tip)
