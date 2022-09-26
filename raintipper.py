@@ -1,3 +1,5 @@
+import weakref
+
 from PyQt5 import QtGui
 from PyQt5 import QtCore
 from PyQt5.QtWidgets import QMessageBox
@@ -43,6 +45,7 @@ icon_chaintip = QtGui.QIcon(":icons/chaintip.svg")
 class Raintipper(RedditWorker, QWidget):
 	"""Encapsulates on rain-tipping session instance"""
 	root_object_located = pyqtSignal(object)
+#	new_raintip = pyqtSignal(Tip)
 
 	def __init__(self, wallet_ui):
 		RedditWorker.__init__(self)
@@ -65,23 +68,29 @@ class Raintipper(RedditWorker, QWidget):
 		self.desired_interval_secs = 0
 
 	def createTab(self):
-		# raintip_list
-		self.raintip_list = RaintipList(self)
-
 		# layout
 		self.vbox = vbox = QVBoxLayout()
 		vbox.setContentsMargins(0, 0, 0, 0)
 		self.setLayout(vbox)
 
+		# raintip_list
+		self.raintip_list = RaintipList()
+
 		# add raintip_list_widget
 		self.raintip_list_widget = RaintipListWidget(self.wallet_ui, self.window, self.raintip_list, self.reddit)
 		self.vbox.addWidget(self.raintip_list_widget)
+
+		# register raintip_list_widget as RaintipListener to raintip_list
+		self.raintip_list.registerRaintipListener(self.raintip_list_widget)
 
 		# create tab
 		if self.tab:
 			self.destroyTab()
 		self.tab = self.window.create_list_tab(self)
 		self.window.tabs.addTab(self.tab, icon_chaintip, 'Rain_' + self.root_object.id)
+
+		# tell worker to start collecting
+		self.stage = 'collect'
 
 	def remove_ui(self):
 		"""deconstruct the UI created in add_ui(), leaving self.vbox"""
@@ -93,6 +102,7 @@ class Raintipper(RedditWorker, QWidget):
 
 	def destroyTab(self):
 		if hasattr(self, "raintip_list_widget") and self.raintip_list_widget:
+			self.raintip_list.unregisterRaintipListener(self.raintip_list_widget)
 			del self.raintip_list_widget
 		if hasattr(self, "raintip_list") and self.raintip_list:
 			del self.raintip_list
@@ -118,6 +128,7 @@ class Raintipper(RedditWorker, QWidget):
 		"""called periodically by reddit thread. Multithreading caveats apply, specially when communicating with gui threads"""
 
 		self.print_error("Raintipper.do_work() called, stage: ", self.stage)
+
 		if self.stage == 'locate_root_object':
 			self.print_error(f"looking up root object for '{self.root_object_text}'")						
 			o = None
@@ -138,7 +149,7 @@ class Raintipper(RedditWorker, QWidget):
 				self.print_error("found reddit object", o, "of type", type(o))
 				self.root_object = o
 				self.root_object_located.emit(o)
-				self.stage = 'collect'
+				self.stage = 'root object found'
 			else:
 				self.root_object_located.emit("<not found>")
 
@@ -152,15 +163,20 @@ class Raintipper(RedditWorker, QWidget):
 			self.collect()
 
 	def collect(self, o=None):
-		self.print_error(f"collecting o={o}")
+		#self.print_error(f"collecting o={o}")
 
 		if o == None: # start at self.root_object
 			o = self.root_object
 
 		# create Raintip based on comment
 		elif type(o) == praw.models.Comment:
-			raintip = Raintip(o)
-			self.print_error("collected", raintip)
+			existing_raintip = self.raintip_list.getRaintipByID(o.id)
+			if existing_raintip:
+				self.print_error("updating existing raintip", existing_raintip)
+				existing_raintip.update()
+			else:
+				raintip = Raintip(o, self.raintip_list)
+				self.print_error("collected new raintip", raintip)
 
 		# recurse through children
 		comment_forest = None
@@ -190,14 +206,35 @@ class Raintipper(RedditWorker, QWidget):
 class Raintip(PrintError):
 	"""constitutes a Raintip based on a reddit comment"""
 
-	def __init__(self, comment: praw.models.Comment):
+	def __init__(self, comment: praw.models.Comment, raintiplist):
 		self.comment = comment
+		self.raintiplist_weakref = weakref.ref(raintiplist)
+		self.add()
 
 	def __str__(self):
 		return f"Raintip {self.comment.id}"
 
 	def getID(self):
 		return self.comment.id
+
+	def add(self):
+		if self.raintiplist_weakref():
+			self.raintiplist_weakref().addRaintip(self)
+		else:
+			self.print_error("weakref to raintiplist broken, can't add raintip", self)
+
+
+	def update(self):
+		if self.raintiplist_weakref():
+			self.raintiplist_weakref().updateRaintip(self)
+		else:
+			self.print_error("weakref to raintiplist broken, can't update raintip", self)
+
+	def remove(self):
+		if self.raintiplist_weakref():
+			self.raintiplist_weakref().removeRaintip(self)
+		else:
+			self.print_error("weakref to raintiplist broken, can't remove raintip", self)
 
 ######################################################################################################
 #                                                                                                    #
@@ -213,19 +250,107 @@ class Raintip(PrintError):
 #                                                    88                                              #
 ######################################################################################################
 
-class RaintipList(PrintError):
+class RaintipList(PrintError, QObject):
+	update_signal = pyqtSignal() # shouldn't these be instance variables?
+	added_signal = pyqtSignal()
 
-	def __init__(self, raintipper: Raintipper):
+	def __init__(self):
+		QObject.__init__(self)
+
+		self.raintip_listeners = []
 		self.raintips = {} # Raintip instances by their getID()
 
 	def addRaintip(self, raintip: Raintip):
 		if raintip.getID() in self.raintips.keys():
-			raise Exception("RaintipList.addTip(): duplicate raintip.getID()")
-		self.raintips[raintip.getID()] = raintip
+			raise("duplicate raintip ID")
+		else:
+			self.raintips[raintip.getID()] = raintip
+			self.print_error(f"RaintipList now has {len(self.raintips)} raintips")
+			for raintip_listener in self.raintip_listeners:
+				raintip_listener.raintipAdded(raintip)
+			self.added_signal.emit()
 
 	def removeRaintip(self, raintip: Raintip):
+		for raintip_listener in self.raintip_listeners:
+			raintip_listener.raintipRemoved(raintip)
 		del self.raintips[raintip.getID()]
 
+	def updateRaintip(self, raintip):
+		for raintip_listener in self.raintip_listeners:
+			raintip_listener.raintipUpdated(raintip)
+		self.update_signal.emit()
+
+	def getRaintipByID(self, id):
+		if id in self.raintips.keys():
+			return self.raintips[id]
+		return None
+
+	# listener infrastructure
+
+	def registerRaintipListener(self, raintip_listener):
+		self.raintip_listeners.append(raintip_listener)
+
+	def unregisterRaintipListener(self, raintip_listener):
+		self.raintip_listeners.remove(raintip_listener)
+
+
+class RaintipListener():
+	def rainttipAdded(self, rainttip):
+		raise Exception(f"raintipAdded() not implemented in class {type(self)}")
+
+	def raintipRemoved(self, raintip):
+		raise Exception(f"raintipRemoved() not implemented in class {type(self)}")
+
+	def raintipUpdated(self, raintip):
+		raise Exception(f"raintipUpdated() not implemented in class {type(self)}")
+
+
+##############################################################################################################################################
+#                                                                                                                                            #
+#    88888888ba             88                    88             88          88                   88                                         #
+#    88      "8b            ""              ,d    ""             88          ""             ,d    88   ,d                                    #
+#    88      ,8P                            88                   88                         88    88   88                                    #
+#    88aaaaaa8P' ,adPPYYba, 88 8b,dPPYba, MM88MMM 88 8b,dPPYba,  88          88 ,adPPYba, MM88MMM 88 MM88MMM ,adPPYba, 88,dPYba,,adPYba,     #
+#    88""""88'   ""     `Y8 88 88P'   `"8a  88    88 88P'    "8a 88          88 I8[    ""   88    88   88   a8P_____88 88P'   "88"    "8a    #
+#    88    `8b   ,adPPPPP88 88 88       88  88    88 88       d8 88          88  `"Y8ba,    88    88   88   8PP""""""" 88      88      88    #
+#    88     `8b  88,    ,88 88 88       88  88,   88 88b,   ,a8" 88          88 aa    ]8I   88,   88   88,  "8b,   ,aa 88      88      88    #
+#    88      `8b `"8bbdP"Y8 88 88       88  "Y888 88 88`YbbdP"'  88888888888 88 `"YbbdP"'   "Y888 88   "Y888 `"Ybbd8"' 88      88      88    #
+#                                                    88                                                                                      #
+#                                                    88                                                                                      #
+##############################################################################################################################################
+
+class RaintipListItem(QTreeWidgetItem, PrintError):
+
+	def __init__(self, o):
+		if isinstance(o, list):
+			QTreeWidgetItem.__init__(self, o)
+		elif isinstance(o, Raintip):
+			self.raintip = o
+			self.raintip.raintiplist_item = self
+			self.__init__(self.getDataArray(self.raintip))
+		else:
+			QTreeWidgetItem.__init__(self)
+		self.refreshData()
+
+	def getDataArray(self, raintip):
+		return [
+			raintip.getID(),
+			raintip.comment.author.name,
+			str(raintip.comment.score)
+		]
+
+	def refreshData(self):
+		#self.print_error("refreshData() called from", threading.current_thread())
+		data = self.getDataArray(self.raintip)
+		for idx, value in enumerate(data, start=0):
+			self.setData(idx, Qt.DisplayRole, value)
+			# color = Qt.black
+			# if self.tip.isFinished():
+			# 	color = Qt.gray
+			# 	if self.tip.acceptance_status == 'claimed': color = QColor(120, 180, 120)
+			# 	if self.tip.acceptance_status == 'returned': color = QColor(180, 120, 120)
+			# self.setForeground(idx, color)			
+		QApplication.processEvents() # keep gui alive
 
 ##########################################################################################################################################################################
 #                                                                                                                                                                        #
@@ -241,7 +366,7 @@ class RaintipList(PrintError):
 #                                                    88                                                                                  "Y8bbdP"                        #
 ##########################################################################################################################################################################
 
-class RaintipListWidget(PrintError, MyTreeWidget):
+class RaintipListWidget(PrintError, MyTreeWidget, RaintipListener):
 
 	default_sort = MyTreeWidget.SortSpec(1, Qt.AscendingOrder)
 
@@ -249,6 +374,7 @@ class RaintipListWidget(PrintError, MyTreeWidget):
 		headers = [
 			_('ID'), 
 			_('Author'),
+			_('Upvotes')
 		]
 		
 		return headers
@@ -277,16 +403,25 @@ class RaintipListWidget(PrintError, MyTreeWidget):
 		self.setSortingEnabled(True)
 		self.setIndentation(0)
 
-	def setRaintiplist(self, raintip_list):
-		# if hasattr(self, "root_object") and self.raiontiplist:
-		# 	self.tiplist.unregistertipListener(self)
+	def __del__(self):
+		if self.rainttiplist:
+			# clean up signal connections
+			self.tiplist.update_signal.disconnect(self.digestRaintipUpdates)
+			self.tiplist.added_signal.disconnect(self.digestRaintipAdds)
+			# deregister as tiplistener
+			self.tiplist.unregisterRaintipListener(self)
 
-		self.tips_by_address = dict()
+
+	def setRaintiplist(self, raintip_list):
+		if hasattr(self, "root_object") and self.raintiplist:
+			self.tiplist.unregisterRaintipListener(self)
+
+		#self.tips_by_address = dict()
 		self.raintip_list = raintip_list
 
 		# connect to tiplist added and update signals
-		# self.tiplist.update_signal.connect(self.digestTipUpdates)
-		# self.tiplist.added_signal.connect(self.digestTipAdds)
+		self.raintip_list.update_signal.connect(self.digestRaintipUpdates)
+		self.raintip_list.added_signal.connect(self.digestRaintipAdds)
 
 		# # register as TipListener
 		# self.tiplist.registerTipListener(self)
@@ -300,17 +435,53 @@ class RaintipListWidget(PrintError, MyTreeWidget):
 		# create the context menu
 		menu = QMenu()
 
+	# TipListener implementation
+
+	def raintipAdded(self, raintip):
+		"""store added tip to local list for later digestion in gui thread"""
+		self.added_raintips.append(raintip)
+		self.print_error(f"{len(self.added_raintips)} added_raintips")
+
+	def raintipUpdated(self, raintip):
+		"""store updated tip to local list for later digestion in gui thread"""
+		self.updated_raintips.append(raintip)
+
+	def raintipRemoved(self, raintip):
+		if hasattr(tip, 'raintiplist_item'):
+			self.takeTopLevelItem(self.indexOfTopLevelItem(raintip.raintiplist_item))
+			del raintip.raintiplist_item
+		else:
+			self.print_error("no raintiplist_item")
+
+	def digestRaintipAdds(self):
+		"""actually digest tip adds collected through raintipAdded() (runs in gui thread)"""
+		added_raintips = self.added_raintips
+		self.added_raintips = []
+
+		if len(added_raintips) > 0: self.print_error(f"digesting {len(added_raintips)} raintip adds")
+
+		for raintip in added_raintips:
+			RaintipListItem(raintip) 
+
+			self.addTopLevelItem(raintip.raintiplist_item)
+
+	def digestRaintipUpdates(self):
+		"""actually digest raintip updates collected through tipUpdated() (runs in gui thread)"""
+		updated_raintips = self.updated_raintips
+		self.updated_raintips = []
+
+		if len(updated_raintips) > 0: self.print_error(f"digesting {len(updated_raintips)} raintip updates")
+
+		for raintip in updated_raintips:
+			if hasattr(raintip, 'raintiplist_item'):
+				#self.print_error("digesting tip update for tip", tip)
+				raintip.raintiplist_item.refreshData()
+			else:
+				self.updated_raintips.append(raintip)
+				#self.print_error("trying to update tip without tiplistitem: ", tip, ", re-adding to updated_tips list")
 
 
 	'''
-	def __del__(self):
-		if self.rainttiplist:
-			# clean up signal connections
-			# self.tiplist.update_signal.disconnect(self.digestTipUpdates)
-			# self.tiplist.added_signal.disconnect(self.digestTipAdds)
-			# deregister as tiplistener
-			# self.tiplist.unregisterTipListener(self)
-
 
 	def calculateFiatAmount(self, tip):
 		# calc tip.amount_fiat
@@ -327,66 +498,6 @@ class RaintipListWidget(PrintError, MyTreeWidget):
 		else:
 			tip.amount_fiat = None
 
-	# TipListener implementation
-
-
-	def tipAdded(self, tip):
-		"""store added tip to local list for later digestion in gui thread"""
-		self.added_tips.append(tip)
-
-	def tipUpdated(self, tip):
-		"""store updated tip to local list for later digestion in gui thread"""
-		self.updated_tips.append(tip)
-
-	def tipRemoved(self, tip):
-		if tip.recipient_address:
-			del self.tips_by_address[tip.recipient_address]
-		if hasattr(tip, 'tiplist_item'):
-			if c["use_categories"]:
-				category_item = self.getCategoryItemForTip(tip)
-				category_item.removeChild(tip.tiplist_item)
-			else:
-				self.takeTopLevelItem(self.indexOfTopLevelItem(tip.tiplist_item))
-			del tip.tiplist_item
-		else:
-			self.print_error("no tiplist_item")
-
-	def digestTipAdds(self):
-		"""actually digest tip adds collected through tipAdded() (runs in gui thread)"""
-		added_tips = self.added_tips
-		self.added_tips = []
-
-		#if len(added_tips) > 0: self.print_error(f"digesting {len(added_tips)} tip adds")
-
-		for tip in added_tips:
-			if tip.recipient_address:
-				self.tips_by_address[tip.recipient_address] = tip 
-
-			TipListItem(tip) 
-			self.calculateFiatAmount(tip)
-
-			if c["use_categories"]:
-				category_item = self.getCategoryItemForTip(tip)
-				category_item.setExpanded(True)
-				category_item.addChild(tip.tiplist_item)
-			else:
-				self.addTopLevelItem(tip.tiplist_item)
-
-	def digestTipUpdates(self):
-		"""actually digest tip updates collected through tipUpdated() (runs in gui thread)"""
-		updated_tips = self.updated_tips
-		self.updated_tips = []
-
-		#if len(updated_tips) > 0: self.print_error(f"digesting {len(updated_tips)} tip updates")
-
-		for tip in updated_tips:
-			if hasattr(tip, 'tiplist_item'):
-				#self.print_error("digesting tip update for tip", tip)
-				self.calculateFiatAmount(tip)
-				tip.tiplist_item.refreshData()
-			else:
-				self.updated_tips.append(tip)
-				#self.print_error("trying to update tip without tiplistitem: ", tip, ", re-adding to updated_tips list")
 
 	def do_export_history(self, filename):
 		self.print_error(f"do_export_history({filename})")
