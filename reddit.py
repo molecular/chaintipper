@@ -762,6 +762,7 @@ class RedditWorker(PrintError):
 		if time_ago > self.desired_interval_secs:
 			self.last_do_work_time = time()
 			self.do_work()
+			self.last_do_work_time = time()
 
 	def do_work(self):
 		self.print_error("baseclass RedditWorker.do_work() called.")

@@ -7,6 +7,8 @@
 			* option (in default for unlinked users): [ ] do not tip unlinked users at all if tip was done in stealth-mode (by PM to chaintip)
 			* mark tips with amount "0" as finished somehow? 
 
+		* [Raintipper] can't recurse, type of o: <class 'electroncash_plugins.chaintipper.praw.models.reddit.more.MoreComments'>
+
 	* bugs
 
 		* tip amount text = "1" when using default ("/u/chaintip" only)

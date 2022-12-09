@@ -1,7 +1,8 @@
 import weakref
 
-from PyQt5 import QtGui
 from PyQt5 import QtCore
+from PyQt5 import QtGui
+from PyQt5.QtGui import QColor
 from PyQt5.QtWidgets import QMessageBox
 from PyQt5.QtWidgets import (
 	QAction, QVBoxLayout, QHBoxLayout, QLabel, QComboBox, QGroupBox, QCheckBox, 
@@ -11,6 +12,7 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import Qt, QObject, pyqtSignal
 from PyQt5.QtWidgets import QApplication, QTreeWidgetItem, QAbstractItemView, QMenu, QVBoxLayout
 
+from electroncash.util import format_time
 from electroncash.i18n import _
 from electroncash_gui.qt import ElectrumWindow
 from electroncash_gui.qt.util import webopen, MessageBoxMixin, MyTreeWidget
@@ -20,11 +22,16 @@ from electroncash_gui.qt.util import (
 	WindowModalDialog
 )
 
+from datetime import datetime
+from decimal import Decimal
+
 from .util import read_config, write_config, commit_config
 from .config import c
 
 from .reddit import Reddit, RedditWorker
 from . import praw
+
+from .model import Tip, TipList, TipListener
 
 icon_chaintip = QtGui.QIcon(":icons/chaintip.svg")
 
@@ -42,7 +49,7 @@ icon_chaintip = QtGui.QIcon(":icons/chaintip.svg")
 #                                                    88          88                                   #
 #######################################################################################################
 
-class Raintipper(RedditWorker, QWidget):
+class Raintipper(RedditWorker, QWidget, TipListener):
 	"""Encapsulates on rain-tipping session instance"""
 	root_object_located = pyqtSignal(object)
 #	new_raintip = pyqtSignal(Tip)
@@ -82,6 +89,11 @@ class Raintipper(RedditWorker, QWidget):
 
 		# register raintip_list_widget as RaintipListener to raintip_list
 		self.raintip_list.registerRaintipListener(self.raintip_list_widget)
+
+		# register raintip as tiplistener and raintiplistener
+		self.tiplist = self.wallet_ui.tiplist 
+		self.tiplist.registerTipListener(self)
+		self.raintip_list.registerRaintipListener(self)
 
 		# create tab
 		if self.tab:
@@ -155,39 +167,131 @@ class Raintipper(RedditWorker, QWidget):
 
 
 		elif self.stage == 'collect':
-
-			# after initial collect, slow down worker
-			self.desired_interval_secs = 15
+			#self.print_error(f"periodic collection '{self.root_object_text}'")						
 
 			# collect
 			self.collect()
+			self.desired_interval_secs = 50
+			self.stage = 'tip'
 
-	def collect(self, o=None):
+		elif self.stage == 'tip':
+
+			self.tip()
+			self.desired_interval_secs = 10
+			self.stage = 'collect'
+
+	def collect(self, o=None, level=0):
 		#self.print_error(f"collecting o={o}")
+		count_updated, count_added, count_invalid = (0,0,0)
 
 		if o == None: # start at self.root_object
-			o = self.root_object
+			# o = self.root_object
+			# hack to refresh for new toplevel comments
+			o = self.root_object = self.reddit.reddit.submission(url=self.root_object_text)
 
 		# create Raintip based on comment
 		elif type(o) == praw.models.Comment:
 			existing_raintip = self.raintip_list.getRaintipByID(o.id)
 			if existing_raintip:
-				self.print_error("updating existing raintip", existing_raintip)
-				existing_raintip.update()
+				count_updated += 1
+				#self.print_error("updating existing raintip", existing_raintip)
+				try:
+					existing_raintip.comment.refresh()
+					existing_raintip.update()
+				except(praw.exceptions.ClientException):
+					self.print_error("ClientException refreshing raintip comment, removing raintip", existing_raintip)
+					existing_raintip.remove() 
 			else:
-				raintip = Raintip(o, self.raintip_list)
-				self.print_error("collected new raintip", raintip)
+				raintip = Raintip(o, self.raintip_list, level)
+				if raintip.isValid():
+					raintip.add()
+					count_added += 1
+					#self.print_error("added new raintip", raintip)
+				else:
+					count_invalid += 1
+					#self.print_error("raintip invalid", raintip)
 
 		# recurse through children
 		comment_forest = None
+		#if type(o) == praw.models.MoreComments:
+		#	o = o.comments()
+		
 		if type(o) == praw.models.Submission:
 			comment_forest = o.comments
+			comment_forest.replace_more(limit=0, threshold=0)
 		elif type(o) == praw.models.Comment:
 			comment_forest = o.replies
+		else:
+			self.print_error("can't recurse, type of o:", type(o))
 
-		for comment in comment_forest:
-			self.collect(comment)
+		if comment_forest:
+			for comment in comment_forest:
+				self.collect(comment, level+1)
 
+		if level == 0:
+			self.print_error(f"collect finished, updated {count_updated} existing and added {count_added} raintips with {count_invalid} invalid")
+
+	def tip(self):
+
+		fresh_raintips = [raintip for raintip in self.raintip_list.list() if raintip.isValid() and raintip.state == 'fresh']
+		eligible_raintips = [raintip for raintip in fresh_raintips if raintip.isEligible()]
+		eligible_raintips = eligible_raintips[:1]
+
+		for raintip in eligible_raintips:
+			self.print_error("initiating tip for raintip", raintip)
+			raintip.state = 'tip_initiated'
+			raintip.update()
+
+			raintip.chaintip_stealth_message = self.reddit.reddit.redditor("chaintip").message(subject="raintipper stealth tip request", message='https://www.reddit.com' + raintip.comment.permalink)
+			raintip.state = 'stealth_message_sent'
+
+	def linkTipToRaintip(self, tip, raintip):
+		raintip.tip = tip
+		raintip.state = "tipped {0:.8f}".format(tip.amount_bch) if isinstance(tip.amount_bch, Decimal) else ""
+
+	def linktTipToMatchingRaintips(self, tip):
+		self.print_error(f"-------------- linktTipToMatchingRaintips({tip})")
+		if hasattr(tip, "tippee_content_link") and tip.tippee_content_link:
+			tippee_content_id = tip.tippee_content_link.split("/")[-2]
+			matching_raintips = [raintip for raintip in self.raintip_list.list() if raintip.comment.id == tippee_content_id]
+			#self.print_error("matching_raintips:", matching_raintips)
+			for raintip in matching_raintips:
+				self.linkTipToRaintip(tip, raintip)
+				raintip.update()
+
+	def linkRaintipToMatchingTips(self, raintip):
+		self.print_error(f"-------------- linktRaintipToMatchingTips({raintip})")
+		matching_tips = [tip for tip in self.tiplist.tips.values() if hasattr(tip, "tippee_content_link") and tip.tippee_content_link and tip.tippee_content_link.split("/")[-2] == raintip.comment.id]
+		#self.print_error("matching_tips:", matching_tips)
+		for tip in matching_tips:
+			self.linkTipToRaintip(tip, raintip)
+
+
+	# TipListener
+
+	def tipAdded(self, tip):
+		self.linktTipToMatchingRaintips(tip)
+
+	def tipRemoved(self, tip):
+		raise Exception(f"tipRemoved() not implemented in class {type(self)}")
+
+	def tipUpdated(self, tip):
+		self.linktTipToMatchingRaintips(tip)
+
+	# RaintipListener
+
+	def raintipAdded(self, raintip):
+		self.linkRaintipToMatchingTips(raintip)
+
+	def raintipRemoved(self, raintip):
+		raise Exception(f"raintipRemoved() not implemented in class {type(self)}")
+
+	def raintipUpdated(self, raintip):
+		self.linkRaintipToMatchingTips(raintip)
+
+
+
+	#def unlinkip(self, tip)
 
 #####################################################################
 #                                                                   #
@@ -206,10 +310,14 @@ class Raintipper(RedditWorker, QWidget):
 class Raintip(PrintError):
 	"""constitutes a Raintip based on a reddit comment"""
 
-	def __init__(self, comment: praw.models.Comment, raintiplist):
-		self.comment = comment
+	def __init__(self, comment: praw.models.Comment, raintiplist, level):
 		self.raintiplist_weakref = weakref.ref(raintiplist)
-		self.add()
+
+		self.comment = comment
+		self.level = level
+		self.state = 'fresh'
+		if comment.author:
+			self.author_age_days = round((datetime.now().timestamp() - self.comment.author.created_utc) / (60*60*24))
 
 	def __str__(self):
 		return f"Raintip {self.comment.id}"
@@ -236,6 +344,27 @@ class Raintip(PrintError):
 		else:
 			self.print_error("weakref to raintiplist broken, can't remove raintip", self)
 
+	def isValid(self):
+		return \
+			self.comment != None and \
+			hasattr(self.comment, "author") and self.comment.author != None
+
+	def isEligible(self):
+		rc = True
+		state = ''
+		if not self.isValid():
+			rc = False
+			state = 'invalid'
+		if self.author_age_days < 365:
+			rc = False
+			state = 'ineligible, age < 365'
+
+		if not rc and self.state == 'fresh': 
+			self.state = state
+
+		return rc
+
+
 ######################################################################################################
 #                                                                                                    #
 #    88888888ba             88                    88             88          88                      #
@@ -260,12 +389,15 @@ class RaintipList(PrintError, QObject):
 		self.raintip_listeners = []
 		self.raintips = {} # Raintip instances by their getID()
 
+	def list(self):
+		return [self.getRaintipByID(id) for id in self.raintips.keys()]
+
 	def addRaintip(self, raintip: Raintip):
 		if raintip.getID() in self.raintips.keys():
 			raise("duplicate raintip ID")
 		else:
 			self.raintips[raintip.getID()] = raintip
-			self.print_error(f"RaintipList now has {len(self.raintips)} raintips")
+			#self.print_error(f"RaintipList now has {len(self.raintips)} raintips")
 			for raintip_listener in self.raintip_listeners:
 				raintip_listener.raintipAdded(raintip)
 			self.added_signal.emit()
@@ -295,7 +427,7 @@ class RaintipList(PrintError, QObject):
 
 
 class RaintipListener():
-	def rainttipAdded(self, rainttip):
+	def raintipAdded(self, raintip):
 		raise Exception(f"raintipAdded() not implemented in class {type(self)}")
 
 	def raintipRemoved(self, raintip):
@@ -327,6 +459,7 @@ class RaintipListItem(QTreeWidgetItem, PrintError):
 		elif isinstance(o, Raintip):
 			self.raintip = o
 			self.raintip.raintiplist_item = self
+			QTreeWidgetItem.__init__(self)
 			self.__init__(self.getDataArray(self.raintip))
 		else:
 			QTreeWidgetItem.__init__(self)
@@ -335,8 +468,20 @@ class RaintipListItem(QTreeWidgetItem, PrintError):
 	def getDataArray(self, raintip):
 		return [
 			raintip.getID(),
+			format_time(raintip.comment.created_utc),
+			self.raintip.state,
+			str(raintip.level),
 			raintip.comment.author.name,
-			str(raintip.comment.score)
+			#format_time(raintip.comment.author.created_utc),
+			str(raintip.author_age_days),
+			str(raintip.comment.score),
+			raintip.comment.body.partition('\n')[0][:50],
+			'' if not hasattr(raintip, "tip") or not raintip.tip else 
+				'linked' if raintip.tip.acceptance_status == 'received' else 'not yet linked' if raintip.tip.acceptance_status == 'funded' else raintip.tip.acceptance_status,
+			'' if not hasattr(raintip, "tip") or not raintip.tip else 
+				raintip.tip.chaintip_confirmation_status if (hasattr(raintip.tip, "chaintip_confirmation_status") and raintip.tip.chaintip_confirmation_status == "<stealth>") else "",
+			'' if not hasattr(raintip, "tip") or not raintip.tip else 
+				raintip.tip.payment_status
 		]
 
 	def refreshData(self):
@@ -344,12 +489,12 @@ class RaintipListItem(QTreeWidgetItem, PrintError):
 		data = self.getDataArray(self.raintip)
 		for idx, value in enumerate(data, start=0):
 			self.setData(idx, Qt.DisplayRole, value)
-			# color = Qt.black
-			# if self.tip.isFinished():
-			# 	color = Qt.gray
-			# 	if self.tip.acceptance_status == 'claimed': color = QColor(120, 180, 120)
-			# 	if self.tip.acceptance_status == 'returned': color = QColor(180, 120, 120)
-			# self.setForeground(idx, color)			
+			color = Qt.black
+			if not self.raintip.isEligible(): color = Qt.gray
+			if self.raintip.state.startswith("tipped"): color = QColor(120, 180, 120)
+				# if self.tip.acceptance_status == 'claimed': color = QColor(120, 180, 120)
+				# if self.tip.acceptance_status == 'returned': color = QColor(180, 120, 120)
+			self.setForeground(idx, color)			
 		QApplication.processEvents() # keep gui alive
 
 ##########################################################################################################################################################################
@@ -373,8 +518,17 @@ class RaintipListWidget(PrintError, MyTreeWidget, RaintipListener):
 	def get_headers(self):
 		headers = [
 			_('ID'), 
+			_('Created'),
+			_('State'),
+			_('Level'),
 			_('Author'),
-			_('Upvotes')
+			#_('Author Created'),
+			_('Age (days)'),
+			_('Score'),
+			_('Body'),
+			_('Tip Acceptance'), # translated
+			_('Tip Stealth'),
+			_('Tip Payment'),
 		]
 		
 		return headers
@@ -404,7 +558,7 @@ class RaintipListWidget(PrintError, MyTreeWidget, RaintipListener):
 		self.setIndentation(0)
 
 	def __del__(self):
-		if self.rainttiplist:
+		if self.raintiplist:
 			# clean up signal connections
 			self.tiplist.update_signal.disconnect(self.digestRaintipUpdates)
 			self.tiplist.added_signal.disconnect(self.digestRaintipAdds)
@@ -440,14 +594,14 @@ class RaintipListWidget(PrintError, MyTreeWidget, RaintipListener):
 	def raintipAdded(self, raintip):
 		"""store added tip to local list for later digestion in gui thread"""
 		self.added_raintips.append(raintip)
-		self.print_error(f"{len(self.added_raintips)} added_raintips")
+		#self.print_error(f"{len(self.added_raintips)} added_raintips")
 
 	def raintipUpdated(self, raintip):
 		"""store updated tip to local list for later digestion in gui thread"""
 		self.updated_raintips.append(raintip)
 
 	def raintipRemoved(self, raintip):
-		if hasattr(tip, 'raintiplist_item'):
+		if hasattr(raintip, 'raintiplist_item'):
 			self.takeTopLevelItem(self.indexOfTopLevelItem(raintip.raintiplist_item))
 			del raintip.raintiplist_item
 		else:
@@ -458,9 +612,10 @@ class RaintipListWidget(PrintError, MyTreeWidget, RaintipListener):
 		added_raintips = self.added_raintips
 		self.added_raintips = []
 
-		if len(added_raintips) > 0: self.print_error(f"digesting {len(added_raintips)} raintip adds")
+		#if len(added_raintips) > 0: self.print_error(f"digesting {len(added_raintips)} raintip adds")
 
 		for raintip in added_raintips:
+			#self.print_error("creating raintiplistitem for raintip", raintip)
 			RaintipListItem(raintip) 
 
 			self.addTopLevelItem(raintip.raintiplist_item)
@@ -470,122 +625,16 @@ class RaintipListWidget(PrintError, MyTreeWidget, RaintipListener):
 		updated_raintips = self.updated_raintips
 		self.updated_raintips = []
 
-		if len(updated_raintips) > 0: self.print_error(f"digesting {len(updated_raintips)} raintip updates")
+		#if len(updated_raintips) > 0: self.print_error(f"digesting {len(updated_raintips)} raintip updates")
 
 		for raintip in updated_raintips:
 			if hasattr(raintip, 'raintiplist_item'):
-				#self.print_error("digesting tip update for tip", tip)
+				#self.print_error("refreshData() raintiplistitem", raintip.raintiplist_item)
 				raintip.raintiplist_item.refreshData()
 			else:
 				self.updated_raintips.append(raintip)
 				#self.print_error("trying to update tip without tiplistitem: ", tip, ", re-adding to updated_tips list")
 
-
-	'''
-
-	def calculateFiatAmount(self, tip):
-		# calc tip.amount_fiat
-		d_t = datetime.utcfromtimestamp(tip.chaintip_message_created_utc)
-		fx_rate = self.window.fx.history_rate(d_t)
-
-		tip.fiat_currency = self.window.fx.ccy
-		if fx_rate and tip.amount_bch:
-			try:
-				tip.amount_fiat = fx_rate * tip.amount_bch
-			except Exception as e:
-				self.print_error("error with fx_rate", fx_rate, "tip amount", tip.amount_bch)
-				traceback.print_exc(file=sys.stderr)
-		else:
-			tip.amount_fiat = None
-
-
-	def do_export_history(self, filename):
-		self.print_error(f"do_export_history({filename})")
-
-		def csv_encode(s):
-			if s is None or len(str(s)) == 0: return ""
-			return '"' + str(s).replace('"', '\'') + '"'
-
-		# prepare export_data list
-		# export_data = [tip.to_dict() for tip in self.tiplist.tips.values()]
-		export_data = []
-		for tip in self.tiplist.tips.values():
-			d = tip.to_dict()
-			d = {**{
-				"wallet": self.wallet.basename(),
-				"payments": [{
-					"txid": txid,
-					"amount_bch": str(tip.payments_by_txhash[txid])
-				} for txid in tip.payments_by_txhash.keys()]
-			}, **d}
-			export_data.append(d)
-
-		# write json
-		if filename.endswith(".json"):
-			with open(filename, "w+", encoding='utf-8') as f:	
-				f.write(json.dumps(export_data, indent=4))
-			return True
-
-		# write csv
-		elif filename.endswith(".csv"):
-			for d in export_data:
-				self.print_error("dpam", d["payments"])
-				d["payments"] = ",".join([p["txid"] for p in d["payments"]])
-				self.print_error("d2", d)
-			with open(filename, "w+", encoding='utf-8') as f:	
-				f.write(",".join([csv_encode(d) for d in export_data[0].keys()]) + '\n')
-				for data in export_data:
-					f.write(",".join(csv_encode(d) for d in data.values()) + '\n')
-			return True
-
-		# extension detection fail
-		self.print_error("failed to detect desired file format from extension. Aborting tip export.")
-		return False
-
-	def export_dialog(self, tips: list):
-		d = WindowModalDialog(self.parent, _('Export {c} Tips').format(c=len(tips)))
-		d.setMinimumSize(400, 200)
-		vbox = QVBoxLayout(d)
-		defaultname = os.path.expanduser(read_config(self.wallet, 'export_history_filename', f"~/ChainTipper tips - wallet {self.wallet.basename()}.csv"))
-		select_msg = _('Select file to export your tips to')
-
-		box, filename_e, csv_button = filename_field(self.config, defaultname, select_msg)
-
-		vbox.addWidget(box)
-		vbox.addStretch(1)
-		hbox = Buttons(CancelButton(d), OkButton(d, _('Export')))
-		vbox.addLayout(hbox)
-
-		#run_hook('export_history_dialog', self, hbox)
-
-		#self.update()
-		res = d.exec_()
-		d.setParent(None) # for python GC
-		if not res:
-			return
-		filename = filename_e.text()
-		write_config(self.wallet, 'export_history_filename', filename)
-		if not filename:
-			return
-		success = False
-		try:
-			# minimum 10s time for calc. fees, etc
-			success = self.do_export_history(filename)
-		except Exception as reason:
-			traceback.print_exc(file=sys.stderr)
-			export_error_label = _("Error exporting tips")
-			self.parent.show_critical(export_error_label + "\n" + str(reason), title=_("Unable to export tips"))
-		else:
-			if success:
-				self.parent.show_message(_("{l} Tips successfully exported to {filename}").format(l=len(tips), filename=filename))
-			else:
-				self.parent.show_message(_("Exporting tips to {filename} failed. More detail might be seen in terminal output.").format(filename=filename))
-
-
-
-	#
-
-	'''
 
 
 ########################################################################################################################################################################################
@@ -648,7 +697,8 @@ class RaintipperInitDialog(WindowModalDialog, PrintError, MessageBoxMixin):
 		# link or ID entry
 		grid.addWidget(QLabel(_('Reddit URL to Submission or Comment')), 0, 1, Qt.AlignRight)
 		self.root_object = QLineEdit()
-		self.root_object.setText("https://www.reddit.com/r/chaintipper/comments/t3ahbo/raintipper_test/")
+		#self.root_object.setText("https://www.reddit.com/r/chaintipper/comments/t3ahbo/raintipper_test/")
+		self.root_object.setText("https://www.reddit.com/r/investing/comments/zgn49v/with_a_potential_upcomingworsening_recession_what/")
 		def on_root_object_entered(): # used lambda for cleaner code
 			self.raintipper.locateRootObject(self.root_object.text())
 			self.root_object_found_label.setText(_("<looking up reddit object>"))
@@ -670,6 +720,8 @@ class RaintipperInitDialog(WindowModalDialog, PrintError, MessageBoxMixin):
 		cbut = CancelButton(self)
 		cbut.setDefault(False)
 		cbut.setAutoDefault(False)
+
+		# OK button
 		self.gobut = OkButton(self)
 		self.gobut.setDefault(False)
 		self.gobut.setAutoDefault(False)
