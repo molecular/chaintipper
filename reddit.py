@@ -160,6 +160,7 @@ class Reddit(PrintError, QObject):
 						user_agent = user_agent,
 						username = read_config(self.wallet_ui.wallet, "reddit_username"),
 						password = read_config(self.wallet_ui.wallet, "reddit_password"),
+						ratelimit = 70
 				)
 			elif authentication_mode == "app":
 				#redirect_uri = c["reddit"]["redirect_uri"]
@@ -173,7 +174,8 @@ class Reddit(PrintError, QObject):
 					client_secret = None,
 					redirect_uri = redirect_uri,
 					user_agent = user_agent,
-					token_manager = self.token_manager
+					token_manager = self.token_manager,
+					ratelimit = 70
 				)
 
 				# probe if current refresh token (if exists) works

@@ -62,6 +62,8 @@ class Raintipper(RedditWorker, QWidget, TipListener):
 		self.window = self.wallet_ui.window
 		self.stage = 'init'
 
+		self.raintips_by_redditor = dict()
+
 		self.tab = None
 		self.previous_tab = None
 
@@ -171,17 +173,17 @@ class Raintipper(RedditWorker, QWidget, TipListener):
 
 			# collect
 			self.collect()
-			self.desired_interval_secs = 50
+			self.desired_interval_secs = 60
 			self.stage = 'tip'
 
 		elif self.stage == 'tip':
 
-			self.tip()
-			self.desired_interval_secs = 10
-			self.stage = 'collect'
+			if self.tip() == 0: # if 0 tips made, return to collecting again after 5 minues
+				self.stage = 'collect'
+				self.desired_interval_secs = 1200
 
 	def collect(self, o=None, level=0):
-		#self.print_error(f"collecting o={o}")
+		self.print_error(f"collecting o={o} level={level}")
 		count_updated, count_added, count_invalid = (0,0,0)
 
 		if o == None: # start at self.root_object
@@ -194,22 +196,22 @@ class Raintipper(RedditWorker, QWidget, TipListener):
 			existing_raintip = self.raintip_list.getRaintipByID(o.id)
 			if existing_raintip:
 				count_updated += 1
-				#self.print_error("updating existing raintip", existing_raintip)
+				self.print_error("updating existing raintip", existing_raintip)
 				try:
-					existing_raintip.comment.refresh()
+					#existing_raintip.comment.refresh()
 					existing_raintip.update()
 				except(praw.exceptions.ClientException):
 					self.print_error("ClientException refreshing raintip comment, removing raintip", existing_raintip)
 					existing_raintip.remove() 
 			else:
-				raintip = Raintip(o, self.raintip_list, level)
+				raintip = Raintip(o, self, level)
 				if raintip.isValid():
 					raintip.add()
 					count_added += 1
-					#self.print_error("added new raintip", raintip)
+					self.print_error("added new raintip", raintip)
 				else:
 					count_invalid += 1
-					#self.print_error("raintip invalid", raintip)
+					self.print_error("raintip invalid", raintip)
 
 		# recurse through children
 		comment_forest = None
@@ -219,6 +221,7 @@ class Raintipper(RedditWorker, QWidget, TipListener):
 		if type(o) == praw.models.Submission:
 			comment_forest = o.comments
 			comment_forest.replace_more(limit=0, threshold=0)
+			comment_forest = comment_forest.list()
 		elif type(o) == praw.models.Comment:
 			comment_forest = o.replies
 		else:
@@ -245,38 +248,45 @@ class Raintipper(RedditWorker, QWidget, TipListener):
 			raintip.chaintip_stealth_message = self.reddit.reddit.redditor("chaintip").message(subject="raintipper stealth tip request", message='https://www.reddit.com' + raintip.comment.permalink)
 			raintip.state = 'stealth_message_sent'
 
+		return len(eligible_raintips)
+
 	def linkTipToRaintip(self, tip, raintip):
 		raintip.tip = tip
 		raintip.state = "tipped {0:.8f}".format(tip.amount_bch) if isinstance(tip.amount_bch, Decimal) else ""
 
-	def linktTipToMatchingRaintips(self, tip):
-		self.print_error(f"-------------- linktTipToMatchingRaintips({tip})")
+	def linkTipToMatchingRaintips(self, tip):
+		self.print_error(f"-------------- linkTipToMatchingRaintips({tip})")
+
+		# if hasattr(tip, "tippee_content_link") and tip.tippee_content_link:
+		# 	tippee_content_id = tip.tippee_content_link.split("/")[-2]
+		# 	matching_raintips = [raintip for raintip in self.raintip_list.list() if raintip.comment.id == tippee_content_id]
+		# 	#self.print_error("matching_raintips:", matching_raintips)
+		# 	for raintip in matching_raintips:
+		# 		self.linkTipToRaintip(tip, raintip)
+		# 		raintip.update()
+
 		if hasattr(tip, "tippee_content_link") and tip.tippee_content_link:
-			tippee_content_id = tip.tippee_content_link.split("/")[-2]
-			matching_raintips = [raintip for raintip in self.raintip_list.list() if raintip.comment.id == tippee_content_id]
-			#self.print_error("matching_raintips:", matching_raintips)
-			for raintip in matching_raintips:
-				self.linkTipToRaintip(tip, raintip)
-				raintip.update()
+			for raintip in self.raintip_list.list():
+				if raintip.comment.id == tip.tippee_content_link.split("/")[-2]:
+					self.linkTipToRaintip(tip, raintip)
+					raintip.update()
 
 	def linkRaintipToMatchingTips(self, raintip):
-		self.print_error(f"-------------- linktRaintipToMatchingTips({raintip})")
-		matching_tips = [tip for tip in self.tiplist.tips.values() if hasattr(tip, "tippee_content_link") and tip.tippee_content_link and tip.tippee_content_link.split("/")[-2] == raintip.comment.id]
-		#self.print_error("matching_tips:", matching_tips)
-		for tip in matching_tips:
-			self.linkTipToRaintip(tip, raintip)
-
+		self.print_error(f"-------------- linktRaintipToMatchingTips({raintip}) ({len(self.tiplist.tips.values())} tips)")
+		for tip in self.tiplist.tips.values():
+			if hasattr(tip, "tippee_content_link") and tip.tippee_content_link and tip.tippee_content_link.split("/")[-2] == raintip.comment.id:
+				self.linkTipToRaintip(tip, raintip)
 
 	# TipListener
 
 	def tipAdded(self, tip):
-		self.linktTipToMatchingRaintips(tip)
+		self.linkTipToMatchingRaintips(tip)
 
 	def tipRemoved(self, tip):
 		raise Exception(f"tipRemoved() not implemented in class {type(self)}")
 
 	def tipUpdated(self, tip):
-		self.linktTipToMatchingRaintips(tip)
+		self.linkTipToMatchingRaintips(tip)
 
 	# RaintipListener
 
@@ -310,14 +320,16 @@ class Raintipper(RedditWorker, QWidget, TipListener):
 class Raintip(PrintError):
 	"""constitutes a Raintip based on a reddit comment"""
 
-	def __init__(self, comment: praw.models.Comment, raintiplist, level):
-		self.raintiplist_weakref = weakref.ref(raintiplist)
+	def __init__(self, comment: praw.models.Comment, raintipper, level):
+		self.raintipper_weakref = weakref.ref(raintipper)
 
 		self.comment = comment
 		self.level = level
 		self.state = 'fresh'
-		if comment.author:
+		if self.comment.author:
 			self.author_age_days = round((datetime.now().timestamp() - self.comment.author.created_utc) / (60*60*24))
+			if self.comment.author.name not in self.raintipper_weakref().raintips_by_redditor:
+				self.raintipper_weakref().raintips_by_redditor[self.comment.author.name] = self
 
 	def __str__(self):
 		return f"Raintip {self.comment.id}"
@@ -326,21 +338,21 @@ class Raintip(PrintError):
 		return self.comment.id
 
 	def add(self):
-		if self.raintiplist_weakref():
-			self.raintiplist_weakref().addRaintip(self)
+		if self.raintipper_weakref():
+			self.raintipper_weakref().raintip_list.addRaintip(self)
 		else:
 			self.print_error("weakref to raintiplist broken, can't add raintip", self)
 
 
 	def update(self):
-		if self.raintiplist_weakref():
-			self.raintiplist_weakref().updateRaintip(self)
+		if self.raintipper_weakref():
+			self.raintipper_weakref().raintip_list.updateRaintip(self)
 		else:
 			self.print_error("weakref to raintiplist broken, can't update raintip", self)
 
 	def remove(self):
-		if self.raintiplist_weakref():
-			self.raintiplist_weakref().removeRaintip(self)
+		if self.raintipper_weakref():
+			self.raintipper_weakref().raintip_list.removeRaintip(self)
 		else:
 			self.print_error("weakref to raintiplist broken, can't remove raintip", self)
 
@@ -352,12 +364,18 @@ class Raintip(PrintError):
 	def isEligible(self):
 		rc = True
 		state = ''
+
 		if not self.isValid():
 			rc = False
 			state = 'invalid'
-		if self.author_age_days < 365:
+
+		if self.author_age_days < 90:
 			rc = False
-			state = 'ineligible, age < 365'
+			state = 'ineligible, age < 90'
+
+		if self.raintipper_weakref().raintips_by_redditor[self.comment.author.name] != self:
+			rc = False
+			state = 'ineligible, duplicate author'
 
 		if not rc and self.state == 'fresh': 
 			self.state = state
@@ -390,7 +408,8 @@ class RaintipList(PrintError, QObject):
 		self.raintips = {} # Raintip instances by their getID()
 
 	def list(self):
-		return [self.getRaintipByID(id) for id in self.raintips.keys()]
+		return self.raintips.values()
+		#return [self.getRaintipByID(id) for id in self.raintips.keys()]
 
 	def addRaintip(self, raintip: Raintip):
 		if raintip.getID() in self.raintips.keys():
@@ -698,7 +717,8 @@ class RaintipperInitDialog(WindowModalDialog, PrintError, MessageBoxMixin):
 		grid.addWidget(QLabel(_('Reddit URL to Submission or Comment')), 0, 1, Qt.AlignRight)
 		self.root_object = QLineEdit()
 		#self.root_object.setText("https://www.reddit.com/r/chaintipper/comments/t3ahbo/raintipper_test/")
-		self.root_object.setText("https://www.reddit.com/r/investing/comments/zgn49v/with_a_potential_upcomingworsening_recession_what/")
+		#self.root_object.setText("https://www.reddit.com/r/investing/comments/zgn49v/with_a_potential_upcomingworsening_recession_what/")
+		self.root_object.setText("https://www.reddit.com/r/Anarchism/comments/zgu6ee/gimme_some/")
 		def on_root_object_entered(): # used lambda for cleaner code
 			self.raintipper.locateRootObject(self.root_object.text())
 			self.root_object_found_label.setText(_("<looking up reddit object>"))
