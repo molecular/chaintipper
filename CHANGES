@@ -5,6 +5,7 @@
   * BlockchainWatcher: set tip.real_recipient_address when seeing tx FROM relay address
   * Add "open blockexplorer to real (not relay) recipient address" to tip context menu
   * Add "copy <x> real recipient address(es) to tip context menu"
+  * tighten condition on which tip relay addresses are watched for payments to improve performance
     
 +++
 

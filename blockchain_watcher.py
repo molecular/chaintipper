@@ -53,7 +53,10 @@ class BlockchainWatcher(TipListener, PrintError):
 		self.tipUpdated(tip)
 
 	def tipUpdated(self, tip):
-		if isinstance(tip.recipient_address, Address):
+		# this used to be just:
+		# if isinstance(tip.recipient_address, Address):
+		# but that was slow af and generating tons of network traffic. Not sure the following misses anything important, but I'll leave it here for now
+		if ((not tip.payment_status or not tip.payment_status.startswith('paid')) or tip.acceptance_status == 'received' or tip.acceptance_status == 'linked') and isinstance(tip.recipient_address, Address):
 			# check if already seen a payment
 			if tip.recipient_address in self.tipless_payments_by_address:
 				payment = self.tipless_payments_by_address[tip.recipient_address]
