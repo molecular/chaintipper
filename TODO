@@ -8,6 +8,7 @@
 			* mark tips with amount "0" as finished somehow? 
 
 		* [Raintipper] can't recurse, type of o: <class 'electroncash_plugins.chaintipper.praw.models.reddit.more.MoreComments'>
+		* check if user has been tipped at all => "ineligible, tipped before"
 
 	* bugs
 

@@ -173,10 +173,11 @@ class Raintipper(RedditWorker, QWidget, TipListener):
 
 			# collect
 			self.collect()
-			self.desired_interval_secs = 60
+			self.desired_interval_secs = 30
 			self.stage = 'tip'
 
 		elif self.stage == 'tip':
+			self.desired_interval_secs = 60
 
 			if self.tip() == 0: # if 0 tips made, return to collecting again after 5 minues
 				self.stage = 'collect'
@@ -251,25 +252,30 @@ class Raintipper(RedditWorker, QWidget, TipListener):
 		return len(eligible_raintips)
 
 	def linkTipToRaintip(self, tip, raintip):
-		raintip.tip = tip
-		raintip.state = "tipped {0:.8f}".format(tip.amount_bch) if isinstance(tip.amount_bch, Decimal) else ""
+		if not hasattr(raintip, "tip") or raintip.tip != tip:
+			raintip.tip = tip
+			raintip.state = "tipped {0:.8f}".format(tip.amount_bch) if isinstance(tip.amount_bch, Decimal) else ""
+
+	def unlinkTipFromRaintip(self, tip, raintip):
+		del raintip.tip
+		raintip.update()
 
 	def linkTipToMatchingRaintips(self, tip):
 		self.print_error(f"-------------- linkTipToMatchingRaintips({tip})")
-
-		# if hasattr(tip, "tippee_content_link") and tip.tippee_content_link:
-		# 	tippee_content_id = tip.tippee_content_link.split("/")[-2]
-		# 	matching_raintips = [raintip for raintip in self.raintip_list.list() if raintip.comment.id == tippee_content_id]
-		# 	#self.print_error("matching_raintips:", matching_raintips)
-		# 	for raintip in matching_raintips:
-		# 		self.linkTipToRaintip(tip, raintip)
-		# 		raintip.update()
 
 		if hasattr(tip, "tippee_content_link") and tip.tippee_content_link:
 			for raintip in self.raintip_list.list():
 				if raintip.comment.id == tip.tippee_content_link.split("/")[-2]:
 					self.linkTipToRaintip(tip, raintip)
 					raintip.update()
+
+	def unlinkTipFromAnyRaintips(self, tip):
+		self.print_error(f"-------------- linkTipToMatchingRaintips({tip})")
+
+		if hasattr(tip, "tippee_content_link") and tip.tippee_content_link:
+			for raintip in self.raintip_list.list():
+				if raintip.comment.id == tip.tippee_content_link.split("/")[-2]:
+					self.unlinkTipFromRaintip(tip, raintip)
 
 	def linkRaintipToMatchingTips(self, raintip):
 		self.print_error(f"-------------- linktRaintipToMatchingTips({raintip}) ({len(self.tiplist.tips.values())} tips)")
@@ -283,7 +289,7 @@ class Raintipper(RedditWorker, QWidget, TipListener):
 		self.linkTipToMatchingRaintips(tip)
 
 	def tipRemoved(self, tip):
-		raise Exception(f"tipRemoved() not implemented in class {type(self)}")
+		self.unlinkTipFromAnyRaintips(tip)
 
 	def tipUpdated(self, tip):
 		self.linkTipToMatchingRaintips(tip)
@@ -327,7 +333,10 @@ class Raintip(PrintError):
 		self.level = level
 		self.state = 'fresh'
 		if self.comment.author:
-			self.author_age_days = round((datetime.now().timestamp() - self.comment.author.created_utc) / (60*60*24))
+			if hasattr(self.comment.author, "created_utc"):
+				self.author_age_days = round((datetime.now().timestamp() - self.comment.author.created_utc) / (60*60*24))
+			else:
+				self.author_age_days = 0
 			if self.comment.author.name not in self.raintipper_weakref().raintips_by_redditor:
 				self.raintipper_weakref().raintips_by_redditor[self.comment.author.name] = self
 
@@ -376,6 +385,10 @@ class Raintip(PrintError):
 		if self.raintipper_weakref().raintips_by_redditor[self.comment.author.name] != self:
 			rc = False
 			state = 'ineligible, duplicate author'
+
+		if self.comment.author.name in ("AutoModerator", "moleccc", "dr_chain_rain", "chaintip"):
+			rc = False
+			state = 'ineligible, blacklisted author'
 
 		if not rc and self.state == 'fresh': 
 			self.state = state
@@ -716,9 +729,17 @@ class RaintipperInitDialog(WindowModalDialog, PrintError, MessageBoxMixin):
 		# link or ID entry
 		grid.addWidget(QLabel(_('Reddit URL to Submission or Comment')), 0, 1, Qt.AlignRight)
 		self.root_object = QLineEdit()
-		#self.root_object.setText("https://www.reddit.com/r/chaintipper/comments/t3ahbo/raintipper_test/")
-		#self.root_object.setText("https://www.reddit.com/r/investing/comments/zgn49v/with_a_potential_upcomingworsening_recession_what/")
-		self.root_object.setText("https://www.reddit.com/r/Anarchism/comments/zgu6ee/gimme_some/")
+		#self.root_object.setText('https://www.reddit.com/r/chaintipper/comments/t3ahbo/raintipper_test/')
+		#self.root_object.setText('https://www.reddit.com/r/investing/comments/zgn49v/with_a_potential_upcomingworsening_recession_what/')
+		#self.root_object.setText('https://www.reddit.com/r/Anarchism/comments/zgu6ee/gimme_some/')
+		#self.root_object.setText('https://www.reddit.com/r/jobs/comments/zh4eb3/i_went_from_28k_120k_in_under_a_year_you_can_too/')
+		#self.root_object.setText('https://www.reddit.com/r/Capitalism/comments/zgj6ul/inflation_free_markets_or_freeriding/')
+		#self.root_object.setText('https://www.reddit.com/r/de/comments/zgsf91/gutes_f%C3%BCr_das_reichste_prozent_europas/')
+		#self.root_object.setText('https://www.reddit.com/r/Capitalism/comments/zfk8cl/british_are_now_poorer_than_every_us_state/')
+		#self.root_object.setText('https://www.reddit.com/r/gaming/comments/zhm583/im_sorry_but_you_cant_be_trusted/')
+		self.root_object.setText('https://www.reddit.com/r/darknet/comments/ubhngd/the_official_up_to_no_good_starter_kit/')
+		
+		
 		def on_root_object_entered(): # used lambda for cleaner code
 			self.raintipper.locateRootObject(self.root_object.text())
 			self.root_object_found_label.setText(_("<looking up reddit object>"))
