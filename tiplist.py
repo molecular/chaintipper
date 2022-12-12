@@ -401,9 +401,9 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 		# write csv
 		elif filename.endswith(".csv"):
 			for d in export_data:
-				self.print_error("dpam", d["payments"])
+				#self.print_error("dpam", d["payments"])
 				d["payments"] = ",".join([p["txid"] for p in d["payments"]])
-				self.print_error("d2", d)
+				#self.print_error("d2", d)
 			with open(filename, "w+", encoding='utf-8') as f:	
 				f.write(",".join([csv_encode(d) for d in export_data[0].keys()]) + '\n')
 				for data in export_data:
