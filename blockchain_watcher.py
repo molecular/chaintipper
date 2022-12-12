@@ -118,7 +118,7 @@ class BlockchainWatcher(TipListener, PrintError):
 				if tip:
 					tip.registerPayment(tx_hash, Decimal("0.00000001") * satoshis, "chain")
 				else:
-					if address.to_cashaddr().startswith('qrelay'):
+					if type(address) == Address and address.to_cashaddr().startswith('qrelay'):
 						self.tipless_payments_by_address[address] = {
 							"tx_hash": tx_hash,
 							"amount_bch": Decimal("0.00000001") * satoshis

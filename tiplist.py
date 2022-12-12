@@ -578,11 +578,17 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 			if hasattr(tip, "claim_return_txid") and tip.claim_return_txid:
 				menu.addAction(_("open blockexplorer to {acceptance_status} tx").format(acceptance_status=tip.acceptance_status), lambda: doOpenBlockExplorerTX(tip.claim_return_txid))
 
-			# ... to recipient address
+			# ... to recipient address (relay)
 			if hasattr(tip, "recipient_address") and tip.recipient_address:
-				menu.addAction(_(f"open blockexplorer to recipient address"), lambda: doOpenBlockExplorerAddress(tip.recipient_address))
+				menu.addAction(_(f"open blockexplorer to recipient relay address"), lambda: doOpenBlockExplorerAddress(tip.recipient_address))
 
-		menu.addAction(_("copy recipient address(es)"), lambda: self.wallet_ui.window.app.clipboard().setText("\n".join([tip.recipient_address.to_cashaddr() for tip in tips])))
+			# ... to real recipient address (not relay)
+			if hasattr(tip, "real_recipient_address") and tip.recipient_address:
+				menu.addAction(_(f"open blockexplorer to real (not relay) recipient address"), lambda: doOpenBlockExplorerAddress(tip.real_recipient_address))
+
+		menu.addAction(_("copy recipient relay address(es)"), lambda: self.wallet_ui.window.app.clipboard().setText("\n".join([tip.recipient_address.to_cashaddr() for tip in tips])))
+		real_recipients = [tip.real_recipient_address.to_cashaddr() for tip in tips if hasattr(tip, 'real_recipient_address') and tip.real_recipient_address]
+		menu.addAction(_(f"copy {len(real_recipients)} real recipient address(es)"), lambda: self.wallet_ui.window.app.clipboard().setText("\n".join(real_recipients)))
 
 
 		# pay...
