@@ -168,6 +168,7 @@ class TipListItem(QTreeWidgetItem, PrintError):
 			"{0:.2f}".format(tip.amount_fiat) if hasattr(tip, "amount_fiat") and tip.amount_fiat else "",
 			#tip.fiat_currency if hasattr(tip, "fiat_currency") else "",
 			#tip.recipient_address.to_ui_string() if tip.recipient_address else None,
+			#tip.real_recipient_address.to_ui_string() if hasattr(tip, "real_recipient_address") and tip.real_recipient_address else None,
 			#str(tip.tip_quantity),
 			#tip.tip_unit,
 			#tip.tipping_comment_id,
@@ -232,6 +233,7 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 			"amount_fiat", 
 			#"fiat_currency",
 			#_('Recipient Address'),
+			#_('Real Address'),
 			#_('Tip Quantity'),
 			#_('Tip Unit'),
 			#_('Tip Comment ID'), 
@@ -406,9 +408,9 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 		# write csv
 		elif filename.endswith(".csv"):
 			for d in export_data:
-				self.print_error("dpam", d["payments"])
+				#self.print_error("dpam", d["payments"])
 				d["payments"] = ",".join([p["txid"] for p in d["payments"]])
-				self.print_error("d2", d)
+				#self.print_error("d2", d)
 			with open(filename, "w+", encoding='utf-8') as f:	
 				f.write(",".join([csv_encode(d) for d in export_data[0].keys()]) + '\n')
 				for data in export_data:
@@ -581,11 +583,17 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 			if hasattr(tip, "claim_return_txid") and tip.claim_return_txid:
 				menu.addAction(_("open blockexplorer to {acceptance_status} tx").format(acceptance_status=tip.acceptance_status), lambda: doOpenBlockExplorerTX(tip.claim_return_txid))
 
-			# ... to recipient address
+			# ... to recipient address (relay)
 			if hasattr(tip, "recipient_address") and tip.recipient_address:
-				menu.addAction(_(f"open blockexplorer to recipient address"), lambda: doOpenBlockExplorerAddress(tip.recipient_address))
+				menu.addAction(_(f"open blockexplorer to recipient relay address"), lambda: doOpenBlockExplorerAddress(tip.recipient_address))
 
-		menu.addAction(_("copy recipient address(es)"), lambda: self.wallet_ui.window.app.clipboard().setText("\n".join([tip.recipient_address.to_cashaddr() for tip in tips])))
+			# ... to real recipient address (not relay)
+			if hasattr(tip, "real_recipient_address") and tip.recipient_address:
+				menu.addAction(_(f"open blockexplorer to real (not relay) recipient address"), lambda: doOpenBlockExplorerAddress(tip.real_recipient_address))
+
+		menu.addAction(_("copy recipient relay address(es)"), lambda: self.wallet_ui.window.app.clipboard().setText("\n".join([tip.recipient_address.to_cashaddr() for tip in tips])))
+		real_recipients = [tip.real_recipient_address.to_cashaddr() for tip in tips if hasattr(tip, 'real_recipient_address') and tip.real_recipient_address]
+		menu.addAction(_(f"copy {len(real_recipients)} real recipient address(es)"), lambda: self.wallet_ui.window.app.clipboard().setText("\n".join(real_recipients)))
 
 
 		# pay...

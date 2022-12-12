@@ -13,7 +13,7 @@ class BlockchainWatcher(TipListener, PrintError):
 	"""
 		BlockchainWatcher 
 		listens for tips 
-		and uses electrum network to watch for payments to recipient addresses 
+		and uses electrum network to watch for payments to recipient relay addresses 
 		in order to mark tips as paid
 	""" 
 
@@ -31,7 +31,7 @@ class BlockchainWatcher(TipListener, PrintError):
 		self.tiplist.unregisterTipListener(self)		
 
 	def debug_stats(self):
-		return f" BlockchainWatcher: {len(self.hash2tip.keys())} scripthash subscriptions"
+		return f" BlockchainWatcher: {len(self.hash2tip.keys())} scripthash subscriptions\n                      {len(self.tipless_payments_by_address.values())} tipless payments"
 
 	# stolen from synchronizer
 	def parse_response(self, response):
@@ -108,6 +108,8 @@ class BlockchainWatcher(TipListener, PrintError):
 			return
 		try:
 			tx = Transaction(result)
+
+			# check wether tx is TO a tips qrelay address
 			for o in tx.outputs():
 				#self.print_error("   output", o)
 				address = o[1]
@@ -116,12 +118,23 @@ class BlockchainWatcher(TipListener, PrintError):
 				if tip:
 					tip.registerPayment(tx_hash, Decimal("0.00000001") * satoshis, "chain")
 				else:
-					self.tipless_payments_by_address[address] = {
-						"tx_hash": tx_hash,
-						"amount_bch": Decimal("0.00000001") * satoshis
-					}
-				# else:
-				# 	self.print_error("address", address, ": cannot find associated tip")
+					if type(address) == Address and address.to_cashaddr().startswith('qrelay'):
+						self.tipless_payments_by_address[address] = {
+							"tx_hash": tx_hash,
+							"amount_bch": Decimal("0.00000001") * satoshis
+						}
+
+			# check if tx is FROM a tips qrelay address and set tip.real_recipient_address if so
+			for i in tx.inputs():
+				#i_address = i[1]
+				tip = self.tips_by_address.get(i['address'], None)
+				if tip:
+					#self.print_error("  found forwarding tx from relay address of tip", tip)
+					#self.print_error("     i.address:", i['address'])
+					for output in tx.outputs():
+						#self.print_error("     o.address:", output[1], "o.satoshis", output[2])
+						tip.real_recipient_address = output[1]
+
 		except Exception:
 			traceback.print_exc()
 			self.print_msg("cannot deserialize transaction, skipping", tx_hash)
