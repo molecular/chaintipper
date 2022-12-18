@@ -36,6 +36,7 @@ from .tiplist import TipListWidget, PersistentTipList, StorageVersionMismatchExc
 from .util import read_config, write_config, commit_config
 from .config import c, amount_config_to_rich_text
 from .blockchain_watcher import BlockchainWatcher
+from .follow_the_money import FollowTheMoney
 from .autopay import AutoPay
 from .raintipper import RaintipperInitDialog
 
@@ -97,6 +98,8 @@ class WalletUI(MessageBoxMixin, PrintError, QWidget):
 			s += "   " + self.blockchain_watcher.debug_stats() + "\n"
 		if hasattr(self, "autopay") and self.autopay:
 			s += "   " + self.autopay.debug_stats() + "\n"
+		if hasattr(self, "follow_the_money") and self.follow_the_money:
+			s += "   " + self.follow_the_money.debug_stats() + "\n"
 		if hasattr(self, "reddit") and self.reddit:
 			s += "   " + self.reddit.debug_stats() + "\n"
 
@@ -265,9 +268,12 @@ class WalletUI(MessageBoxMixin, PrintError, QWidget):
 	def add_ui(self):
 		"""construct TipList, and a tab with tiplist widget and add it to window"""
 		self.tiplist = PersistentTipList(self)
+
 		self.autopay = AutoPay(self.wallet, self.tiplist)
 		self.reddit.addWorker(self.autopay)
 		self.blockchain_watcher = BlockchainWatcher(self.wallet, self.tiplist)
+		self.follow_the_money = FollowTheMoney(self.wallet, self.tiplist)
+
 		self.tiplist_widget = TipListWidget(self, self.window, self.wallet, self.tiplist, self.reddit)
 		self.vbox.addWidget(self.tiplist_widget)
 
@@ -276,11 +282,17 @@ class WalletUI(MessageBoxMixin, PrintError, QWidget):
 
 	def remove_ui(self):
 		"""deconstruct the UI created in add_ui(), leaving self.vbox"""
+
+		self.print_error("---------------- remove_ui -----------------")
+
 		if hasattr(self, "autopay") and self.autopay:
 			self.reddit.removeWorker(self.autopay)
 			del self.autopay
 		if hasattr(self, "blockchain_watcher") and self.blockchain_watcher:
 			del self.blockchain_watcher
+		if hasattr(self, "follow_the_money") and self.follow_the_money:
+			del self.follow_the_money
+
 		if self.vbox:
 			self.vbox.removeWidget(self.tiplist_widget)
 		if hasattr(self, "tiplist") and self.tiplist:

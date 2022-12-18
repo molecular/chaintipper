@@ -17,6 +17,7 @@
 		* set "set amount to 0 for stealth", make stealth tip (wont be paid), unset "set amount to 0 for stealth" => doesn't reconsider and pay
 		* I think "_" in username (and probably other special chars) screw the parser. Example are some stealth tips falsely categorized as "linked"
 			example: "u/franane__ has not yet linked their wallet with chaintip to receive tips.", but tip is shown as "linked"
+		* blockchainwatcher: tighten watch condition even more 
 
 	* beta n
 

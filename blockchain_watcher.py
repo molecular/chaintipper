@@ -57,6 +57,7 @@ class BlockchainWatcher(TipListener, PrintError):
 		# if isinstance(tip.recipient_address, Address):
 		# but that was slow af and generating tons of network traffic. Not sure the following misses anything important, but I'll leave it here for now
 		if ((not tip.payment_status or not tip.payment_status.startswith('paid')) or tip.acceptance_status == 'received' or tip.acceptance_status == 'linked') and isinstance(tip.recipient_address, Address):
+			#self.print_error("payment_status: ", tip.payment_status)
 			# check if already seen a payment
 			if tip.recipient_address in self.tipless_payments_by_address:
 				payment = self.tipless_payments_by_address[tip.recipient_address]
@@ -90,7 +91,9 @@ class BlockchainWatcher(TipListener, PrintError):
 		params, result, error = self.parse_response(response)
 		if error:
 			return
-		tx_hashes = map(lambda item: item['tx_hash'], result)
+		tx_hashes = []
+		for r in result:
+			tx_hashes.append(r['tx_hash'])
 		self.request_tx(tx_hashes)
 	
 	def request_tx(self, tx_hashes):
@@ -136,7 +139,9 @@ class BlockchainWatcher(TipListener, PrintError):
 					#self.print_error("     i.address:", i['address'])
 					for output in tx.outputs():
 						#self.print_error("     o.address:", output[1], "o.satoshis", output[2])
-						tip.real_recipient_address = output[1]
+						if not hasattr(tip, "real_recipient_address") or tip.real_recipient_address != output[1]: 
+							tip.real_recipient_address = output[1]
+							tip.update()
 
 		except Exception:
 			traceback.print_exc()

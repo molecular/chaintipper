@@ -820,6 +820,9 @@ class RedditTip(Tip):
 		self.claim_or_returned_message_id = None
 		self.claim_return_txid = ""
 
+		self.real_recipient_address = None
+		self.recipient_usage = ""
+
 	def set_tipping_comment_id(self, tipping_comment_id):
 		if self.tipping_comment_id:
 			del ReddiTip.tips_by_tipping_comment_id[self.tipping_comment_id]
@@ -853,14 +856,14 @@ class RedditTip(Tip):
 		self.tip_unit = d["tip_unit"]
 		self.tip_quantity = Decimal(d["tip_quantity"]) if len(d["tip_quantity"]) > 0 else None
 		self.amount_bch = Decimal(d["amount_bch"]) if len(d["amount_bch"]) > 0 else None
+		#self.amount_received_bch = Decimal(d["amount_received_bch"]) if "amount_received_bch" in d and len(d["amount_received_bch"]) > 0 else None
 		self.amount_fiat = Decimal(d["amount_fiat"]) if len(d["amount_fiat"]) > 0 else None
 		self.fiat_currency = d["fiat_currency"]
 		self.recipient_address = Address.from_cashaddr_string(d["recipient_address"]) if d["recipient_address"] and len(d["recipient_address"]) > 0 else None
 		self.direction = d["direction"]
 		self.claim_return_txid = d["claim_return_txid"] if "claim_return_txid" in d and len(d["claim_return_txid"]) > 0 else None
-
-		#	tip.payment_status,
-		#	"{0:.8f}".format(tip.amount_received_bch) if isinstance(tip.amount_received_bch, Decimal) else "",
+		self.real_recipient_address = Address.from_cashaddr_string(d["real_recipient_address"]) if hasattr(d, "real_recipient_address") and d["real_recipient_address"] and len(d["real_recipient_address"]) > 0 else None
+		self.recipient_usage = hasattr(d, "recipient_usage") and d["recipient_usage"]
 
 	def to_dict(self):
 		return {
@@ -887,10 +890,13 @@ class RedditTip(Tip):
 			"tip_unit": self.tip_unit,
 			"tip_quantity": str(self.tip_quantity) if self.tip_quantity else "",
 			"amount_bch": str(self.amount_bch) if self.amount_bch else "",
-			"amount_fiat": str(self.amount_fiat) if self.amount_fiat else "",
-			"fiat_currency": self.fiat_currency if self.fiat_currency else "",
+			#"amount_received_bch": str(self.amount_received_bch) if hasattr(self, "amount_received_bch") and self.amount_received_bch else "",
+			"amount_fiat": str(self.amount_fiat) if hasattr(self, "amount_fiat") and self.amount_fiat else "",
+			"fiat_currency": self.fiat_currency if hasattr(self, "fiat_currency") and self.fiat_currency else "",
 			"recipient_address": self.recipient_address.to_cashaddr() if self.recipient_address else "",
 			"claim_return_txid": self.claim_return_txid if self.claim_return_txid else "",
+			"real_recipient_address": self.real_recipient_address.to_cashaddr() if self.real_recipient_address and isinstance(self.real_recipient_address, Address) else "",
+			"recipient_usage": self.recipient_usage if self.recipient_usage else ""
 		}
 
 	def getReference(self):

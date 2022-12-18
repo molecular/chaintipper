@@ -62,6 +62,9 @@ class Raintipper(RedditWorker, QWidget, TipListener):
 		self.window = self.wallet_ui.window
 		self.stage = 'init'
 
+		self.min_author_age_days = 90
+		self.min_comment_score = 5
+
 		self.raintips_by_redditor = dict()
 
 		self.tab = None
@@ -378,9 +381,9 @@ class Raintip(PrintError):
 			rc = False
 			state = 'invalid'
 
-		if self.author_age_days < 90:
+		if self.author_age_days < self.raintipper_weakref().min_author_age_days:
 			rc = False
-			state = 'ineligible, age < 90'
+			state = f'ineligible, age < {self.raintipper_weakref().min_author_age_days}'
 
 		if self.raintipper_weakref().raintips_by_redditor[self.comment.author.name] != self:
 			rc = False
@@ -389,6 +392,10 @@ class Raintip(PrintError):
 		if self.comment.author.name in ("AutoModerator", "moleccc", "dr_chain_rain", "chaintip"):
 			rc = False
 			state = 'ineligible, blacklisted author'
+
+		if self.comment.score < self.raintipper_weakref().min_comment_score:
+			rc = False
+			state = f'ineligible, score {self.comment.score} < {self.raintipper_weakref().min_comment_score}'
 
 		if not rc and self.state == 'fresh': 
 			self.state = state
@@ -737,8 +744,11 @@ class RaintipperInitDialog(WindowModalDialog, PrintError, MessageBoxMixin):
 		#self.root_object.setText('https://www.reddit.com/r/de/comments/zgsf91/gutes_f%C3%BCr_das_reichste_prozent_europas/')
 		#self.root_object.setText('https://www.reddit.com/r/Capitalism/comments/zfk8cl/british_are_now_poorer_than_every_us_state/')
 		#self.root_object.setText('https://www.reddit.com/r/gaming/comments/zhm583/im_sorry_but_you_cant_be_trusted/')
-		self.root_object.setText('https://www.reddit.com/r/darknet/comments/ubhngd/the_official_up_to_no_good_starter_kit/')
-		
+		#self.root_object.setText('https://www.reddit.com/r/darknet/comments/ubhngd/the_official_up_to_no_good_starter_kit/')
+		#self.root_object.setText('https://www.reddit.com/r/dogecoin/comments/zghvcl/found_an_old_thumb_drive_i_misplaced_in_a_move/')
+		#self.root_object.setText('https://www.reddit.com/r/TalesFromRetail/comments/zm8yf7/i_know_what_a_mirror_is_and_no_we_dont_sell_them/')
+		#self.root_object.setText('https://www.reddit.com/r/MadeMeSmile/comments/u33nuc/he_finally_got_his_acorn/')
+		self.root_object.setText('https://www.reddit.com/r/Buttcoin/comments/zll8t7/is_this_financial_advice/')
 		
 		def on_root_object_entered(): # used lambda for cleaner code
 			self.raintipper.locateRootObject(self.root_object.text())
