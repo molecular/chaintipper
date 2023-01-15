@@ -63,7 +63,8 @@ class Raintipper(RedditWorker, QWidget, TipListener):
 		self.stage = 'init'
 
 		self.min_author_age_days = 90
-		self.min_comment_score = 5
+		self.min_comment_score = 1
+		self.retip_returned = False
 
 		self.raintips_by_redditor = dict()
 
@@ -240,8 +241,9 @@ class Raintipper(RedditWorker, QWidget, TipListener):
 
 	def tip(self):
 
-		fresh_raintips = [raintip for raintip in self.raintip_list.list() if raintip.isValid() and raintip.state == 'fresh']
+		fresh_raintips = [raintip for raintip in self.raintip_list.list() if raintip.isValid() and (raintip.state == 'fresh' or (raintip.state == 'returned' and self.retip_returned))]
 		eligible_raintips = [raintip for raintip in fresh_raintips if raintip.isEligible()]
+		self.print_error(f"{len(eligible_raintips)} eligible raintips found")
 		eligible_raintips = eligible_raintips[:1]
 
 		for raintip in eligible_raintips:
@@ -258,6 +260,8 @@ class Raintipper(RedditWorker, QWidget, TipListener):
 		if not hasattr(raintip, "tip") or raintip.tip != tip:
 			raintip.tip = tip
 			raintip.state = "tipped {0:.8f}".format(tip.amount_bch) if isinstance(tip.amount_bch, Decimal) else ""
+			if raintip.tip.acceptance_status == 'returned': 
+				raintip.state = "returned"
 
 	def unlinkTipFromRaintip(self, tip, raintip):
 		del raintip.tip
@@ -374,30 +378,25 @@ class Raintip(PrintError):
 			hasattr(self.comment, "author") and self.comment.author != None
 
 	def isEligible(self):
-		rc = True
+		rc = False
 		state = ''
 
 		if not self.isValid():
-			rc = False
 			state = 'invalid'
-
-		if self.author_age_days < self.raintipper_weakref().min_author_age_days:
-			rc = False
+		elif self.author_age_days < self.raintipper_weakref().min_author_age_days:
 			state = f'ineligible, age < {self.raintipper_weakref().min_author_age_days}'
-
-		if self.raintipper_weakref().raintips_by_redditor[self.comment.author.name] != self:
-			rc = False
-			state = 'ineligible, duplicate author'
-
-		if self.comment.author.name in ("AutoModerator", "moleccc", "dr_chain_rain", "chaintip"):
-			rc = False
-			state = 'ineligible, blacklisted author'
-
-		if self.comment.score < self.raintipper_weakref().min_comment_score:
-			rc = False
+		elif self.comment.score < self.raintipper_weakref().min_comment_score:
 			state = f'ineligible, score {self.comment.score} < {self.raintipper_weakref().min_comment_score}'
-
-		if not rc and self.state == 'fresh': 
+		elif self.comment.author.name in ("AutoModerator", "moleccc", "dr_chain_rain", "chaintip"):
+			state = 'ineligible, blacklisted author'
+		elif self.raintipper_weakref().raintips_by_redditor[self.comment.author.name] != self:
+			state = 'ineligible, duplicate author'
+		elif not self.raintipper_weakref().retip_returned and self.comment.author.name in [tip.username for tip in self.raintipper_weakref().wallet_ui.tiplist.tips.values()]:
+			state = 'ineligible, author tipped before'
+		else:
+		 rc = True
+		
+		if not rc and (self.state == 'fresh' or (self.state == 'returned' and self.raintipper_weakref().retip_returned)): 
 			self.state = state
 
 		return rc
@@ -531,6 +530,8 @@ class RaintipListItem(QTreeWidgetItem, PrintError):
 			color = Qt.black
 			if not self.raintip.isEligible(): color = Qt.gray
 			if self.raintip.state.startswith("tipped"): color = QColor(120, 180, 120)
+			if hasattr(self.raintip, "tip"):
+				if self.raintip.tip.acceptance_status == 'returned': color = QColor(180, 120, 120)
 				# if self.tip.acceptance_status == 'claimed': color = QColor(120, 180, 120)
 				# if self.tip.acceptance_status == 'returned': color = QColor(180, 120, 120)
 			self.setForeground(idx, color)			
@@ -748,8 +749,14 @@ class RaintipperInitDialog(WindowModalDialog, PrintError, MessageBoxMixin):
 		#self.root_object.setText('https://www.reddit.com/r/dogecoin/comments/zghvcl/found_an_old_thumb_drive_i_misplaced_in_a_move/')
 		#self.root_object.setText('https://www.reddit.com/r/TalesFromRetail/comments/zm8yf7/i_know_what_a_mirror_is_and_no_we_dont_sell_them/')
 		#self.root_object.setText('https://www.reddit.com/r/MadeMeSmile/comments/u33nuc/he_finally_got_his_acorn/')
-		self.root_object.setText('https://www.reddit.com/r/Buttcoin/comments/zll8t7/is_this_financial_advice/')
-		
+		#self.root_object.setText('https://www.reddit.com/r/Buttcoin/comments/zll8t7/is_this_financial_advice/')
+		#self.root_object.setText('https://www.reddit.com/r/germany/comments/xblez1/german_tipping_culture/')
+		#self.root_object.setText('https://www.reddit.com/r/TalesFromRetail/comments/zk7iaq/lady_curses_out_bully_customer/')
+		#self.root_object.setText('https://www.reddit.com/r/MadeMeSmile/comments/zsab3s/i_completely_bombed_my_first_attempt_at_this_top/')
+		#self.root_object.setText('https://www.reddit.com/r/GoldandBlack/comments/stazb6/dear_canadians_your_government_has_decided_that/')
+		#self.root_object.setText('https://www.reddit.com/r/funny/comments/zv1cyy/neighbors_couldnt_even_make_it_until_lunch_on/')
+		self.root_object.setText('https://www.reddit.com/r/funny/comments/104qzio/soda_syrupyum_wendys_gave_my_brother_a_packet_of/');
+
 		def on_root_object_entered(): # used lambda for cleaner code
 			self.raintipper.locateRootObject(self.root_object.text())
 			self.root_object_found_label.setText(_("<looking up reddit object>"))
@@ -782,153 +789,6 @@ class RaintipperInitDialog(WindowModalDialog, PrintError, MessageBoxMixin):
 			self.raintipper.show_tab()
 		self.gobut.clicked.connect(on_go)
 		main_layout.addLayout(Buttons(cbut, self.gobut))
-
-	'''
-		# active when wallet opens
-		self.cb_activate_on_open = QCheckBox(_("Activate ChainTipper when wallet '{wallet_name}'' is opened.").format(wallet_name=self.wallet_ui.wallet_name))
-		self.cb_activate_on_open.setChecked(read_config(self.wallet, "activate_on_wallet_open"))
-		def on_cb_activate_on_open():
-			write_config(self.wallet, "activate_on_wallet_open", self.cb_activate_on_open.isChecked())
-		self.cb_activate_on_open.stateChanged.connect(on_cb_activate_on_open)
-		grid.addWidget(self.cb_activate_on_open)
-
-		# mark read digested
-		self.cb_mark_read_digested_tips = QCheckBox(_("Keep my inbox clean by marking messages/comments as read when they are digested"))
-		self.cb_mark_read_digested_tips.setChecked(read_config(self.wallet, "mark_read_digested_tips"))
-		def on_cb_mark_read_digested_tips():
-			write_config(self.wallet, "mark_read_digested_tips", self.cb_mark_read_digested_tips.isChecked())
-		self.cb_mark_read_digested_tips.stateChanged.connect(on_cb_mark_read_digested_tips)
-		grid.addWidget(self.cb_mark_read_digested_tips)
-
-		# --- group Default Tip Amount ------------------------------------------------------------------------------------------
-
-		main_layout.addStretch(1)
-
-		gbox = QGroupBox(_("Default Tip Amount (used when amount parsing fails)"))
-		grid = QGridLayout(gbox)
-		main_layout.addWidget(gbox)
-
-		# amount
-		grid.addWidget(QLabel(_('Amount')), 0, 1, Qt.AlignRight)
-		self.default_amount = QLineEdit()
-		self.default_amount.setText(read_config(self.wallet, "default_amount"))
-		def on_default_amount():
-			try:
-				self.default_amount.setText(str(decimal.Decimal(self.default_amount.text())))
-			except decimal.InvalidOperation as e:
-				self.show_error(_("Cannot parse {string} as decimal number. Please try again.").format(string=self.default_amount.text()))
-				self.default_amount.setText(read_config(self.wallet, "default_amount"))
-			write_config(self.wallet, "default_amount", self.default_amount.text())
-		self.default_amount.editingFinished.connect(on_default_amount)
-		grid.addWidget(self.default_amount, 0, 2)
-
-		# currency
-		self.currencies = sorted(self.wallet_ui.window.fx.get_currencies(self.wallet_ui.window.fx.get_history_config()))
-		grid.addWidget(QLabel(_('Currency')), 1, 1, Qt.AlignRight)
-		self.default_amount_currency = QComboBox()
-		self.default_amount_currency.addItems(self.currencies)
-		self.default_amount_currency.setCurrentIndex(
-			self.default_amount_currency.findText(
-				read_config(self.wallet, "default_amount_currency")
-			)
-		)
-		def on_default_amount_currency():
-			write_config(self.wallet, "default_amount_currency", self.currencies[self.default_amount_currency.currentIndex()])
-		self.default_amount_currency.currentIndexChanged.connect(on_default_amount_currency)
-		grid.addWidget(self.default_amount_currency, 1, 2)
-
-
-		# --- group Linked Default Tip Amount ----------------------------------------------------------------------------------
-
-		main_layout.addStretch(1)
-
-		self.gbox_linked_amount = QGroupBox(_("Special Linked Default Tip Amount (used when amount parsing fails and recipient has linked an address)"))
-		self.gbox_linked_amount.setCheckable(True)
-		self.gbox_linked_amount.setChecked(read_config(self.wallet, "use_linked_amount"))
-		grid = QGridLayout(self.gbox_linked_amount)
-		main_layout.addWidget(self.gbox_linked_amount)
-		def on_gbox_linked_amount():
-			write_config(self.wallet, "use_linked_amount", self.gbox_linked_amount.isChecked())
-		self.gbox_linked_amount.toggled.connect(on_gbox_linked_amount)
-
-		# amount
-		grid.addWidget(QLabel(_('Amount')), 0, 1, Qt.AlignRight)
-		self.default_linked_amount = QLineEdit()
-		self.default_linked_amount.setText(read_config(self.wallet, "default_linked_amount"))
-		def on_default_linked_amount():
-			try:
-				self.default_linked_amount.setText(str(decimal.Decimal(self.default_linked_amount.text())))
-			except decimal.InvalidOperation as e:
-				self.show_error(_("Cannot parse {string} as decimal number. Please try again.").format(string=self.default_linked_amount.text()))
-				self.default_linked_amount.setText(read_config(self.wallet, "default_linked_amount"))
-			write_config(self.wallet, "default_linked_amount", self.default_linked_amount.text())
-		self.default_linked_amount.editingFinished.connect(on_default_linked_amount)
-		grid.addWidget(self.default_linked_amount, 0, 2)
-
-		# currency
-		self.currencies = sorted(self.wallet_ui.window.fx.get_currencies(self.wallet_ui.window.fx.get_history_config()))
-		grid.addWidget(QLabel(_('Currency')), 1, 1, Qt.AlignRight)
-		self.default_linked_amount_currency = QComboBox()
-		self.default_linked_amount_currency.addItems(self.currencies)
-		self.default_linked_amount_currency.setCurrentIndex(
-			self.default_linked_amount_currency.findText(
-				read_config(self.wallet, "default_linked_amount_currency")
-			)
-		)
-		def on_default_linked_amount_currency():
-			write_config(self.wallet, "default_linked_amount_currency", self.currencies[self.default_linked_amount_currency.currentIndex()])
-		self.default_linked_amount_currency.currentIndexChanged.connect(on_default_linked_amount_currency)
-		grid.addWidget(self.default_linked_amount_currency, 1, 2)
-
-
-		# --- group autopay ---------------------------------------------------------------------------------------------------
-
-		main_layout.addStretch(1)
-
-		self.gbox_autopay = QGroupBox(_("AutoPay - Automatically pay unpaid tips"))
-		self.gbox_autopay.setCheckable(True)
-		self.gbox_autopay.setChecked(read_config(self.wallet, "autopay"))
-		vbox = QVBoxLayout(self.gbox_autopay)
-		main_layout.addWidget(self.gbox_autopay)
-		def on_gbox_autopay():
-			write_config(self.wallet, "autopay", self.gbox_autopay.isChecked())
-			#on_cb_autopay_limit()
-		self.gbox_autopay.toggled.connect(on_gbox_autopay)
-
-		# disallow autopay when default amount is used
-		self.cb_autopay_disallow_default = QCheckBox(_("Disallow AutoPay when Default Tip Amount is used"))
-		self.cb_autopay_disallow_default.setChecked(read_config(self.wallet, "autopay_disallow_default"))
-		def on_cb_autopay_disallow_default():
-			write_config(self.wallet, "autopay_disallow_default", self.cb_autopay_disallow_default.isChecked())
-		self.cb_autopay_disallow_default.stateChanged.connect(on_cb_autopay_disallow_default)
-		vbox.addWidget(self.cb_autopay_disallow_default)
-
-		# autopay limit checkbox
-		self.cb_autopay_limit = QCheckBox(_("Limit AutoPay Amount"))
-		self.cb_autopay_limit.setChecked(read_config(self.wallet, "autopay_use_limit"))
-		def on_cb_autopay_limit():
-			self.autopay_limit_bch_label.setEnabled(self.gbox_autopay.isChecked() and self.cb_autopay_limit.isChecked())
-			self.autopay_limit_bch.setEnabled(self.gbox_autopay.isChecked() and self.cb_autopay_limit.isChecked())
-			write_config(self.wallet, "autopay_use_limit", self.cb_autopay_limit.isChecked())
-		self.cb_autopay_limit.stateChanged.connect(on_cb_autopay_limit)
-		vbox.addWidget(self.cb_autopay_limit)
-
-		# autopay limit (amount)
-		hbox = QHBoxLayout()
-		vbox.addLayout(hbox)
-		self.autopay_limit_bch_label = QLabel(_('AutoPay Limit (BCH per Tip)'))
-		hbox.addWidget(self.autopay_limit_bch_label, 10, Qt.AlignRight)
-		self.autopay_limit_bch = QLineEdit()
-		self.autopay_limit_bch.setText(read_config(self.wallet, "autopay_limit_bch"))
-		def on_autopay_limit_bch():
-			write_config(self.wallet, "autopay_limit_bch", self.autopay_limit_bch.text())
-		self.autopay_limit_bch.editingFinished.connect(on_autopay_limit_bch)
-		hbox.addWidget(self.autopay_limit_bch, 40)
-
-		# ensure correct enable state
-		#on_cb_autopay()
-
-	'''
 
 	def closeEvent(self, event):
 		super().closeEvent(event)

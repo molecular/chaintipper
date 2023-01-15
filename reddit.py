@@ -510,6 +510,29 @@ class Reddit(PrintError, QObject):
 			self.print_error("chaintip comment doesn't parse: ", comment.body)
 			return False
 
+	def digestNonChaintipItem(self, item):
+		"""digests non-chaintip-related items like private messages"""
+		self.print_error("digestNonChaintipItem(", item.fullname, ")")
+		#self.print_error("digestItem(", item.id, ")")
+
+		# digest message
+		if isinstance(item, praw.models.Message):
+			return self.digestNonChaintipMessage(item)
+
+	def digestNonChaintipMessage(self, message):
+		if message is None or message.author is None:
+			return
+
+		# add message to sending user
+		author = self.wallet_ui.userlist.getUser(message.author.name)
+		author.digestMessage(message)
+
+		# add message to receiving user
+		recipient = self.wallet_ui.userlist.getUser(message.dest.name)
+		recipient.digestMessage(message)
+
+		return True
+
 	def digestItem(self, item):
 		self.print_error("digestItem(", item.fullname, ")")
 		"""returns True if item was digested or deferred, False otherwise"""
@@ -619,8 +642,10 @@ class Reddit(PrintError, QObject):
 					if item.created_utc < start_date_utc:
 						break
 			if item.author != 'chaintip': 
-				continue
-			self.digestItem(item)
+				self.digestNonChaintipItem(item)
+			else:
+				self.digestItem(item)
+
 			counter += 1
 			if counter % 10 == 0:
 				self.print_error(f"digested {counter} items")
@@ -656,6 +681,7 @@ class Reddit(PrintError, QObject):
 
 					# only read chaintip-authored item
 					if item.author != 'chaintip':
+						self.digestNonChaintipItem(item)
 						continue
 
 					counter += 1
@@ -688,7 +714,8 @@ class Reddit(PrintError, QObject):
 					if flow_debug: self.print_error("cycle 0 refreshTipAmounts()")
 					self.refreshTipAmounts()
 				
-				#self.wallet_ui.print_debug_stats()
+				if (cycle%10) == 0:
+					self.wallet_ui.print_debug_stats()
 
 				if flow_debug: self.print_error("mark_read_items_to_mark_read()")
 				self.mark_read_items_to_mark_read()
@@ -992,6 +1019,7 @@ class RedditTip(Tip):
 				if m:
 					self.type = 'receive'
 					self.username = m.group(1)
+					self.user = self.wallet_ui.userlist.getUser(self.username)
 					self.direction = 'incoming'
 					self.amount_bch = Decimal(m.group(2))
 					self.print_error("p_sender matches, user: ", self.username)
@@ -1014,6 +1042,7 @@ class RedditTip(Tip):
 				m = RedditTip.p_recipient_acceptance.match(self.chaintip_message.body)
 				if m:
 					self.username = m.group(1)
+					self.user = self.reddit.wallet_ui.userlist.getUser(self.username)
 					if m.group(2) == "not yet linked":
 						self.acceptance_status = 'not yet linked'
 					else:

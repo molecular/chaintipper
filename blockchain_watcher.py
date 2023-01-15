@@ -31,7 +31,7 @@ class BlockchainWatcher(TipListener, PrintError):
 		self.tiplist.unregisterTipListener(self)		
 
 	def debug_stats(self):
-		return f" BlockchainWatcher: {len(self.hash2tip.keys())} scripthash subscriptions\n                      {len(self.tipless_payments_by_address.values())} tipless payments"
+		return f" BlockchainWatcher: {len(self.hash2tip.keys())} scripthash subscriptions\n                       {len(self.tipless_payments_by_address.values())} tipless payments"
 
 	# stolen from synchronizer
 	def parse_response(self, response):

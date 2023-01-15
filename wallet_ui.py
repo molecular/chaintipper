@@ -31,7 +31,7 @@ from .qresources import qInitResources
 
 from . import fullname
 from .reddit import Reddit
-from .model import TipList, TipListener
+from .model import TipList, TipListener, User, UserList
 from .tiplist import TipListWidget, PersistentTipList, StorageVersionMismatchException
 from .util import read_config, write_config, commit_config
 from .config import c, amount_config_to_rich_text
@@ -76,6 +76,7 @@ class WalletUI(MessageBoxMixin, PrintError, QWidget):
 		self.previous_tab_index = None
 		self.reddit = None
 		self.tiplist = None
+		self.userlist = None
 
 		self.old_debug_stats = ""
 
@@ -94,6 +95,8 @@ class WalletUI(MessageBoxMixin, PrintError, QWidget):
 		s = "\n" + self.debug_stats() + "\n"
 		if hasattr(self, "tiplist") and self.tiplist: 
 			s += "   " + self.tiplist.debug_stats() + "\n"
+		if hasattr(self, "userlist") and self.userlist: 
+			s += "   " + self.userlist.debug_stats() + "\n"
 		if hasattr(self, "blockchain_watcher") and self.blockchain_watcher:
 			s += "   " + self.blockchain_watcher.debug_stats() + "\n"
 		if hasattr(self, "autopay") and self.autopay:
@@ -268,6 +271,7 @@ class WalletUI(MessageBoxMixin, PrintError, QWidget):
 	def add_ui(self):
 		"""construct TipList, and a tab with tiplist widget and add it to window"""
 		self.tiplist = PersistentTipList(self)
+		self.userlist = UserList()
 
 		self.autopay = AutoPay(self.wallet, self.tiplist)
 		self.reddit.addWorker(self.autopay)
@@ -295,6 +299,8 @@ class WalletUI(MessageBoxMixin, PrintError, QWidget):
 
 		if self.vbox:
 			self.vbox.removeWidget(self.tiplist_widget)
+		if hasattr(self, "userlist") and self.userlist:
+			del self.userlist
 		if hasattr(self, "tiplist") and self.tiplist:
 			del self.tiplist
 		if hasattr(self, "tab") and self.tab:

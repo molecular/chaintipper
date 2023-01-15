@@ -35,7 +35,7 @@ from electroncash.address import Address
 from electroncash.wallet import Abstract_Wallet, WalletStorage
 import electroncash.web as web
 
-from .model import Tip, TipList, TipListener
+from .model import Tip, TipList, TipListener, User, UserList, UserListener
 from .config import c
 from .util import read_config, write_config
 
@@ -116,9 +116,12 @@ class PersistentTipList(TipList):
 			if class_name == "RedditTip":
 				tip = RedditTip(self, self.wallet_ui.reddit)
 			tip.from_dict(d)
+			tip.user = self.wallet_ui.userlist.getUser(tip.username)
+			tip.user.registerUserListener(tip)
 			assert tip.getID() == id
 			self.addTip(tip)
 			self.updateTip(tip)
+
 
 #################################################
 #                                               #
@@ -168,8 +171,10 @@ class TipListItem(QTreeWidgetItem, PrintError):
 			"{0:.2f}".format(tip.amount_fiat) if hasattr(tip, "amount_fiat") and tip.amount_fiat else "",
 			#tip.fiat_currency if hasattr(tip, "fiat_currency") else "",
 			#tip.recipient_address.to_ui_string() if tip.recipient_address else None,
-			tip.real_recipient_address.to_ui_string() if hasattr(tip, "real_recipient_address") and tip.real_recipient_address else None,
+			tip.real_recipient_address.to_ui_string()[0:6] + '...' if hasattr(tip, "real_recipient_address") and tip.real_recipient_address else None,
 			tip.recipient_usage if hasattr(tip, "recipient_usage") and tip.recipient_usage else None,
+			f"{tip.user.getMessageCount()}" if hasattr(tip, "user") and tip.user else None,
+			f"{tip.user.getUnreadMessageCount()}" if hasattr(tip, "user") and tip.user else None,
 			#str(tip.tip_quantity),
 			#tip.tip_unit,
 			#tip.tipping_comment_id,
@@ -234,7 +239,9 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 			"amount_fiat", 
 			#"fiat_currency",
 			_('Recipient Address'),
-			_('Recipient Usage Category')
+			_('Recipient Usage Category'),
+			_('PMs'),
+			_('unread PMs')
 			#_('Real Address'),
 			#_('Tip Quantity'),
 			#_('Tip Unit'),
@@ -554,8 +561,14 @@ class TipListWidget(PrintError, MyTreeWidget, TipListener):
 		if len(tips) == 1:
 			tip = tips[0]
 
+			# open browser to messages...
 			if tip.chaintip_message_id:
 				menu.addAction(_("open browser to chaintip message"), lambda: doOpenBrowser("/message/messages/" + tip.chaintip_message_id))
+			if hasattr(tip, "user") and tip.user and tip.user.getMessageCount() > 0:
+				menu.addAction(_("open browser to latest PM"), lambda: doOpenBrowser("/message/messages/" + tip.user.getLatestMessage().id))
+			if hasattr(tip, "user") and tip.user and tip.user.getUnreadMessageCount() > 0:
+				menu.addAction(_("open browser to latest unread PM"), lambda: doOpenBrowser("/message/messages/" + tip.user.getLatestUnreadMessage().id))
+			menu.addSeparator()
 
 			# open browser...			
 			if tip.tippee_content_link:

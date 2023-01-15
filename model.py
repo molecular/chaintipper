@@ -3,7 +3,119 @@ from decimal import Decimal
 import weakref
 from PyQt5.QtCore import QObject, pyqtSignal
 
-class Tip(PrintError):
+######################################################
+#                                                    #
+#    88        88                                    #
+#    88        88                                    #
+#    88        88                                    #
+#    88        88 ,adPPYba,  ,adPPYba, 8b,dPPYba,    #
+#    88        88 I8[    "" a8P_____88 88P'   "Y8    #
+#    88        88  `"Y8ba,  8PP""""""" 88            #
+#    Y8a.    .a8P aa    ]8I "8b,   ,aa 88            #
+#     `"Y8888Y"'  `"YbbdP"'  `"Ybbd8"' 88            #
+#                                                    #
+#                                                    #
+######################################################
+
+class User(PrintError):
+
+	def __init__(self, name):
+		self.name = name
+		self.messages_by_id = dict()
+		self.user_listeners = []
+
+	def getID(self):
+		return self.name
+
+	def digestMessage(self, message):
+		self.print_error(f"adding message {message.id} to user {self.name}")
+		if message.id not in self.messages_by_id:
+			self.messages_by_id[message.id] = message
+			self.updated()
+
+	def getMessageCount(self):
+		return len(self.messages_by_id)
+
+	def getUnreadMessageCount(self):
+		return len([m for m in self.messages_by_id.values() if m.new])
+
+	def getLatestMessage(self):
+		if len(self.messages_by_id) == 0: return None
+		return sorted(self.messages_by_id.values(), key=lambda m: m.created_utc)[-1]
+
+	def getLatestUnreadMessage(self):
+		if self.getUnreadMessageCount == 0: return None
+		return sorted([m for m in self.messages_by_id.values() if m.new], key=lambda m: m.created_utc)[-1]
+
+	def updated(self):
+		for user_listener in self.user_listeners:
+			user_listener.userUpdated(self)
+
+	def registerUserListener(self, user_listener):
+		self.user_listeners.append(user_listener)
+
+	def unregisterUserListener(self, user_listener):
+		self.user_listeners.remove(user_listener)
+
+
+class UserListener():
+
+	def userUpdated(self, user):
+		raise Exception(f"userUpdated() not implemented in class {type(self)}")
+
+
+#######################################################################################
+#                                                                                     #
+#    88        88                                 88          88                      #
+#    88        88                                 88          ""             ,d       #
+#    88        88                                 88                         88       #
+#    88        88 ,adPPYba,  ,adPPYba, 8b,dPPYba, 88          88 ,adPPYba, MM88MMM    #
+#    88        88 I8[    "" a8P_____88 88P'   "Y8 88          88 I8[    ""   88       #
+#    88        88  `"Y8ba,  8PP""""""" 88         88          88  `"Y8ba,    88       #
+#    Y8a.    .a8P aa    ]8I "8b,   ,aa 88         88          88 aa    ]8I   88,      #
+#     `"Y8888Y"'  `"YbbdP"'  `"Ybbd8"' 88         88888888888 88 `"YbbdP"'   "Y888    #
+#                                                                                     #
+#                                                                                     #
+#######################################################################################
+
+class UserList(PrintError, QObject):
+
+	def __init__(self):
+		super(UserList, self).__init__()
+		self.users_by_name = dict()
+
+	def getUser(self, name):
+		if name not in self.users_by_name:
+			self.addUser(User(name))
+		return self.users_by_name[name]
+
+	def debug_stats(self):
+		return f"          Userlist: {len(self.users_by_name)} users"
+
+	def addUser(self, user):
+		if user.getID() in self.users_by_name:
+			raise Exception("addUser(): duplicate user.getID()")
+		self.users_by_name[user.getID()] = user
+
+	def removeUser(self, user):
+		del self.users_by_name[user.getID()]
+
+
+#####################################
+#                                   #
+#    888888888888 88                #
+#         88      ""                #
+#         88                        #
+#         88      88 8b,dPPYba,     #
+#         88      88 88P'    "8a    #
+#         88      88 88       d8    #
+#         88      88 88b,   ,a8"    #
+#         88      88 88`YbbdP"'     #
+#                    88             #
+#                    88             #
+#####################################
+
+class Tip(PrintError, UserListener):
 	def __init__(self, tiplist):
 		self.tiplist_weakref = weakref.ref(tiplist)
 
@@ -62,6 +174,10 @@ class Tip(PrintError):
 				self.payment_status = f'paid ({len(self.payments_by_txhash)} txs)'
 			self.update()
 
+	# UserListener
+
+	def userUpdated(self, user):
+		self.update()
 
 ######################################################################
 #                                                                    #
@@ -114,6 +230,7 @@ class TipList(PrintError, QObject):
 		self.update_signal.emit()
 
 class TipListener():
+
 	def tipAdded(self, tip):
 		raise Exception(f"tipAdded() not implemented in class {type(self)}")
 
@@ -122,4 +239,5 @@ class TipListener():
 
 	def tipUpdated(self, tip):
 		raise Exception(f"tipUpdated() not implemented in class {type(self)}")
+
 
