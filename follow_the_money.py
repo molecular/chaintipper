@@ -217,32 +217,10 @@ class FollowTheMoney(TipListener, PrintError):
 		self.tipUpdated(tip)
 
 	def tipUpdated(self, tip):
-		if hasattr(tip, "real_recipient_address") and tip.real_recipient_address == 'qzv54qpmu5hv6dswkjv23cxdyy3ua6tx6yg9jax8pj':
-			self.print_error("**********************************************************\n**************************************")
 		if hasattr(tip, "real_recipient_address") and isinstance(tip.real_recipient_address, Address):
 			a_str = tip.real_recipient_address.to_cashaddr()
 			#self.print_error("------ real recipient address", a_str)
 
 			wallet = self.getStatisticsWalletForAddress(tip.real_recipient_address)
 			wallet.associateTip(tip)
-
-			# if a_str in self.tips_by_address.keys():
-			# 	tips = self.tips_by_address[a_str]
-			# 	if tip not in tips:
-			# 		tips.append(tip)
-			# else:
-			# 	self.tips_by_address[a_str] = [tip]
-
-			# 	# subscribe to recipient address scripthash
-			# 	scripthash = tip.real_recipient_address.to_scripthash_hex()
-			# 	if scripthash not in self.hash2tip.keys():
-			# 		self.hash2tip[scripthash] = tip
-
-			# 	# subscribe to scripthash
-			# 	if not self.network:
-			# 		self.print_error("no network, unable to subscribe to real_recipient_address data")
-			# 	else:
-			# 		#self.print_error("subscribing to ", tip.real_recipient_address)
-			# 		self.network.subscribe_to_scripthashes([scripthash], self.on_status_change)
-			# 		tip.subscription_time = time()
 
